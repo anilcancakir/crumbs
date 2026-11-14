@@ -3,12 +3,13 @@
 # Crumbs is a passive observability plugin. Install registers
 # CrumbsDowelProvider into the consumer's lib/app/_plugins.g.dart codegen
 # barrel (via the dowel manifest installer's _registerDowelProvider step)
-# so the 6 crumbs CLI commands + 9 crumbs_* MCP tools surface through
-# the consumer's `./bin/dowel` fast-cli and `dart run dowel:mcp` outputs.
+# so the crumbs CLI commands and crumbs_* MCP tools surface through the
+# consumer's `./bin/dowel` fast-cli and `dart run dowel:mcp` outputs.
 #
 # No stub files are published: crumbs captures via runtime hooks, not
-# scaffolded code. The consumer wires the runtime install in their
-# lib/main.dart manually (see post_install message).
+# scaffolded code. `crumbs:install` wires the runtime install into
+# lib/main.dart; without it the consumer wires it by hand (see the
+# post_install message).
 #
 # See doc/install_yaml_schema.md (in dowel) for the full schema.
 
@@ -29,9 +30,13 @@ post_install:
          CrumbsPlugin.registerWatcher(ExceptionWatcher());
          CrumbsPlugin.registerWatcher(DumpWatcher());
 
-    2. If you use Magic, ALSO call MagicCrumbsIntegration.install()
-       AFTER Magic.init() to wire MagicHttpFacadeAdapter +
-       MagicModelWatcher + MagicEventWatcher + MagicGateWatcher.
+    2. Magic apps: MagicCrumbsIntegration.install() goes AFTER
+       Magic.init(), under the same guard. It lives in
+       package:magic_devtools/crumbs.dart, so it is only available when
+       the magic_devtools you resolve ships lib/crumbs.dart; older
+       releases ship lib/telescope.dart instead. `crumbs:install` wires
+       it only in that case and otherwise prints a warning; upgrade
+       magic_devtools and rerun `dart run crumbs crumbs:install`.
 
     3. Verify the CLI (three equivalent entry points, fastest first):
 
@@ -39,12 +44,9 @@ post_install:
          dart run dowel list     # consumer dispatcher fallback (~3s cold)
          dart run crumbs list   # crumbs's own bootstrap entry (~3s cold, useful pre-install)
 
-       All three include the `crumbs:` namespace (install, tail, requests, queries, caches, clear).
+       All three include the `crumbs:` namespace.
 
     4. Verify the MCP surface:
 
          dart run dowel mcp:install    # add fluttersdk MCP server entry to .mcp.json
-         # then restart Claude Code; /mcp will list 9 crumbs_* tools
-         # (crumbs_tail, crumbs_requests, crumbs_clear,
-         #  crumbs_exceptions, crumbs_events, crumbs_gates,
-         #  crumbs_dumps, crumbs_queries, crumbs_caches).
+         # then restart Claude Code; /mcp lists the crumbs_* tools.

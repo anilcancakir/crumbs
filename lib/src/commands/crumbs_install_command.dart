@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dowel/dowel.dart';
@@ -22,8 +23,10 @@ import 'package:dowel/dowel.dart';
 ///      [MainDartEditor]: imports plus the `kDebugMode`-gated
 ///      [CrumbsPlugin.install] + [ExceptionWatcher] + [DumpWatcher]
 ///      block before `runApp(`. When the consumer's pubspec lists `magic_devtools`
-///      as a dependency AND `lib/main.dart` contains an `await Magic.init(`
-///      call, also injects `MagicCrumbsIntegration.install()` after it.
+///      as a dependency, `lib/main.dart` contains an `await Magic.init(`
+///      call AND the resolved release ships `lib/crumbs.dart`, also injects
+///      `MagicCrumbsIntegration.install()` after it; a release without
+///      `lib/crumbs.dart` gets a warning instead.
 ///      All steps idempotent; re-runs are no-ops.
 ///
 /// Steps 1 and 2 are invoked as subprocesses so this command does not
@@ -133,10 +136,24 @@ class CrumbsInstallCommand extends DowelCommand {
   ///       the canonical install anchor: `await Magic.init(` on Magic-stack
   ///       apps (so ExceptionWatcher captures Magic boot errors), otherwise
   ///       `runApp(` for vanilla Flutter apps.
-  ///   3c. When pubspec has `magic_devtools:` AND main.dart has `await Magic.init(`,
-  ///       inject `MagicCrumbsIntegration.install()` after that call.
+  ///   3c. When pubspec has `magic_devtools:`, its resolved release ships
+  ///       `lib/crumbs.dart` AND main.dart has `await Magic.init(`, inject
+  ///       `MagicCrumbsIntegration.install()` after that call.
   static void _injectRuntimeWiring(DowelContext ctx, String mainDartPath) {
     ctx.output.info('Wiring CrumbsPlugin into $mainDartPath...');
+
+    // A magic_devtools release that predates crumbs has no `crumbs.dart`; its
+    // import would leave a lib/main.dart that does not compile. An app already
+    // carrying the integration call needs neither the check nor the warning.
+    final String original = FileHelper.readFile(mainDartPath);
+    final bool wantsMagic = original.contains('await Magic.init(') &&
+        _hasMagicDevtoolsDep() &&
+        !original.contains('MagicCrumbsIntegration.install()');
+    final MagicDevtoolsCrumbsSupport magicSupport = wantsMagic
+        ? magicDevtoolsCrumbsSupport(Directory.current.path)
+        : MagicDevtoolsCrumbsSupport.unresolved;
+    final bool wiresMagic =
+        magicSupport == MagicDevtoolsCrumbsSupport.available;
 
     // 3a. Imports first. ConfigEditor.addImportToFile (delegated by
     //     MainDartEditor.addImport) is idempotent on duplicates.
@@ -189,8 +206,21 @@ class CrumbsInstallCommand extends DowelCommand {
 
     // 3c. Magic-side coordinated wiring when the consumer pulls in magic_devtools.
     //     Detect via pubspec.yaml; skip silently when magic_devtools is not a dep or
-    //     when main.dart has no Magic.init() anchor (vanilla Flutter app).
-    if (hasMagicInit && _hasMagicDevtoolsDep()) {
+    //     when main.dart has no Magic.init() anchor (vanilla Flutter app), and
+    //     with a warning when the resolved release has no crumbs integration.
+    if (wantsMagic && !wiresMagic) {
+      final String why = magicSupport == MagicDevtoolsCrumbsSupport.unresolved
+          ? 'no lib/crumbs.dart resolved; run `flutter pub get` if it has not '
+              'run'
+          : 'no lib/crumbs.dart';
+      ctx.output.warning(
+        'Skipped MagicCrumbsIntegration: the installed magic_devtools has no '
+        'crumbs integration yet ($why). Upgrade magic_devtools to a release '
+        'built on crumbs, then rerun `dart run crumbs crumbs:install` (it is '
+        'idempotent).',
+      );
+    }
+    if (wiresMagic) {
       MainDartEditor.addImport(
         mainDartPath,
         "import 'package:magic_devtools/crumbs.dart';",
@@ -209,6 +239,88 @@ class CrumbsInstallCommand extends DowelCommand {
     }
   }
 
+  /// Whether the `magic_devtools` that [projectRoot] resolves ships
+  /// `lib/crumbs.dart`, the library `MagicCrumbsIntegration` lives in.
+  ///
+  /// The pubspec only says the package is wanted; a release that predates
+  /// crumbs ships `lib/telescope.dart` instead, and wiring its integration
+  /// leaves a `lib/main.dart` that does not compile. So the answer comes from
+  /// the package pub actually resolved, through
+  /// `.dart_tool/package_config.json`.
+  static MagicDevtoolsCrumbsSupport magicDevtoolsCrumbsSupport(
+    String projectRoot,
+  ) {
+    // 1. No package config means `pub get` has not run: nothing is resolved.
+    final File? config = _nearestPackageConfig(projectRoot);
+    if (config == null) return MagicDevtoolsCrumbsSupport.unresolved;
+
+    // 2. Find the entry pub wrote for magic_devtools. A config that cannot
+    //    be read or parsed tells nothing either way, which is what
+    //    `unresolved` says; the install carries on from there.
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(config.readAsStringSync());
+    } on FormatException {
+      return MagicDevtoolsCrumbsSupport.unresolved;
+    } on FileSystemException {
+      return MagicDevtoolsCrumbsSupport.unresolved;
+    }
+    final List<Object?> packages = switch (decoded) {
+      {'packages': final List<Object?> list} => list,
+      _ => const <Object?>[],
+    };
+    for (final Object? package in packages) {
+      if (package is! Map<String, Object?> ||
+          package['name'] != 'magic_devtools') {
+        continue;
+      }
+
+      // 3. `rootUri` is relative to the `.dart_tool` directory (or an
+      //    absolute file URI for a pub-cache package); `packageUri`, `lib/`
+      //    as pub writes it, is relative to the root and defaults to it. An
+      //    entry that breaks that shape is as unreadable as a broken file.
+      final Object? rootUri = package['rootUri'];
+      final Object packageUri = package['packageUri'] ?? '';
+      if (rootUri is! String || packageUri is! String) {
+        return MagicDevtoolsCrumbsSupport.unresolved;
+      }
+      final File crumbsLibrary;
+      try {
+        final Uri root = config.absolute.parent.uri.resolve(rootUri);
+        final Uri rootDir = root.path.endsWith('/')
+            ? root
+            : root.replace(path: '${root.path}/');
+        crumbsLibrary = File.fromUri(
+          rootDir.resolve(packageUri).resolve('crumbs.dart'),
+        );
+      } on FormatException {
+        return MagicDevtoolsCrumbsSupport.unresolved;
+      }
+      return crumbsLibrary.existsSync()
+          ? MagicDevtoolsCrumbsSupport.available
+          : MagicDevtoolsCrumbsSupport.missing;
+    }
+    return MagicDevtoolsCrumbsSupport.unresolved;
+  }
+
+  /// The package config that governs [projectRoot]: the first
+  /// `.dart_tool/package_config.json` at or above it, the way the Dart tools
+  /// find it. A pub workspace member has none of its own, since `pub get`
+  /// writes one shared config at the workspace root. Null when the walk
+  /// reaches the filesystem root without finding one.
+  static File? _nearestPackageConfig(String projectRoot) {
+    Directory dir = Directory(
+      Directory(projectRoot).absolute.uri.normalizePath().toFilePath(),
+    );
+    while (true) {
+      final config = File('${dir.path}/.dart_tool/package_config.json');
+      if (config.existsSync()) return config;
+      final Directory parent = dir.parent;
+      if (parent.path == dir.path) return null;
+      dir = parent;
+    }
+  }
+
   /// Returns true when the consumer's pubspec.yaml lists `magic_devtools:`
   /// (the package that ships MagicCrumbsIntegration) under `dependencies:`
   /// or `dev_dependencies:` (2-space indent).
@@ -217,4 +329,20 @@ class CrumbsInstallCommand extends DowelCommand {
     if (!pubspec.existsSync()) return false;
     return RegExp(r'\n  magic_devtools:').hasMatch(pubspec.readAsStringSync());
   }
+}
+
+/// What the consumer's resolved `magic_devtools` offers crumbs, read by
+/// [CrumbsInstallCommand.magicDevtoolsCrumbsSupport].
+enum MagicDevtoolsCrumbsSupport {
+  /// No `magic_devtools` in `.dart_tool/package_config.json`, or no package
+  /// config at all because `pub get` has not run.
+  unresolved,
+
+  /// Resolved, but a release that predates crumbs: it has no
+  /// `lib/crumbs.dart`.
+  missing,
+
+  /// Resolved and ships `lib/crumbs.dart`, so `MagicCrumbsIntegration`
+  /// imports.
+  available,
 }
