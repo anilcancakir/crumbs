@@ -8,6 +8,8 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-14
+
 ### Added
 
 - **`crumbs_tail` and `crumbs_events` declare the filters their extensions already read.** The `inputSchema` of `crumbs_tail` gains `logger` and `since`, and that of `crumbs_events` gains `type` and `since`, so an MCP client offers the cursor and the filters instead of only `limit` (and `level`). Nothing changes in the extensions. (`lib/src/crumbs_dowel_provider.dart`)

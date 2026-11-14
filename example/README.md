@@ -33,7 +33,7 @@ dart run crumbs start --device=chrome    # or macos, linux, a device id
 
 ## Path dependency note
 
-This example depends on the parent crumbs package via `path: ../`. Source edits to the parent require nothing more than a hot restart in the running example app. Downstream consumers that install from pub.dev use the hosted `^0.0.13` constraint instead.
+This example depends on the parent crumbs package via `path: ../`. Source edits to the parent require nothing more than a hot restart in the running example app. Downstream consumers that install from pub.dev use the hosted `^1.0.0` constraint instead.
 
 ## License
 

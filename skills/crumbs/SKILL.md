@@ -1,11 +1,11 @@
 ---
 name: crumbs
 description: "Read the HTTP, logs, exceptions and events a running Flutter app captured, with crumbs."
-version: 0.0.13
+version: 1.0.0
 when_to_use: "Use when calling crumbs_* tools or crumbs:* commands to see what a running Flutter app did; driving the UI is tapir, app lifecycle is dowel."
 ---
 
-<!-- crumbs v0.0.13 | Skill updated: 2026-11-14 -->
+<!-- crumbs v1.0.0 | Skill updated: 2026-11-14 -->
 
 # crumbs
 
