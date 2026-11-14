@@ -28,7 +28,7 @@ Assert through the public surface (`CrumbsStore.recentX()`, the `onXRecord` stre
 
 ## Coverage
 
-Line coverage stays at or above 80%, the CI floor: lift it with a test, never by excluding code. After a behavioural change:
+After a behavioural change, measure line coverage against the floor in CLAUDE.md Commands:
 
 ```bash
 flutter test --coverage --exclude-tags=integration --timeout=30s
