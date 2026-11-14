@@ -1,37 +1,37 @@
-# fluttersdk_telescope
+# crumbs
 
 > Runtime inspector for Flutter and Dart apps. Watch HTTP requests, logs, exceptions, model lifecycle, cache operations, events, authorization gates, and database queries via 10 watchers, 11 CLI commands, and 10 MCP tools.
 
-Development-time plugin for Dart 3.4+ Flutter apps (guard install with `kDebugMode` or `!kReleaseMode` at the call site). Surfaces live HTTP, logging, exception, and Magic framework state streams via `telescope:tail`, `telescope:requests`, `telescope:queries`, `telescope:caches`, `telescope:frames`, `telescope:files` CLI commands and 10 MCP tool surfaces for AI coding agents (Claude Code, Cursor, Windsurf).
+Development-time plugin for Dart 3.4+ Flutter apps (guard install with `kDebugMode` or `!kReleaseMode` at the call site). Surfaces live HTTP, logging, exception, and Magic framework state streams via `crumbs:tail`, `crumbs:requests`, `crumbs:queries`, `crumbs:caches`, `crumbs:frames`, `crumbs:files` CLI commands and 10 MCP tool surfaces for AI coding agents (Claude Code, Cursor, Windsurf).
 
 ## Docs
-- [Installation](https://fluttersdk.com/telescope/getting-started/installation.md)
-- [Quickstart](https://fluttersdk.com/telescope/getting-started/quickstart.md)
-- [Watchers overview](https://fluttersdk.com/telescope/watchers/index.md)
-- [HTTP watcher](https://fluttersdk.com/telescope/watchers/http.md)
-- [Log watcher](https://fluttersdk.com/telescope/watchers/log.md)
-- [Exception watcher](https://fluttersdk.com/telescope/watchers/exception.md)
-- [Magic Model watcher](https://fluttersdk.com/telescope/watchers/magic-model.md)
-- [Magic Cache watcher](https://fluttersdk.com/telescope/watchers/magic-cache.md)
-- [Event watcher](https://fluttersdk.com/telescope/watchers/event.md)
-- [Gate watcher](https://fluttersdk.com/telescope/watchers/gate.md)
-- [Dump watcher](https://fluttersdk.com/telescope/watchers/dump.md)
-- [Query watcher](https://fluttersdk.com/telescope/watchers/query.md)
-- [Frame performance watcher](https://fluttersdk.com/telescope/watchers/frames.md)
-- [Redaction](https://fluttersdk.com/telescope/getting-started/redaction.md)
-- [File sink](https://fluttersdk.com/telescope/getting-started/file-sink.md)
-- [Buffers](https://fluttersdk.com/telescope/getting-started/buffers.md)
-- [MCP overview](https://fluttersdk.com/telescope/mcp/overview.md)
-- [MCP setup](https://fluttersdk.com/telescope/mcp/setup.md)
-- [MCP tool reference](https://fluttersdk.com/telescope/mcp/tool-reference.md)
-- [Cursor and filters](https://fluttersdk.com/telescope/mcp/cursor-and-filters.md)
+- [Installation](https://anilcancakir.com/crumbs/docs/getting-started/installation.md)
+- [Quickstart](https://anilcancakir.com/crumbs/docs/getting-started/quickstart.md)
+- [Watchers overview](https://anilcancakir.com/crumbs/docs/watchers/index.md)
+- [HTTP watcher](https://anilcancakir.com/crumbs/docs/watchers/http.md)
+- [Log watcher](https://anilcancakir.com/crumbs/docs/watchers/log.md)
+- [Exception watcher](https://anilcancakir.com/crumbs/docs/watchers/exception.md)
+- [Magic Model watcher](https://anilcancakir.com/crumbs/docs/watchers/magic-model.md)
+- [Magic Cache watcher](https://anilcancakir.com/crumbs/docs/watchers/magic-cache.md)
+- [Event watcher](https://anilcancakir.com/crumbs/docs/watchers/event.md)
+- [Gate watcher](https://anilcancakir.com/crumbs/docs/watchers/gate.md)
+- [Dump watcher](https://anilcancakir.com/crumbs/docs/watchers/dump.md)
+- [Query watcher](https://anilcancakir.com/crumbs/docs/watchers/query.md)
+- [Frame performance watcher](https://anilcancakir.com/crumbs/docs/watchers/frames.md)
+- [Redaction](https://anilcancakir.com/crumbs/docs/getting-started/redaction.md)
+- [File sink](https://anilcancakir.com/crumbs/docs/getting-started/file-sink.md)
+- [Buffers](https://anilcancakir.com/crumbs/docs/getting-started/buffers.md)
+- [MCP overview](https://anilcancakir.com/crumbs/docs/mcp/overview.md)
+- [MCP setup](https://anilcancakir.com/crumbs/docs/mcp/setup.md)
+- [MCP tool reference](https://anilcancakir.com/crumbs/docs/mcp/tool-reference.md)
+- [Cursor and filters](https://anilcancakir.com/crumbs/docs/mcp/cursor-and-filters.md)
 
 ## Source
-- [GitHub](https://github.com/fluttersdk/telescope)
-- [pub.dev](https://pub.dev/packages/fluttersdk_telescope)
-- [CHANGELOG](https://github.com/fluttersdk/telescope/blob/master/CHANGELOG.md)
+- [GitHub](https://github.com/anilcancakir/crumbs)
+- [pub.dev](https://pub.dev/packages/crumbs)
+- [CHANGELOG](https://github.com/anilcancakir/crumbs/blob/master/CHANGELOG.md)
 
 ## Optional
-- [README](https://github.com/fluttersdk/telescope/blob/master/README.md)
-- [LICENSE](https://github.com/fluttersdk/telescope/blob/master/LICENSE)
-- [Issues](https://github.com/fluttersdk/telescope/issues)
+- [README](https://github.com/anilcancakir/crumbs/blob/master/README.md)
+- [LICENSE](https://github.com/anilcancakir/crumbs/blob/master/LICENSE)
+- [Issues](https://github.com/anilcancakir/crumbs/issues)

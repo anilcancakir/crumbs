@@ -3,7 +3,7 @@ import 'dart:async';
 /// Polls a cursor-paged source until told to stop; the loop behind `--follow`.
 ///
 /// Pure Dart: it imports no Flutter library, so a command that runs under
-/// `dart run` can use it through `package:fluttersdk_telescope/cli.dart`.
+/// `dart run` can use it through `package:crumbs/cli.dart`.
 ///
 /// Each round calls [read] with the cursor the previous round returned
 /// ([since] on the first round), then asks [shouldStop], then waits

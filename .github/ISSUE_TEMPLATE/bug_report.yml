@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug in fluttersdk_telescope
+description: Report a bug in crumbs
 labels: ["bug"]
 body:
   - type: markdown
@@ -22,7 +22,7 @@ body:
       label: Steps to Reproduce
       description: How can we reproduce this bug?
       placeholder: |
-        1. Call `TelescopePlugin.install()` in a Flutter app
+        1. Call `CrumbsPlugin.install()` in a Flutter app
         2. Trigger the relevant watcher (e.g. make an HTTP request)
         3. See error
     validations:
@@ -53,12 +53,12 @@ body:
         - Watchers (LogWatcher / ExceptionWatcher / DumpWatcher / Magic*)
         - Adapters (DioHttpAdapter / MagicHttpFacadeAdapter)
         - Records (HttpRequestRecord / LogRecordEntry / etc.)
-        - Extension contracts (TelescopeWatcher / TelescopeHttpAdapter)
-        - VM Service extensions (ext.telescope.*)
-        - MCP tools (telescope_*)
-        - CLI commands (telescope:install / tail / requests / queries / caches / clear)
-        - TelescopeStore (ring buffers / capacity / clear)
-        - TelescopePlugin (install / registerHttpAdapter / registerWatcher)
+        - Extension contracts (CrumbsWatcher / CrumbsHttpAdapter)
+        - VM Service extensions (ext.crumbs.*)
+        - MCP tools (crumbs_*)
+        - CLI commands (crumbs:install / tail / requests / queries / caches / clear)
+        - CrumbsStore (ring buffers / capacity / clear)
+        - CrumbsPlugin (install / registerHttpAdapter / registerWatcher)
         - install.yaml plugin manifest
         - Documentation
         - Other
@@ -69,8 +69,8 @@ body:
     id: command
     attributes:
       label: Command Invocation
-      description: The exact `dart run fluttersdk_telescope ...` command (or MCP tool name + arguments) that triggered the bug.
-      placeholder: "dart run fluttersdk_telescope telescope:tail --limit=50"
+      description: The exact `dart run crumbs ...` command (or MCP tool name + arguments) that triggered the bug.
+      placeholder: "dart run crumbs crumbs:tail --limit=50"
       render: shell
 
   - type: textarea
@@ -81,9 +81,9 @@ body:
       render: dart
 
   - type: input
-    id: telescope-version
+    id: crumbs-version
     attributes:
-      label: fluttersdk_telescope Version
+      label: crumbs Version
       placeholder: "0.0.1"
     validations:
       required: true

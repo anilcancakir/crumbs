@@ -1,6 +1,6 @@
-/// Library-internal hidden-name lists behind [TelescopeRedaction].
+/// Library-internal hidden-name lists behind [CrumbsRedaction].
 ///
-/// Kept here (like `http_adapter_registry.dart`) so [TelescopeStore.resetForTesting]
+/// Kept here (like `http_adapter_registry.dart`) so [CrumbsStore.resetForTesting]
 /// can restore them from library code without calling a `@visibleForTesting`
 /// member. Not exported from the public barrel. Every entry is lowercased.
 library;

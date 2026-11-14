@@ -1,8 +1,8 @@
-# Telescope MCP Integration Overview
+# Crumbs MCP Integration Overview
 
 <a name="toc"></a>
 
-- [What Telescope Contributes](#what-telescope-contributes)
+- [What Crumbs Contributes](#what-crumbs-contributes)
 - [Substrate Tools vs Plugin Tools](#substrate-vs-plugin)
 - [How the 10 Tools Surface](#how-tools-surface)
 - [VM Service Extension Routing](#vm-service-routing)
@@ -11,21 +11,21 @@
 
 ---
 
-<a name="what-telescope-contributes"></a>
+<a name="what-crumbs-contributes"></a>
 
-## What Telescope Contributes
+## What Crumbs Contributes
 
-`fluttersdk_telescope` is a plugin for `fluttersdk_artisan`. It contributes **10 MCP tools** via
-`TelescopeArtisanProvider.mcpTools()` and **11 CLI commands** via `TelescopeArtisanProvider.commands()`.
+`crumbs` is a plugin for `dowel`. It contributes **10 MCP tools** via
+`CrumbsDowelProvider.mcpTools()` and **11 CLI commands** via `CrumbsDowelProvider.commands()`.
 
-The 10 MCP tools give an LLM agent read-only access to ring buffers that telescope maintains inside the
+The 10 MCP tools give an LLM agent read-only access to ring buffers that crumbs maintains inside the
 running Flutter app. Each tool reads one buffer type: HTTP traffic, log lines, uncaught exceptions,
 in-app events, Gate authorization checks, `debugPrint` output, database queries, cache operations, and
-per-frame performance. A tenth tool (`telescope_clear`) wipes all buffers at once as a "set zero" before
+per-frame performance. A tenth tool (`crumbs_clear`) wipes all buffers at once as a "set zero" before
 a repro.
 
 The tools share a single design rule: **no side effects on the running app**. Reading a buffer is
-non-destructive; only `telescope_clear` mutates state, and that mutation is intentional.
+non-destructive; only `crumbs_clear` mutates state, and that mutation is intentional.
 
 ---
 
@@ -33,20 +33,20 @@ non-destructive; only `telescope_clear` mutates state, and that mutation is inte
 
 ## Substrate Tools vs Plugin Tools
 
-artisan's MCP server distinguishes two categories of tools. Understanding the distinction explains
-why telescope tools appear or disappear in Claude Code's tool list depending on registration.
+dowel's MCP server distinguishes two categories of tools. Understanding the distinction explains
+why crumbs tools appear or disappear in Claude Code's tool list depending on registration.
 
-**Substrate tools** (`artisan_*` prefix) are built into `fluttersdk_artisan` itself. They are always
+**Substrate tools** (`dowel_*` prefix) are built into `dowel` itself. They are always
 registered when the MCP server starts; they require no plugin, no running app (for most of them), and
-no VM Service connection. Examples: `artisan_start`, `artisan_stop`, `artisan_status`, `artisan_logs`.
+no VM Service connection. Examples: `dowel_start`, `dowel_stop`, `dowel_status`, `dowel_logs`.
 
-**Plugin tools** (`telescope_*` prefix, `dusk_*` prefix, etc.) are contributed by packages that
-extend `ArtisanServiceProvider`. They surface in the MCP catalog **only when** the plugin's provider
-is registered in the consumer's `bin/dispatcher.dart` (auto-wired by `telescope:install`) and the MCP server is (re)started. Plugin tools
+**Plugin tools** (`crumbs_*` prefix, `tapir_*` prefix, etc.) are contributed by packages that
+extend `DowelServiceProvider`. They surface in the MCP catalog **only when** the plugin's provider
+is registered in the consumer's `bin/dispatcher.dart` (auto-wired by `crumbs:install`) and the MCP server is (re)started. Plugin tools
 always dispatch via the VM Service and therefore require a running Flutter app.
 
-`TelescopeArtisanProvider` contributes the `fluttersdk_telescope` plugin tools. Its `providerName`
-is `fluttersdk_telescope`, which is the key used in `.artisan/mcp.json` package filter rules.
+`CrumbsDowelProvider` contributes the `crumbs` plugin tools. Its `providerName`
+is `crumbs`, which is the key used in `.dowel/mcp.json` package filter rules.
 
 ---
 
@@ -54,20 +54,20 @@ is `fluttersdk_telescope`, which is the key used in `.artisan/mcp.json` package 
 
 ## How the 10 Tools Surface
 
-The call chain from Claude Code to the Telescope ring buffer:
+The call chain from Claude Code to the Crumbs ring buffer:
 
-1. `TelescopeArtisanProvider.mcpTools()` returns a `List<McpToolDescriptor>` with the 10 descriptors.
+1. `CrumbsDowelProvider.mcpTools()` returns a `List<McpToolDescriptor>` with the 10 descriptors.
 2. `McpServer.initialize()` collects descriptors from every registered provider and sends the full
    catalog to the MCP client (Claude Code) in the `initialize` response.
-3. The agent invokes a tool by name (e.g. `telescope_tail`) with optional parameters.
+3. The agent invokes a tool by name (e.g. `crumbs_tail`) with optional parameters.
 4. `McpServer` looks up the `McpToolDescriptor.extensionMethod` for that tool name (e.g.
-   `ext.telescope.console`) and dispatches via `VmServiceClient.callServiceExtension`.
-5. The VM Service handler registered by `registerAllTelescopeExtensions()` in the running Flutter app
-   reads the matching `TelescopeStore` ring buffer, applies any `limit` / `level` filter params, and
+   `ext.crumbs.console`) and dispatches via `VmServiceClient.callServiceExtension`.
+5. The VM Service handler registered by `registerAllCrumbsExtensions()` in the running Flutter app
+   reads the matching `CrumbsStore` ring buffer, applies any `limit` / `level` filter params, and
    returns a JSON-encoded payload.
 6. `McpServer` wraps the payload in a `CallToolResult` text content block and returns it to the agent.
 
-The pause/resume extensions (`ext.telescope.pause` / `ext.telescope.resume`) are registered inside
+The pause/resume extensions (`ext.crumbs.pause` / `ext.crumbs.resume`) are registered inside
 the app but intentionally absent from `mcpTools()` in the current release; they are V1.x backlog.
 
 ---
@@ -80,27 +80,27 @@ Each MCP tool maps to exactly one VM Service extension:
 
 | MCP tool | VM Service extension |
 |---|---|
-| `telescope_tail` | `ext.telescope.console` |
-| `telescope_requests` | `ext.telescope.requests` |
-| `telescope_exceptions` | `ext.telescope.exceptions` |
-| `telescope_events` | `ext.telescope.events` |
-| `telescope_gates` | `ext.telescope.gates` |
-| `telescope_dumps` | `ext.telescope.dumps` |
-| `telescope_queries` | `ext.telescope.queries` |
-| `telescope_caches` | `ext.telescope.caches` |
-| `telescope_frames` | `ext.telescope.frames` |
-| `telescope_clear` | `ext.telescope.clear` |
+| `crumbs_tail` | `ext.crumbs.console` |
+| `crumbs_requests` | `ext.crumbs.requests` |
+| `crumbs_exceptions` | `ext.crumbs.exceptions` |
+| `crumbs_events` | `ext.crumbs.events` |
+| `crumbs_gates` | `ext.crumbs.gates` |
+| `crumbs_dumps` | `ext.crumbs.dumps` |
+| `crumbs_queries` | `ext.crumbs.queries` |
+| `crumbs_caches` | `ext.crumbs.caches` |
+| `crumbs_frames` | `ext.crumbs.frames` |
+| `crumbs_clear` | `ext.crumbs.clear` |
 
-Telescope registers 14 `ext.telescope.*` extensions; four have no MCP tool. `ext.telescope.pause` and
-`ext.telescope.resume` are V1.x backlog. `ext.telescope.files` and `ext.telescope.file` read the timeline
+Crumbs registers 14 `ext.crumbs.*` extensions; four have no MCP tool. `ext.crumbs.pause` and
+`ext.crumbs.resume` are V1.x backlog. `ext.crumbs.files` and `ext.crumbs.file` read the timeline
 files of a running [file sink](../getting-started/file-sink.md) and are reached through the
-`telescope:files` CLI command. The `since`, `type`, `logger` and `cursor` parameters of
-`ext.telescope.console` and `ext.telescope.events` are likewise CLI and extension surface, see
+`crumbs:files` CLI command. The `since`, `type`, `logger` and `cursor` parameters of
+`ext.crumbs.console` and `ext.crumbs.events` are likewise CLI and extension surface, see
 [Cursor and filters](cursor-and-filters.md).
-Every extension is registered via `registerExtensionIdempotent` (from `fluttersdk_artisan`) so that
+Every extension is registered via `registerExtensionIdempotent` (from `dowel`) so that
 Flutter hot restarts do not throw `ArgumentError` on duplicate registration. `VmServiceClient` inside
-artisan lazy-reconnects on every dispatch call, so `artisan_start` followed immediately by a
-`telescope_*` call picks up the new VM Service URI automatically from `~/.artisan/state.json`.
+dowel lazy-reconnects on every dispatch call, so `dowel_start` followed immediately by a
+`crumbs_*` call picks up the new VM Service URI automatically from `~/.dowel/state.json`.
 
 ---
 
@@ -113,27 +113,27 @@ artisan lazy-reconnects on every dispatch call, so `artisan_start` followed imme
         |
         | stdio JSON-RPC  (initialize / tools/call)
         |
-  dart run fluttersdk_artisan:mcp
+  dart run dowel:mcp
         |
    McpServer
         |
-        +-- substrate tools (artisan_start, artisan_stop, ...)
+        +-- substrate tools (dowel_start, dowel_stop, ...)
         |         |
         |         v
-        |   ArtisanRegistry  (in-process command dispatch)
+        |   DowelRegistry  (in-process command dispatch)
         |
-        +-- telescope_* plugin tools
+        +-- crumbs_* plugin tools
                   |
                   | VM Service WebSocket
                   | ws://localhost:PORT/<token>/ws
                   |
              VmServiceClient
                   |
-                  | ext.telescope.*
+                  | ext.crumbs.*
                   |
           Flutter app isolate (debug mode)
                   |
-          TelescopeStore (ring buffers)
+          CrumbsStore (ring buffers)
           +--------+----------+---------+----------+
           |        |          |         |          |
        console  requests  exceptions  events    gates
@@ -145,11 +145,11 @@ artisan lazy-reconnects on every dispatch call, so `artisan_start` followed imme
 **Flow summary:**
 
 1. The MCP client connects to the server over stdio and calls `initialize`.
-2. `McpServer` collects `McpToolDescriptor` instances from `TelescopeArtisanProvider.mcpTools()` (and
+2. `McpServer` collects `McpToolDescriptor` instances from `CrumbsDowelProvider.mcpTools()` (and
    any other registered provider) and sends the unified catalog to the client.
-3. On each `telescope_*` tool call, `McpServer` routes via `VmServiceClient` to the matching
-   `ext.telescope.*` handler in the running Flutter isolate.
-4. The handler reads the `TelescopeStore` ring buffer, applies filter parameters, and returns JSON.
+3. On each `crumbs_*` tool call, `McpServer` routes via `VmServiceClient` to the matching
+   `ext.crumbs.*` handler in the running Flutter isolate.
+4. The handler reads the `CrumbsStore` ring buffer, applies filter parameters, and returns JSON.
 5. Results return as `CallToolResult` text content; errors carry `isError: true` with an actionable
    message.
 
@@ -159,9 +159,9 @@ artisan lazy-reconnects on every dispatch call, so `artisan_start` followed imme
 
 ## Related
 
-- [artisan MCP overview](https://fluttersdk.com/artisan/mcp/overview): full substrate tool catalog,
-  state file contract, and artisan's own architecture diagram.
-- [Setup guide](setup.md): how to wire `TelescopeArtisanProvider` and enable the 10 tools in Claude
+- [dowel MCP overview](https://anilcancakir.com/dowel/docs/mcp/overview): full substrate tool catalog,
+  state file contract, and dowel's own architecture diagram.
+- [Setup guide](setup.md): how to wire `CrumbsDowelProvider` and enable the 10 tools in Claude
   Code or Cursor.
 - [Cursor and filters](cursor-and-filters.md): `since`, `type`, `logger` and `cursor` on the console and
   events extensions, and the `--follow` CLI loop.

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/dump_record.dart';
+import 'package:crumbs/src/records/dump_record.dart';
 
 void main() {
   group('DumpRecord', () {

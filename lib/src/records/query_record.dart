@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 
 /// An immutable database query record captured by MagicQueryWatcher
-/// (shipped in `magic` package via TelescopePlugin.registerWatcher).
+/// (shipped in `magic` package via CrumbsPlugin.registerWatcher).
 class QueryRecord {
   QueryRecord({
     required this.sql,
@@ -31,7 +31,7 @@ class QueryRecord {
 
   /// Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at
   /// construction unless the caller supplies one explicitly. Comparable
-  /// across every telescope record type regardless of wall-clock skew;
+  /// across every crumbs record type regardless of wall-clock skew;
   /// [time] stays the wall-clock field for display.
   final int atUs;
 

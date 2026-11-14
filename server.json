@@ -1,12 +1,12 @@
 {
     "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-    "name": "io.github.fluttersdk/telescope",
-    "title": "FlutterSDK Telescope",
+    "name": "io.github.anilcancakir/crumbs",
+    "title": "Crumbs",
     "description": "Inspect a running Flutter app: HTTP traffic, logs, exceptions and queries. Debug only.",
     "version": "0.0.12",
     "repository": {
-        "url": "https://github.com/fluttersdk/telescope",
+        "url": "https://github.com/anilcancakir/crumbs",
         "source": "github"
     },
-    "websiteUrl": "https://fluttersdk.com/telescope"
+    "websiteUrl": "https://anilcancakir.com/crumbs"
 }

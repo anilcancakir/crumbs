@@ -3,16 +3,16 @@ import 'dart:async';
 import 'package:logging/logging.dart';
 
 import '../records/log_record_entry.dart';
-import '../telescope_store.dart';
+import '../crumbs_store.dart';
 import 'watcher.dart';
 
-/// Subscribes to [Logger.root.onRecord] and feeds [TelescopeStore.recordLog].
+/// Subscribes to [Logger.root.onRecord] and feeds [CrumbsStore.recordLog].
 ///
-/// Auto-installed by [TelescopePlugin.install]. Zero ceremony — the package
+/// Auto-installed by [CrumbsPlugin.install]. Zero ceremony — the package
 /// `package:logging` is the de-facto standard for structured logging in Dart
 /// + Flutter; if the app doesn't use it, this watcher is dormant (no log
 /// records flow through Logger.root).
-class LogWatcher implements TelescopeWatcher {
+class LogWatcher implements CrumbsWatcher {
   @override
   String get name => 'log';
 
@@ -25,7 +25,7 @@ class LogWatcher implements TelescopeWatcher {
     hierarchicalLoggingEnabled = true;
     Logger.root.level = Level.ALL;
     _sub = Logger.root.onRecord.listen((record) {
-      TelescopeStore.recordLog(LogRecordEntry.fromLogRecord(record));
+      CrumbsStore.recordLog(LogRecordEntry.fromLogRecord(record));
     });
   }
 

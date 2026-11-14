@@ -1,9 +1,9 @@
 /// Contract for additional data collectors registered via
-/// [TelescopePlugin.registerWatcher].
+/// [CrumbsPlugin.registerWatcher].
 ///
 /// Built-in: LogWatcher (auto-installed), ExceptionWatcher (opt-in).
 /// Magic ships MagicModelWatcher + MagicCacheWatcher via this interface.
-abstract class TelescopeWatcher {
+abstract class CrumbsWatcher {
   /// Human-readable watcher name.
   String get name;
 

@@ -9,7 +9,7 @@ paths:
 
 Mirror the `lib/src/` tree exactly: `lib/src/watchers/exception_watcher.dart` maps to
 `test/src/watchers/exception_watcher_test.dart`. One production file, one test file. The provider test lives at
-`test/telescope_artisan_provider_mcp_tools_test.dart` (direct child of `test/`, mirrors the artisan peer).
+`test/crumbs_dowel_provider_mcp_tools_test.dart` (direct child of `test/`, mirrors the dowel peer).
 
 ## Framework and fakes
 
@@ -22,11 +22,11 @@ directly (they are `@visibleForTesting`) and assert on the returned `ServiceExte
 
 ## State isolation
 
-Every test group that records into `TelescopeStore` adds:
+Every test group that records into `CrumbsStore` adds:
 
 ```dart
 tearDown(() {
-  TelescopeStore.resetForTesting();
+  CrumbsStore.resetForTesting();
 });
 ```
 
@@ -62,10 +62,10 @@ need a dedicated test.
 
 ## Assertion targets
 
-- **Store tests**: assert on `TelescopeStore.recentX()` return values and `TelescopeStore.onXRecord` stream emissions. Never reach into private `_` fields.
-- **Watcher tests**: trigger the watcher hook, then assert via `TelescopeStore.recentX()` that the matching `record*` method was called.
+- **Store tests**: assert on `CrumbsStore.recentX()` return values and `CrumbsStore.onXRecord` stream emissions. Never reach into private `_` fields.
+- **Watcher tests**: trigger the watcher hook, then assert via `CrumbsStore.recentX()` that the matching `record*` method was called.
 - **Handler tests**: call the handler function directly, decode the JSON response, assert on the decoded map.
-- **Provider tests**: instantiate `TelescopeArtisanProvider()`, assert `mcpTools()` length is 9, assert specific `name` and `extensionMethod` per descriptor.
+- **Provider tests**: instantiate `CrumbsDowelProvider()`, assert `mcpTools()` length is 9, assert specific `name` and `extensionMethod` per descriptor.
 
 ## Baseline + coverage gate
 

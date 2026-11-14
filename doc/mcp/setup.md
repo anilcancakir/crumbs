@@ -1,117 +1,117 @@
-# Telescope MCP Setup
+# Crumbs MCP Setup
 
-`fluttersdk_telescope` extends the artisan MCP server with 10 runtime-inspection tools
-(`telescope_*`). This page covers everything needed to make those tools appear in Claude Code,
+`crumbs` extends the dowel MCP server with 10 runtime-inspection tools
+(`crumbs_*`). This page covers everything needed to make those tools appear in Claude Code,
 Cursor, or any other MCP-compatible client.
 
-**Prerequisite:** no prior artisan setup is required. Telescope's `telescope:install` command
-scaffolds the artisan harness on first run, and `fluttersdk_artisan` is pulled in transitively
-through telescope's pubspec.
+**Prerequisite:** no prior dowel setup is required. Crumbs's `crumbs:install` command
+scaffolds the dowel harness on first run, and `dowel` is pulled in transitively
+through crumbs's pubspec.
 
 ---
 
 ## Step 1: Add the dependency
 
-Add `fluttersdk_telescope` to your `pubspec.yaml` under `dependencies` (not `dev_dependencies`,
-because `TelescopePlugin` is imported by `lib/main.dart`):
+Add `crumbs` to your `pubspec.yaml` under `dependencies` (not `dev_dependencies`,
+because `CrumbsPlugin` is imported by `lib/main.dart`):
 
 ```yaml
 # pubspec.yaml
 dependencies:
-  fluttersdk_telescope: ^0.0.4
+  crumbs: ^0.0.4
 ```
 
 Run `dart pub get` after editing.
 
-### Step 1a: bootstrap with `telescope:install` (optional but recommended)
+### Step 1a: bootstrap with `crumbs:install` (optional but recommended)
 
 If you only want the MCP tools, jump to Step 2. If you also want the 11 CLI commands wired
-to the artisan dispatcher, run the one-shot bootstrap now; it scaffolds `bin/dispatcher.dart`,
+to the dowel dispatcher, run the one-shot bootstrap now; it scaffolds `bin/dispatcher.dart`,
 registers the plugin, and patches `lib/main.dart` in one go:
 
 ```bash
-dart run fluttersdk_telescope telescope:install
+dart run crumbs crumbs:install
 ```
 
-After install, the consumer's fast-cli is available at `./bin/fsa` (native AOT, ~110ms warm).
+After install, the consumer's fast-cli is available at `./bin/dowel` (native AOT, ~110ms warm).
 
 ---
 
 ## Step 2: Install the Flutter-side plugin
 
-Inside `lib/main.dart`, install `TelescopePlugin` before `runApp`, gated at the call site so the
-entire subsystem tree-shakes out of release builds. `telescope:install` writes `kDebugMode`; the
-snippet below uses `!kReleaseMode`, which also keeps telescope in profile builds (see
+Inside `lib/main.dart`, install `CrumbsPlugin` before `runApp`, gated at the call site so the
+entire subsystem tree-shakes out of release builds. `crumbs:install` writes `kDebugMode`; the
+snippet below uses `!kReleaseMode`, which also keeps crumbs in profile builds (see
 [Call-site guard](../watchers/index.md#call-site-guard)). When using the Magic framework, place
 the call before `Magic.init()` so the Http facade is wired in time:
 
 ```dart
 import 'package:flutter/foundation.dart';
-import 'package:fluttersdk_telescope/telescope.dart';
-import 'package:magic_devtools/telescope.dart'; // magic_devtools dev_dependency (Magic-stack apps only)
+import 'package:crumbs/crumbs.dart';
+import 'package:magic_devtools/crumbs.dart'; // magic_devtools dev_dependency (Magic-stack apps only)
 
 Future<void> main() async {
   if (!kReleaseMode) {
-    TelescopePlugin.install();
+    CrumbsPlugin.install();
   }
   await Magic.init(...);
   if (!kReleaseMode) {
     // Optional: when using the Magic framework, register its adapters and watchers.
-    // Call MagicTelescopeIntegration.install() after Magic.init(). Ships in the
-    // magic_devtools dev_dependency (import 'package:magic_devtools/telescope.dart').
-    MagicTelescopeIntegration.install();
+    // Call MagicCrumbsIntegration.install() after Magic.init(). Ships in the
+    // magic_devtools dev_dependency (import 'package:magic_devtools/crumbs.dart').
+    MagicCrumbsIntegration.install();
   }
   runApp(MagicApplication());
 }
 ```
 
-`TelescopePlugin.install()` registers all `ext.telescope.*` VM Service extensions and starts the
-ring buffers. Extensions are registered via `registerExtensionIdempotent` (from artisan), so hot
+`CrumbsPlugin.install()` registers all `ext.crumbs.*` VM Service extensions and starts the
+ring buffers. Extensions are registered via `registerExtensionIdempotent` (from dowel), so hot
 restarts are safe.
 
 ---
 
-## Step 3: Register TelescopeArtisanProvider in bin/dispatcher.dart
+## Step 3: Register CrumbsDowelProvider in bin/dispatcher.dart
 
-If you ran Step 1a (`telescope:install`), the provider is registered automatically via
+If you ran Step 1a (`crumbs:install`), the provider is registered automatically via
 `lib/app/_plugins.g.dart` (the codegen barrel auto-discovered by `bin/dispatcher.dart`); skip
 to Step 4.
 
-For manual wiring, open `bin/dispatcher.dart` and add `FluttersdkTelescopeArtisanProvider()`
+For manual wiring, open `bin/dispatcher.dart` and add `FluttersdkCrumbsDowelProvider()`
 to the `baseProviders` list:
 
 ```dart
-import 'package:fluttersdk_artisan/artisan.dart';
-import 'package:fluttersdk_telescope/cli.dart';  // FluttersdkTelescopeArtisanProvider typedef
+import 'package:dowel/dowel.dart';
+import 'package:crumbs/cli.dart';  // FluttersdkCrumbsDowelProvider typedef
 
 Future<void> main(List<String> args) async {
-  exit(await runArtisan(
+  exit(await runDowel(
     args,
     baseProviders: [
-      FluttersdkTelescopeArtisanProvider(),
-      // ...other providers (DuskArtisanProvider, etc.)
+      FluttersdkCrumbsDowelProvider(),
+      // ...other providers (TapirDowelProvider, etc.)
     ],
   ));
 }
 ```
 
-The `cli.dart` barrel exports `FluttersdkTelescopeArtisanProvider` (a typedef alias for
-`TelescopeArtisanProvider`) so consumer-side auto-discovery can use a stable name.
+The `cli.dart` barrel exports `FluttersdkCrumbsDowelProvider` (a typedef alias for
+`CrumbsDowelProvider`) so consumer-side auto-discovery can use a stable name.
 
 ---
 
-## Step 4: Ensure the artisan MCP server entry is present
+## Step 4: Ensure the dowel MCP server entry is present
 
-The telescope tools surface through artisan's MCP server. The `.mcp.json` entry must point at
-`dart run fluttersdk_artisan:mcp` (not a separate telescope entry). If you ran
-`dart run fluttersdk_artisan mcp:install` during artisan setup, the entry is already in place:
+The crumbs tools surface through dowel's MCP server. The `.mcp.json` entry must point at
+`dart run dowel:mcp` (not a separate crumbs entry). If you ran
+`dart run dowel mcp:install` during dowel setup, the entry is already in place:
 
 ```json
 {
   "mcpServers": {
     "fluttersdk": {
       "command": "dart",
-      "args": ["run", "fluttersdk_artisan:mcp"],
+      "args": ["run", "dowel:mcp"],
       "cwd": "."
     }
   }
@@ -143,28 +143,28 @@ restarted for the new tools to appear in the catalog:
 
 ## Step 6: Start the Flutter app and verify
 
-Start the app via artisan so the state file is written:
+Start the app via dowel so the state file is written:
 
 ```bash
-./bin/fsa start              # web (chrome, default)
-./bin/fsa start --device=macos  # desktop
+./bin/dowel start              # web (chrome, default)
+./bin/dowel start --device=macos  # desktop
 ```
 
-Then ask the agent to check telescope connectivity:
+Then ask the agent to check crumbs connectivity:
 
 ```
-telescope_tail limit=5
+crumbs_tail limit=5
 ```
 
 A successful response returns a JSON array of recent log records. An empty array means the app is
 running but no logs have been emitted yet. An error response means the VM Service URI in
-`~/.artisan/state.json` is stale; run `./bin/fsa stop && ./bin/fsa start` to refresh it.
+`~/.dowel/state.json` is stale; run `./bin/dowel stop && ./bin/dowel start` to refresh it.
 
 ---
 
-## Filtering telescope tools
+## Filtering crumbs tools
 
-To hide specific telescope tools from the agent's catalog, add deny rules to `.artisan/mcp.json`:
+To hide specific crumbs tools from the agent's catalog, add deny rules to `.dowel/mcp.json`:
 
 ```json
 {
@@ -174,17 +174,17 @@ To hide specific telescope tools from the agent's catalog, add deny rules to `.a
   },
   "tools": {
     "allow": null,
-    "deny": ["telescope_dumps", "telescope_gates"]
+    "deny": ["crumbs_dumps", "crumbs_gates"]
   }
 }
 ```
 
-To expose only telescope tools (hiding substrate and dusk tools):
+To expose only crumbs tools (hiding substrate and tapir tools):
 
 ```json
 {
   "packages": {
-    "allow": ["fluttersdk_telescope"],
+    "allow": ["crumbs"],
     "deny": []
   },
   "tools": {
@@ -194,16 +194,16 @@ To expose only telescope tools (hiding substrate and dusk tools):
 }
 ```
 
-After editing `.artisan/mcp.json`, run `/mcp reconnect fluttersdk` in Claude Code to reload the
-filter. See the [artisan filter reference](https://fluttersdk.com/artisan/mcp/tool-reference#filter-configuration)
+After editing `.dowel/mcp.json`, run `/mcp reconnect fluttersdk` in Claude Code to reload the
+filter. See the [dowel filter reference](https://anilcancakir.com/dowel/docs/mcp/tool-reference#filter-configuration)
 for the full three-layer precedence rules (file, env vars, CLI flags).
 
 ---
 
 ## Related
 
-- [artisan MCP setup](https://fluttersdk.com/artisan/mcp/setup): full client matrix (Cursor, Claude
+- [dowel MCP setup](https://anilcancakir.com/dowel/docs/mcp/setup): full client matrix (Cursor, Claude
   Desktop, VS Code, Windsurf, JetBrains, Cline, OpenCode, Gemini CLI).
-- [Overview](overview.md): how the 10 tools surface through `TelescopeArtisanProvider` and route
+- [Overview](overview.md): how the 10 tools surface through `CrumbsDowelProvider` and route
   through the VM Service.
 - [Tool reference](tool-reference.md): per-tool input schema, output shape, and example invocations.

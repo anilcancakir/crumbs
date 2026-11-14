@@ -1,28 +1,28 @@
 # Redaction
 
-Telescope serves its buffers to AI agents and, with a file sink, writes them to disk. Two layers keep
+Crumbs serves its buffers to AI agents and, with a file sink, writes them to disk. Two layers keep
 secrets out of both: the credential lists for HTTP records, and a host-supplied text redactor for every
 record that carries free text.
 
 ## Credential lists (HTTP)
 
-`TelescopeStore.recordHttp` masks credential values before it buffers a record. The request headers
+`CrumbsStore.recordHttp` masks credential values before it buffers a record. The request headers
 `authorization`, `proxy-authorization`, `cookie`, `set-cookie` and `x-api-key`, and credential keys in a
 JSON or form-encoded body (`password`, `token`, `access_token`, ...), read `********`. Names match
 case-insensitively and at any depth. An empty value (null, `false`, `''`, `[]`, `{}`) stays visible.
 
-Extend the lists with `TelescopeRedaction.hideRequestHeaders`, `hideRequestParameters` and
+Extend the lists with `CrumbsRedaction.hideRequestHeaders`, `hideRequestParameters` and
 `hideResponseParameters`. Additions merge with the defaults and never replace them. An adapter that holds a
-body as a Dart `Map` runs it through `TelescopeRedaction.redactParameters(data, keys)` or
+body as a Dart `Map` runs it through `CrumbsRedaction.redactParameters(data, keys)` or
 `redactBody(body, keys)` before it stringifies or truncates it, because the store cannot mask a body it
 cannot parse.
 
 ## The text redactor
 
-`TelescopeRedaction.redactor` is a host hook, `String Function(String)?`, that is null until you set it:
+`CrumbsRedaction.redactor` is a host hook, `String Function(String)?`, that is null until you set it:
 
 ```dart
-TelescopeRedaction.redactor = (String text) =>
+CrumbsRedaction.redactor = (String text) =>
     text.replaceAll(RegExp(r'\b\d{13,19}\b'), '[card]');
 ```
 
@@ -45,14 +45,14 @@ A subtree nested past 64 levels is masked whole.
   because a record that could not be masked is never let through unmasked.
 - A record buffered while no redactor is registered is stored as is. Setting a redactor later does not
   rewrite what is already in the buffers.
-- `TelescopeRedaction.resetForTesting()` unregisters the redactor and restores the credential lists.
+- `CrumbsRedaction.resetForTesting()` unregisters the redactor and restores the credential lists.
 
 ### The `redacted` flag
 
 The log, event, exception and HTTP records carry a read-only `redacted` getter, serialized in `toJson`. It
 is true only for a record the store's redaction pass produced with a redactor registered. The
 constructors take no `redacted` argument, and `HttpRequestRecord.copyWith` returns an unredacted copy, so
-no caller can build a record that a persisting consumer would take for masked. `TelescopeFileSink` relies
+no caller can build a record that a persisting consumer would take for masked. `CrumbsFileSink` relies
 on this: it writes only records whose `redacted` is true (see [File sink](file-sink.md)).
 
 ### Per-record entry points
@@ -65,5 +65,5 @@ dropped record, so `redactHttpRecord` returns `HttpRequestRecord?` and a caller 
 
 `recordEvent` stores any payload value that `jsonEncode` cannot write (a `DateTime`, a `Duration`, any
 object) as its `toString()`, and a non-String map key likewise. One bad payload can no longer fail a whole
-`ext.telescope.events` response. A payload that is already safe keeps its identity. This runs with or
+`ext.crumbs.events` response. A payload that is already safe keeps its identity. This runs with or
 without a redactor.

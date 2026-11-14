@@ -1,11 +1,11 @@
 name: Feature Request
-description: Suggest a new feature or enhancement for fluttersdk_telescope
+description: Suggest a new feature or enhancement for crumbs
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Have an idea for telescope? We'd love to hear it.
+        Have an idea for crumbs? We'd love to hear it.
 
   - type: textarea
     id: description
@@ -25,12 +25,12 @@ body:
         - Watchers (LogWatcher / ExceptionWatcher / DumpWatcher / Magic*)
         - Adapters (DioHttpAdapter / MagicHttpFacadeAdapter)
         - Records (HttpRequestRecord / LogRecordEntry / etc.)
-        - Extension contracts (TelescopeWatcher / TelescopeHttpAdapter)
-        - VM Service extensions (ext.telescope.*)
-        - MCP tools (telescope_*)
-        - CLI commands (telescope:install / tail / requests / queries / caches / clear)
-        - TelescopeStore (ring buffers / capacity / clear)
-        - TelescopePlugin (install / registerHttpAdapter / registerWatcher)
+        - Extension contracts (CrumbsWatcher / CrumbsHttpAdapter)
+        - VM Service extensions (ext.crumbs.*)
+        - MCP tools (crumbs_*)
+        - CLI commands (crumbs:install / tail / requests / queries / caches / clear)
+        - CrumbsStore (ring buffers / capacity / clear)
+        - CrumbsPlugin (install / registerHttpAdapter / registerWatcher)
         - install.yaml plugin manifest
         - Documentation
         - Other
@@ -44,10 +44,10 @@ body:
       description: How would the API look? Show the CLI invocation or Dart code shape.
       placeholder: |
         # CLI example
-        dart run fluttersdk_telescope telescope:tail --buffer=requests,logs
+        dart run crumbs crumbs:tail --buffer=requests,logs
 
         # Dart example
-        TelescopePlugin.registerWatcher(MyCustomWatcher());
+        CrumbsPlugin.registerWatcher(MyCustomWatcher());
       render: yaml
 
   - type: textarea

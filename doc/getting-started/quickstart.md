@@ -1,75 +1,75 @@
 # Quickstart
 
-A 3-step walkthrough taking a fresh Flutter project from zero to a working Telescope setup
+A 3-step walkthrough taking a fresh Flutter project from zero to a working Crumbs setup
 with runtime buffers populated and the first MCP tool call returning live data.
 
 Prerequisites: Flutter SDK 3.22+, Dart SDK 3.4+, a Flutter project (any vanilla
-`flutter create` output works). `fluttersdk_artisan` is pulled in transitively by
-telescope; you do not need to install it separately. The `telescope:install` command
+`flutter create` output works). `dowel` is pulled in transitively by
+crumbs; you do not need to install it separately. The `crumbs:install` command
 scaffolds `bin/dispatcher.dart` for you on first run.
 
 ---
 
-### 1. Install Telescope
+### 1. Install Crumbs
 
-Add the dependency, then run the one-shot install through telescope's own bootstrap entry
-point. The install command scaffolds the artisan harness if needed, registers the plugin,
+Add the dependency, then run the one-shot install through crumbs's own bootstrap entry
+point. The install command scaffolds the dowel harness if needed, registers the plugin,
 and patches `lib/main.dart` with the `kDebugMode`-guarded install call:
 
 ```bash
-flutter pub add fluttersdk_telescope
-dart run fluttersdk_telescope telescope:install
+flutter pub add crumbs
+dart run crumbs crumbs:install
 ```
 
 The command outputs a summary of every file it touched. For a fresh project the summary
 looks like:
 
 ```
-[plugin:install] registered TelescopeArtisanProvider
-[main.dart]      injected TelescopePlugin.install() before framework init
-[main.dart]      injected import 'package:magic_devtools/telescope.dart';
-[main.dart]      injected MagicTelescopeIntegration.install() after Magic.init() (when magic_devtools is in pubspec)
-telescope:install done
+[plugin:install] registered CrumbsDowelProvider
+[main.dart]      injected CrumbsPlugin.install() before framework init
+[main.dart]      injected import 'package:magic_devtools/crumbs.dart';
+[main.dart]      injected MagicCrumbsIntegration.install() after Magic.init() (when magic_devtools is in pubspec)
+crumbs:install done
 ```
 
 When the consumer's `pubspec.yaml` lists `magic_devtools:` and `lib/main.dart` contains
-`await Magic.init(`, the install command also injects the `package:magic_devtools/telescope.dart`
-import and a `MagicTelescopeIntegration.install()` block after `Magic.init()` so all 10 watchers
-activate automatically. `MagicTelescopeIntegration` ships in the `magic_devtools` package (not in
+`await Magic.init(`, the install command also injects the `package:magic_devtools/crumbs.dart`
+import and a `MagicCrumbsIntegration.install()` block after `Magic.init()` so all 10 watchers
+activate automatically. `MagicCrumbsIntegration` ships in the `magic_devtools` package (not in
 the `magic` core). On a vanilla Flutter app only the core watchers (`LogWatcher`, plus any you opt
 into manually) are wired.
 
-Verify the provider registered correctly. From now on, the artisan fast-cli at `./bin/fsa`
+Verify the provider registered correctly. From now on, the dowel fast-cli at `./bin/dowel`
 (native AOT, ~110ms warm) is the recommended entry point for every subsequent command:
 
 ```bash
-./bin/fsa list
+./bin/dowel list
 ```
 
-You should see the `telescope:` namespace with 11 commands: `telescope:install`,
-`telescope:tail`, `telescope:requests`, `telescope:queries`, `telescope:caches`,
-`telescope:events`, `telescope:gates`, `telescope:dumps`, `telescope:frames`,
-`telescope:clear`, `telescope:files`. The same surface is also reachable via the ~3s cold-start fallbacks
-`dart run fluttersdk_telescope list` and `dart run fluttersdk_artisan list`.
+You should see the `crumbs:` namespace with 11 commands: `crumbs:install`,
+`crumbs:tail`, `crumbs:requests`, `crumbs:queries`, `crumbs:caches`,
+`crumbs:events`, `crumbs:gates`, `crumbs:dumps`, `crumbs:frames`,
+`crumbs:clear`, `crumbs:files`. The same surface is also reachable via the ~3s cold-start fallbacks
+`dart run crumbs list` and `dart run dowel list`.
 
 ---
 
 ### 2. Start the app and generate traffic
 
-Boot the Flutter app via artisan so the VM Service URI is recorded to the state file.
-Artisan resolves the running instance from this file for every subsequent CLI and MCP call.
+Boot the Flutter app via dowel so the VM Service URI is recorded to the state file.
+Dowel resolves the running instance from this file for every subsequent CLI and MCP call.
 
 ```bash
-./bin/fsa start --device=chrome
+./bin/dowel start --device=chrome
 ```
 
 The command scrapes the VM Service URI from `flutter run` output, normalizes it to a
 WebSocket address, and writes the full process state (PID, URI, device, project root)
-to `~/.artisan/state.json`.
+to `~/.dowel/state.json`.
 
 With the app running, navigate the UI to generate HTTP traffic, logs, and any exceptions.
 When using the Magic framework, every HTTP call through the `Http` facade, every model save,
-and every cache read goes straight into the Telescope ring buffers. On a vanilla Flutter app,
+and every cache read goes straight into the Crumbs ring buffers. On a vanilla Flutter app,
 `package:logging` output and `debugPrint` calls fill the log and dump buffers.
 
 You can also exercise the watchers programmatically from the app:
@@ -86,32 +86,32 @@ debugPrint('quickstart test dump');
 
 ### 3. Query the buffers from Claude Code (MCP)
 
-Start the artisan MCP server. When your project has `.mcp.json` wired with
-`dart run fluttersdk_artisan:mcp` as the entry point (written by
-`fluttersdk_artisan mcp:install`), Claude Code launches the server automatically on attach.
+Start the dowel MCP server. When your project has `.mcp.json` wired with
+`dart run dowel:mcp` as the entry point (written by
+`dowel mcp:install`), Claude Code launches the server automatically on attach.
 To start it manually:
 
 ```bash
-./bin/fsa mcp:serve
+./bin/dowel mcp:serve
 ```
 
-Inside a Claude Code session, the 10 `telescope_*` tools are now available. A typical
+Inside a Claude Code session, the 10 `crumbs_*` tools are now available. A typical
 inspection flow:
 
 ```
-[agent] telescope_tail {}
+[agent] crumbs_tail {}
 ```
 
 Returns the most recent log records from the ring buffer, newest first. Filter by level:
 
 ```
-[agent] telescope_tail { "level": "warning", "limit": 20 }
+[agent] crumbs_tail { "level": "warning", "limit": 20 }
 ```
 
 Inspect HTTP traffic:
 
 ```
-[agent] telescope_requests {}
+[agent] crumbs_requests {}
 ```
 
 Returns every captured HTTP request with method, URL, status code, duration in ms, request
@@ -120,23 +120,23 @@ headers, and a body snippet. Useful for verifying what the app actually sent to 
 Check for uncaught exceptions:
 
 ```
-[agent] telescope_exceptions {}
+[agent] crumbs_exceptions {}
 ```
 
 Review DB queries with timings:
 
 ```
-[agent] telescope_queries {}
+[agent] crumbs_queries {}
 ```
 
 Clear all buffers before the next test scenario:
 
 ```
-[agent] telescope_clear {}
+[agent] crumbs_clear {}
 ```
 
-All 10 tools follow the same pattern: they query the `ext.telescope.*` VM Service
-extensions registered by `registerAllTelescopeExtensions()` at startup. No source changes
+All 10 tools follow the same pattern: they query the `ext.crumbs.*` VM Service
+extensions registered by `registerAllCrumbsExtensions()` at startup. No source changes
 are needed between queries; the buffers update passively as the app runs.
 
 ---
@@ -145,17 +145,17 @@ are needed between queries; the buffers update passively as the app runs.
 
 - Read the full [Installation](installation) doc for manual wiring options and the
   `DioHttpAdapter` setup for vanilla Flutter.
-- Browse the watcher catalog at [fluttersdk.com/telescope/watchers](https://fluttersdk.com/telescope/watchers)
+- Browse the watcher catalog at [anilcancakir.com/crumbs/watchers](https://anilcancakir.com/crumbs/docs/watchers)
   to learn which watchers are opt-in and how chain-preservation works with Sentry and Bugsnag.
-- See the full MCP tool input schemas at [fluttersdk.com/telescope/mcp](https://fluttersdk.com/telescope/mcp).
+- See the full MCP tool input schemas at [anilcancakir.com/crumbs/mcp](https://anilcancakir.com/crumbs/docs/mcp).
 - Mask secrets in every record with [Redaction](redaction), persist a timeline with the
   [File sink](file-sink), and follow a buffer with [Cursor and filters](../mcp/cursor-and-filters).
 
 ---
 
-All three steps above use only the `fluttersdk_telescope ^0.0.4` package and its
-`fluttersdk_artisan` dependency. No additional packages are required for the core
+All three steps above use only the `crumbs ^0.0.4` package and its
+`dowel` dependency. No additional packages are required for the core
 watcher surface. Magic-specific watchers activate automatically when `magic_devtools`
-is in `dev_dependencies` and `MagicTelescopeIntegration.install()` is called after
-`Magic.init()`. `MagicTelescopeIntegration` ships in `magic_devtools`, not in the
+is in `dev_dependencies` and `MagicCrumbsIntegration.install()` is called after
+`Magic.init()`. `MagicCrumbsIntegration` ships in `magic_devtools`, not in the
 `magic` core package.

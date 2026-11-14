@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/event_record.dart';
-import 'package:fluttersdk_telescope/src/telescope_redaction.dart';
+import 'package:crumbs/src/records/event_record.dart';
+import 'package:crumbs/src/crumbs_redaction.dart';
 
 void main() {
   group('EventRecord', () {
@@ -60,14 +60,14 @@ void main() {
     });
 
     test('redacted is true only on the copy a redactor produced', () {
-      addTearDown(TelescopeRedaction.resetForTesting);
+      addTearDown(CrumbsRedaction.resetForTesting);
       final plain = EventRecord(
         eventType: 'UserLoggedIn',
         payload: <String, dynamic>{},
         time: time,
       );
-      TelescopeRedaction.redactor = (String s) => s;
-      final masked = TelescopeRedaction.redactEventRecord(plain)!;
+      CrumbsRedaction.redactor = (String s) => s;
+      final masked = CrumbsRedaction.redactEventRecord(plain)!;
 
       expect(plain.redacted, isFalse);
       expect(masked.redacted, isTrue);
@@ -114,7 +114,7 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // Clock, interaction link (shared shape across every telescope record)
+    // Clock, interaction link (shared shape across every crumbs record)
     // -------------------------------------------------------------------------
 
     test('atUs defaults to FlutterTimeline.now captured at construction', () {

@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../records/frame_perf_record.dart';
-import '../telescope_store.dart';
+import '../crumbs_store.dart';
 import 'watcher.dart';
 
 /// Captures per-frame performance by joining two sources the engine reports
@@ -28,16 +28,16 @@ import 'watcher.dart';
 /// is installed. [uninstall] removes exactly the callback [install] added.
 ///
 /// This watcher is opt-in and NOT auto-installed by
-/// [TelescopePlugin.install]. Register it explicitly:
+/// [CrumbsPlugin.install]. Register it explicitly:
 ///
 /// ```dart
-/// TelescopePlugin.registerWatcher(FramePerfWatcher());
+/// CrumbsPlugin.registerWatcher(FramePerfWatcher());
 /// ```
 ///
 /// Attribution only flows while [FlutterTimeline.debugCollectionEnabled] is
 /// true, which a measurement session turns on. Until then the watcher records
 /// frame magnitude alone and stays silent about blocks.
-class FramePerfWatcher implements TelescopeWatcher {
+class FramePerfWatcher implements CrumbsWatcher {
   /// How many un-joined block maps the pending map holds before the oldest is
   /// dropped.
   ///
@@ -63,7 +63,7 @@ class FramePerfWatcher implements TelescopeWatcher {
   /// alongside a `resumed` lifecycle and an armed `onReportTimings`.
   ///
   /// Static because it is read from a VM Service extension handler, and
-  /// [TelescopePlugin] keeps its watcher list private with no accessor: there
+  /// [CrumbsPlugin] keeps its watcher list private with no accessor: there
   /// is no route from a handler to a watcher instance.
   ///
   /// One caveat, and this is the place a reader will look for it. The counter
@@ -106,7 +106,7 @@ class FramePerfWatcher implements TelescopeWatcher {
   ///
   /// Two registrations is the expected case, not a mistake:
   /// `MagicPerfIntegration.install()` registers one, and this class's own
-  /// docs tell a host to register one. `TelescopePlugin.registerWatcher`
+  /// docs tell a host to register one. `CrumbsPlugin.registerWatcher`
   /// appends without deduping, so the guard has to live here.
   ///
   /// First in wins, and the co-registered instance stays inert: uninstalling
@@ -319,7 +319,7 @@ class FramePerfWatcher implements TelescopeWatcher {
       // A timing with no block map still emits: frame magnitude without
       // attribution is worth reporting. The reverse is not, so a block map
       // whose timing never arrives is simply dropped by the bound above.
-      TelescopeStore.recordFramePerf(
+      CrumbsStore.recordFramePerf(
         FramePerfRecord(
           frameNumber: timing.frameNumber,
           buildMicros: timing.buildDuration.inMicroseconds,

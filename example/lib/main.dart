@@ -1,32 +1,32 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttersdk_telescope/telescope.dart';
+import 'package:crumbs/crumbs.dart';
 import 'package:logging/logging.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   if (kDebugMode) {
     // 1. Install core watcher (LogWatcher + VM extensions auto-registered).
-    TelescopePlugin.install();
+    CrumbsPlugin.install();
     // 2. Opt-in exception + dump watchers.
-    TelescopePlugin.registerWatcher(ExceptionWatcher());
-    TelescopePlugin.registerWatcher(DumpWatcher());
+    CrumbsPlugin.registerWatcher(ExceptionWatcher());
+    CrumbsPlugin.registerWatcher(DumpWatcher());
     // 3. Register the Dio HTTP adapter (stub; consumer wires the interceptor).
-    TelescopePlugin.registerHttpAdapter(DioHttpAdapter());
+    CrumbsPlugin.registerHttpAdapter(DioHttpAdapter());
     // 4. Route all package:logging levels into LogWatcher.
     Logger.root.level = Level.ALL;
   }
-  final dio = Dio()..interceptors.add(_TelescopeDioInterceptor());
+  final dio = Dio()..interceptors.add(_CrumbsDioInterceptor());
   runApp(App(dio: dio));
 }
 
 // ---------------------------------------------------------------------------
 // Dio interceptor — canonical V1 pattern for routing Dio traffic into
-// TelescopeStore via DioHttpAdapter.recordRequest.
+// CrumbsStore via DioHttpAdapter.recordRequest.
 // ---------------------------------------------------------------------------
 
-class _TelescopeDioInterceptor extends Interceptor {
+class _CrumbsDioInterceptor extends Interceptor {
   final Map<int, Stopwatch> _watches = {};
 
   @override
@@ -90,7 +90,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'fluttersdk_telescope showroom',
+      title: 'crumbs showroom',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
       home: _Home(dio: dio),
     );
@@ -113,14 +113,14 @@ class _Home extends StatefulWidget {
 class _HomeState extends State<_Home> {
   void _onClear() {
     // setState triggers a rebuild; StreamBuilder initialData reads are
-    // re-evaluated against the now-empty TelescopeStore buffers.
-    setState(TelescopeStore.clear);
+    // re-evaluated against the now-empty CrumbsStore buffers.
+    setState(CrumbsStore.clear);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Telescope Showroom')),
+      appBar: AppBar(title: const Text('Crumbs Showroom')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -160,31 +160,31 @@ class _StatusBar extends StatelessWidget {
       children: [
         _StatusChip(
           label: 'HTTP',
-          stream: TelescopeStore.onHttpRecord.map(
-            (_) => TelescopeStore.recentHttp().length,
+          stream: CrumbsStore.onHttpRecord.map(
+            (_) => CrumbsStore.recentHttp().length,
           ),
-          initialCount: TelescopeStore.recentHttp().length,
+          initialCount: CrumbsStore.recentHttp().length,
         ),
         _StatusChip(
           label: 'Log',
-          stream: TelescopeStore.onLogRecord.map(
-            (_) => TelescopeStore.recentLogs().length,
+          stream: CrumbsStore.onLogRecord.map(
+            (_) => CrumbsStore.recentLogs().length,
           ),
-          initialCount: TelescopeStore.recentLogs().length,
+          initialCount: CrumbsStore.recentLogs().length,
         ),
         _StatusChip(
           label: 'Exception',
-          stream: TelescopeStore.onExceptionRecord.map(
-            (_) => TelescopeStore.recentExceptions().length,
+          stream: CrumbsStore.onExceptionRecord.map(
+            (_) => CrumbsStore.recentExceptions().length,
           ),
-          initialCount: TelescopeStore.recentExceptions().length,
+          initialCount: CrumbsStore.recentExceptions().length,
         ),
         _StatusChip(
           label: 'Dump',
-          stream: TelescopeStore.onDumpRecord.map(
-            (_) => TelescopeStore.recentDumps().length,
+          stream: CrumbsStore.onDumpRecord.map(
+            (_) => CrumbsStore.recentDumps().length,
           ),
-          initialCount: TelescopeStore.recentDumps().length,
+          initialCount: CrumbsStore.recentDumps().length,
         ),
       ],
     );
@@ -281,10 +281,10 @@ class _HttpSection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             StreamBuilder<HttpRequestRecord>(
-              stream: TelescopeStore.onHttpRecord,
+              stream: CrumbsStore.onHttpRecord,
               initialData: null,
               builder: (context, _) {
-                final records = TelescopeStore.recentHttp(limit: 5);
+                final records = CrumbsStore.recentHttp(limit: 5);
                 if (records.isEmpty) {
                   return const Text(
                     'No HTTP requests yet.',
@@ -362,10 +362,10 @@ class _LogSection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             StreamBuilder<LogRecordEntry>(
-              stream: TelescopeStore.onLogRecord,
+              stream: CrumbsStore.onLogRecord,
               initialData: null,
               builder: (context, _) {
-                final records = TelescopeStore.recentLogs(limit: 5);
+                final records = CrumbsStore.recentLogs(limit: 5);
                 if (records.isEmpty) {
                   return const Text(
                     'No logs yet.',
@@ -470,10 +470,10 @@ class _ExceptionSection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             StreamBuilder<ExceptionRecord>(
-              stream: TelescopeStore.onExceptionRecord,
+              stream: CrumbsStore.onExceptionRecord,
               initialData: null,
               builder: (context, _) {
-                final records = TelescopeStore.recentExceptions(limit: 5);
+                final records = CrumbsStore.recentExceptions(limit: 5);
                 if (records.isEmpty) {
                   return const Text(
                     'No exceptions yet.',
@@ -539,10 +539,10 @@ class _DumpSection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             StreamBuilder<DumpRecord>(
-              stream: TelescopeStore.onDumpRecord,
+              stream: CrumbsStore.onDumpRecord,
               initialData: null,
               builder: (context, _) {
-                final records = TelescopeStore.recentDumps(limit: 5);
+                final records = CrumbsStore.recentDumps(limit: 5);
                 if (records.isEmpty) {
                   return const Text(
                     'No dumps yet.',
@@ -609,7 +609,7 @@ class _GlobalControls extends StatelessWidget {
                   icon: const Icon(Icons.pause_circle_outline),
                   label: const Text('Pause recording'),
                   onPressed: () {
-                    TelescopeStore.pause();
+                    CrumbsStore.pause();
                     _flash(context, 'Recording paused.');
                   },
                 ),
@@ -617,7 +617,7 @@ class _GlobalControls extends StatelessWidget {
                   icon: const Icon(Icons.play_circle_outline),
                   label: const Text('Resume recording'),
                   onPressed: () {
-                    TelescopeStore.resume();
+                    CrumbsStore.resume();
                     _flash(context, 'Recording resumed.');
                   },
                 ),

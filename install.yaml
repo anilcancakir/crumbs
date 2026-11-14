@@ -1,50 +1,50 @@
-# fluttersdk_telescope install manifest (PluginInstaller DSL schema v1).
+# crumbs install manifest (PluginInstaller DSL schema v1).
 #
-# Telescope is a passive observability plugin. Install registers
-# TelescopeArtisanProvider into the consumer's lib/app/_plugins.g.dart codegen
-# barrel (via the artisan manifest installer's _registerArtisanProvider step)
-# so the 6 telescope CLI commands + 9 telescope_* MCP tools surface through
-# the consumer's `./bin/fsa` fast-cli and `dart run fluttersdk_artisan:mcp` outputs.
+# Crumbs is a passive observability plugin. Install registers
+# CrumbsDowelProvider into the consumer's lib/app/_plugins.g.dart codegen
+# barrel (via the dowel manifest installer's _registerDowelProvider step)
+# so the 6 crumbs CLI commands + 9 crumbs_* MCP tools surface through
+# the consumer's `./bin/dowel` fast-cli and `dart run dowel:mcp` outputs.
 #
-# No stub files are published: telescope captures via runtime hooks, not
+# No stub files are published: crumbs captures via runtime hooks, not
 # scaffolded code. The consumer wires the runtime install in their
 # lib/main.dart manually (see post_install message).
 #
-# See doc/install_yaml_schema.md (in fluttersdk_artisan) for the full schema.
+# See doc/install_yaml_schema.md (in dowel) for the full schema.
 
-plugin_name: fluttersdk_telescope
+plugin_name: crumbs
 
 publish: {}
 
 magic:
-  provider: null   # telescope is artisan-only; no magic provider class to inject.
+  provider: null   # crumbs is dowel-only; no magic provider class to inject.
 
 post_install:
   message: |
-    fluttersdk_telescope plugin:installed. Bootstrap workflow:
+    crumbs plugin:installed. Bootstrap workflow:
 
     1. In your consumer's lib/main.dart, gated under `if (kDebugMode)`:
 
-         TelescopePlugin.install();                       // before runApp() (or before Magic.init() for the Magic stack)
-         TelescopePlugin.registerWatcher(ExceptionWatcher());
-         TelescopePlugin.registerWatcher(DumpWatcher());
+         CrumbsPlugin.install();                       // before runApp() (or before Magic.init() for the Magic stack)
+         CrumbsPlugin.registerWatcher(ExceptionWatcher());
+         CrumbsPlugin.registerWatcher(DumpWatcher());
 
-    2. If you use Magic, ALSO call MagicTelescopeIntegration.install()
+    2. If you use Magic, ALSO call MagicCrumbsIntegration.install()
        AFTER Magic.init() to wire MagicHttpFacadeAdapter +
        MagicModelWatcher + MagicEventWatcher + MagicGateWatcher.
 
     3. Verify the CLI (three equivalent entry points, fastest first):
 
-         ./bin/fsa list                       # consumer fast-cli (native AOT, ~110ms warm)
-         dart run fluttersdk_artisan list     # consumer dispatcher fallback (~3s cold)
-         dart run fluttersdk_telescope list   # telescope's own bootstrap entry (~3s cold, useful pre-install)
+         ./bin/dowel list                       # consumer fast-cli (native AOT, ~110ms warm)
+         dart run dowel list     # consumer dispatcher fallback (~3s cold)
+         dart run crumbs list   # crumbs's own bootstrap entry (~3s cold, useful pre-install)
 
-       All three include the `telescope:` namespace (install, tail, requests, queries, caches, clear).
+       All three include the `crumbs:` namespace (install, tail, requests, queries, caches, clear).
 
     4. Verify the MCP surface:
 
-         dart run fluttersdk_artisan mcp:install    # add fluttersdk MCP server entry to .mcp.json
-         # then restart Claude Code; /mcp will list 9 telescope_* tools
-         # (telescope_tail, telescope_requests, telescope_clear,
-         #  telescope_exceptions, telescope_events, telescope_gates,
-         #  telescope_dumps, telescope_queries, telescope_caches).
+         dart run dowel mcp:install    # add fluttersdk MCP server entry to .mcp.json
+         # then restart Claude Code; /mcp will list 9 crumbs_* tools
+         # (crumbs_tail, crumbs_requests, crumbs_clear,
+         #  crumbs_exceptions, crumbs_events, crumbs_gates,
+         #  crumbs_dumps, crumbs_queries, crumbs_caches).

@@ -2,30 +2,30 @@
 
 # CLAUDE.md
 
-Guidance for Claude Code working in the `fluttersdk_telescope` repo. Path-scoped rules at
+Guidance for Claude Code working in the `crumbs` repo. Path-scoped rules at
 `.claude/rules/{tests,watchers}.md` cover their subsystems; this file is the root spec.
 
 ## Stack
 
-Flutter SDK package (Dart 3.4+, Flutter 3.22+). Plugin of `fluttersdk_artisan ^0.0.20`: contributes
-`TelescopeArtisanProvider` with 11 CLI commands plus 10 MCP tools backed by 14 `ext.telescope.*` VM Service
+Flutter SDK package (Dart 3.4+, Flutter 3.22+). Plugin of `dowel ^0.0.20`: contributes
+`CrumbsDowelProvider` with 11 CLI commands plus 10 MCP tools backed by 14 `ext.crumbs.*` VM Service
 extensions.
 
-Production deps are hosted: `fluttersdk_artisan ^0.0.20`, `logging ^1.2.0`,
+Production deps are hosted: `dowel ^0.0.20`, `logging ^1.2.0`,
 `meta ^1.16.0`. Dev deps: `flutter_test`, `flutter_lints ^5.0.0`. Development-only at the consumer call site: the
-consumer wraps `TelescopePlugin.install()` in a guard so release builds tree-shake the subsystem. `telescope:install`
-writes `if (kDebugMode)`; `!kReleaseMode` (what `magic_devtools` uses) also keeps profile builds. Telescope installs no guard itself.
+consumer wraps `CrumbsPlugin.install()` in a guard so release builds tree-shake the subsystem. `crumbs:install`
+writes `if (kDebugMode)`; `!kReleaseMode` (what `magic_devtools` uses) also keeps profile builds. Crumbs installs no guard itself.
 
 Local sibling development points those hosted constraints at the working trees through a gitignored
 `pubspec_overrides.yaml`. Its paths must be ABSOLUTE: `.worktreeinclude` copies the file into worktrees under
-`.claude/worktrees/<slug>`, where a relative `../artisan` resolves to `.claude/worktrees/artisan` and fails
+`.claude/worktrees/<slug>`, where a relative `../dowel` resolves to `.claude/worktrees/dowel` and fails
 version solving on the first path dependency.
 
-Two CLI surfaces. `bin/fluttersdk_telescope.dart` is the Flutter-free wrapper, canonical install bootstrap:
-`dart run fluttersdk_telescope telescope:install` works from a fresh consumer. `install.yaml` at the package
-root drives `plugin:install fluttersdk_telescope` via the artisan PluginInstaller; `lib/cli.dart` exports
-`FluttersdkTelescopeArtisanProvider` for consumer-side `lib/app/_plugins.g.dart` auto-discovery. After install,
-the consumer's `./bin/fsa` (native AOT, ~110ms warm) is the recommended entry point.
+Two CLI surfaces. `bin/crumbs.dart` is the Flutter-free wrapper, canonical install bootstrap:
+`dart run crumbs crumbs:install` works from a fresh consumer. `install.yaml` at the package
+root drives `plugin:install crumbs` via the dowel PluginInstaller; `lib/cli.dart` exports
+`FluttersdkCrumbsDowelProvider` for consumer-side `lib/app/_plugins.g.dart` auto-discovery. After install,
+the consumer's `./bin/dowel` (native AOT, ~110ms warm) is the recommended entry point.
 
 ## Commands
 
@@ -41,9 +41,9 @@ the consumer's `./bin/fsa` (native AOT, ~110ms warm) is the recommended entry po
 ## Golden Rules
 
 1. **Doc sync**: behavior change touching `doc/**/*.md` updates the matching page in the same change. New surfaces add a page under `doc/{getting-started,watchers,mcp}/<name>.md`.
-2. **Skill sync**: same rule for `skills/fluttersdk-telescope/SKILL.md` + `references/{watchers,mcp-tools}.md`.
+2. **Skill sync**: same rule for `skills/crumbs/SKILL.md` + `references/{watchers,mcp-tools}.md`.
 3. **Coverage ≥80%**: CI enforces via awk gate in `.github/workflows/ci.yml`. Verify locally after behavioral changes: `awk -F: '/^LF:/{lf+=$2} /^LH:/{lh+=$2} END{printf "%.2f%%\n", (lh/lf)*100}' coverage/lcov.info`.
-4. **README + llms.txt sync**: Watchers / MCP Tools / CLI Commands tables in `README.md` stay in sync with `lib/src/watchers/`, `TelescopeArtisanProvider.mcpTools()`, and `TelescopeArtisanProvider.commands()` respectively.
+4. **README + llms.txt sync**: Watchers / MCP Tools / CLI Commands tables in `README.md` stay in sync with `lib/src/watchers/`, `CrumbsDowelProvider.mcpTools()`, and `CrumbsDowelProvider.commands()` respectively.
 5. **CHANGELOG under `[Unreleased]`**: every behavioral or interface change lands a bullet under `## [Unreleased]` in `CHANGELOG.md`. Keep-a-Changelog ordering (Added, Changed, Deprecated, Removed, Fixed, Security). Promote to a dated section on tag push.
 6. **Green gate + TDD**: `dart format` zero diff + `dart analyze` zero issues + `flutter test --exclude-tags=integration` all green. Red-green-refactor for behavioral changes: failing test first.
 7. **GitHub Flow**: one long-lived branch `master` (released, what pub.dev resolves). Cut every task branch from `master`, push, open a PR back into `master`. Releases bump `pubspec.yaml`, promote `## [Unreleased]` in `CHANGELOG.md`, merge the bump PR, then tag the commit on `master`. No `develop` accumulator. See the Branching section below.
@@ -57,49 +57,49 @@ the consumer's `./bin/fsa` (native AOT, ~110ms warm) is the recommended entry po
 
 ## Architecture
 
-Single barrel: `lib/telescope.dart` re-exports the full public API. Subsystem layout under `lib/src/`:
+Single barrel: `lib/crumbs.dart` re-exports the full public API. Subsystem layout under `lib/src/`:
 
 | Path | Purpose |
 |---|---|
-| `watchers/` | `TelescopeWatcher` contract + `LogWatcher`, `ExceptionWatcher`, `DumpWatcher`, `FramePerfWatcher`. See `.claude/rules/watchers.md`. |
-| `adapters/` | `TelescopeHttpAdapter` contract + `DioHttpAdapter`. |
+| `watchers/` | `CrumbsWatcher` contract + `LogWatcher`, `ExceptionWatcher`, `DumpWatcher`, `FramePerfWatcher`. See `.claude/rules/watchers.md`. |
+| `adapters/` | `CrumbsHttpAdapter` contract + `DioHttpAdapter`. |
 | `records/` | 10 immutable record types: `HttpRequestRecord`, `LogRecordEntry`, `ExceptionRecord`, `MagicModelRecord`, `MagicCacheRecord`, `EventRecord`, `GateRecord`, `DumpRecord`, `QueryRecord`, `FramePerfRecord`. |
-| `extensions/` | 14 `ext.telescope.*` VM Service handlers + `registerAllTelescopeExtensions()` aggregator. |
-| `commands/` | 11 `TelescopeXCommand` (install, tail, requests, queries, caches, events, gates, dumps, frames, clear, files). |
-| `telescope_store.dart` | 10-buffer ring store (singleton). `Queue<T>` plus broadcast `StreamController<T>` per buffer. Default capacity 500, except frame perf at 3600; `setCapacity(int, {TelescopeKind? kind})` caps all buffers or one. |
-| `telescope_redaction.dart` | HTTP credential lists plus the host `redactor` hook, applied at insert to log, event, exception and HTTP records; per-record `redactXRecord` entry points return null for a dropped record. |
-| `telescope_file_sink.dart` | `TelescopeFileSink`: rotating JSONL timeline of redacted log, event and exception records; `files()` / `read()` behind `ext.telescope.files` / `.file`. |
+| `extensions/` | 14 `ext.crumbs.*` VM Service handlers + `registerAllCrumbsExtensions()` aggregator. |
+| `commands/` | 11 `CrumbsXCommand` (install, tail, requests, queries, caches, events, gates, dumps, frames, clear, files). |
+| `crumbs_store.dart` | 10-buffer ring store (singleton). `Queue<T>` plus broadcast `StreamController<T>` per buffer. Default capacity 500, except frame perf at 3600; `setCapacity(int, {CrumbsKind? kind})` caps all buffers or one. |
+| `crumbs_redaction.dart` | HTTP credential lists plus the host `redactor` hook, applied at insert to log, event, exception and HTTP records; per-record `redactXRecord` entry points return null for a dropped record. |
+| `crumbs_file_sink.dart` | `CrumbsFileSink`: rotating JSONL timeline of redacted log, event and exception records; `files()` / `read()` behind `ext.crumbs.files` / `.file`. |
 | `cursor_follow.dart` | `followCursor`, the `--follow` loop; pure Dart, exported from `lib/cli.dart`. |
-| `telescope_plugin.dart` | `TelescopePlugin.install()` + `registerHttpAdapter()` + `registerWatcher()` entry points. |
-| `telescope_artisan_provider.dart` | `TelescopeArtisanProvider extends ArtisanServiceProvider`. |
-| `bin/fluttersdk_telescope.dart` | Flutter-free CLI wrapper; loads `TelescopeArtisanProvider` into `runArtisan` directly. |
-| `lib/cli.dart` | Codegen barrel; `FluttersdkTelescopeArtisanProvider` typedef for consumer auto-discovery, plus `followCursor`. |
+| `crumbs_plugin.dart` | `CrumbsPlugin.install()` + `registerHttpAdapter()` + `registerWatcher()` entry points. |
+| `crumbs_dowel_provider.dart` | `CrumbsDowelProvider extends DowelServiceProvider`. |
+| `bin/crumbs.dart` | Flutter-free CLI wrapper; loads `CrumbsDowelProvider` into `runDowel` directly. |
+| `lib/cli.dart` | Codegen barrel; `FluttersdkCrumbsDowelProvider` typedef for consumer auto-discovery, plus `followCursor`. |
 | `install.yaml` | V1 plugin manifest (post-install bootstrap message + `executables:` anchor). |
 
 ### Three public contracts (FROZEN)
 
-- `TelescopeWatcher`: `name` getter + `install()` + `uninstall()`. Magic-side ships `MagicModelWatcher`, `MagicCacheWatcher`, `MagicEventWatcher`, `MagicGateWatcher`, `MagicQueryWatcher` via this contract.
-- `TelescopeHttpAdapter`: same 3-method shape plus an additive `pendingCount` getter (default 0; `extends` callers inherit, `implements` callers add `int get pendingCount => 0;`). Magic-side ships `MagicHttpFacadeAdapter`.
-- `McpToolDescriptor`: const-constructible; shape owned by `fluttersdk_artisan`. CC canonical description format (imperative opener, context paragraph, `Usage:` bullet list).
+- `CrumbsWatcher`: `name` getter + `install()` + `uninstall()`. Magic-side ships `MagicModelWatcher`, `MagicCacheWatcher`, `MagicEventWatcher`, `MagicGateWatcher`, `MagicQueryWatcher` via this contract.
+- `CrumbsHttpAdapter`: same 3-method shape plus an additive `pendingCount` getter (default 0; `extends` callers inherit, `implements` callers add `int get pendingCount => 0;`). Magic-side ships `MagicHttpFacadeAdapter`.
+- `McpToolDescriptor`: const-constructible; shape owned by `dowel`. CC canonical description format (imperative opener, context paragraph, `Usage:` bullet list).
 
 ### VM Service surface
 
-14 extensions: `ext.telescope.requests`, `.console`, `.exceptions`, `.events`, `.gates`, `.dumps`, `.queries`, `.caches`, `.frames`, `.clear`, `.pause`, `.resume`, `.files`, `.file`. `.console` and `.events` take `since` and answer a `cursor` (with `since`, `limit` keeps the OLDEST N); `.events` takes `type`, `.console` takes `logger`; a non-integer `since` is `invalidParams`. `.files` / `.file` read the running `TelescopeFileSink` and answer `{error}` when none runs. Every registration goes through `registerExtensionIdempotent` (from `fluttersdk_artisan`) for hot-restart safety. Handler signature: `Future<ServiceExtensionResponse> Function(String method, Map<String, String> params)`. Parse integers via `int.tryParse(params['key'] ?? '')`. Return `.result(jsonEncode(payload))` or `.error(kInvalidParams, msg)`.
+14 extensions: `ext.crumbs.requests`, `.console`, `.exceptions`, `.events`, `.gates`, `.dumps`, `.queries`, `.caches`, `.frames`, `.clear`, `.pause`, `.resume`, `.files`, `.file`. `.console` and `.events` take `since` and answer a `cursor` (with `since`, `limit` keeps the OLDEST N); `.events` takes `type`, `.console` takes `logger`; a non-integer `since` is `invalidParams`. `.files` / `.file` read the running `CrumbsFileSink` and answer `{error}` when none runs. Every registration goes through `registerExtensionIdempotent` (from `dowel`) for hot-restart safety. Handler signature: `Future<ServiceExtensionResponse> Function(String method, Map<String, String> params)`. Parse integers via `int.tryParse(params['key'] ?? '')`. Return `.result(jsonEncode(payload))` or `.error(kInvalidParams, msg)`.
 
 ## Off-limits
 
 - The three public contract signatures above are frozen. Magic-side glue depends on them; any change needs a coordinated bump across both repos.
-- `TelescopePlugin.install()` / `.registerHttpAdapter()` / `.registerWatcher()` signatures are frozen for the same reason.
-- `TelescopeStore` public methods (`recordX` / `recentX` / `onXRecord` for all 10 buffers, plus `clear` / `clearFramePerf` / `pause` / `resume`) are frozen; magic-side calls them directly.
-- `install.yaml` at the package root is load-bearing for `plugin:install fluttersdk_telescope`. Do not delete; the V1 manifest carries the post-install bootstrap message and the `executables:` mapping anchor.
-- No new production dependencies beyond `fluttersdk_artisan`, `logging`, `meta`. The vanilla `example/` app may add its own demo deps (Dio, `package:logging`).
+- `CrumbsPlugin.install()` / `.registerHttpAdapter()` / `.registerWatcher()` signatures are frozen for the same reason.
+- `CrumbsStore` public methods (`recordX` / `recentX` / `onXRecord` for all 10 buffers, plus `clear` / `clearFramePerf` / `pause` / `resume`) are frozen; magic-side calls them directly.
+- `install.yaml` at the package root is load-bearing for `plugin:install crumbs`. Do not delete; the V1 manifest carries the post-install bootstrap message and the `executables:` mapping anchor.
+- No new production dependencies beyond `dowel`, `logging`, `meta`. The vanilla `example/` app may add its own demo deps (Dio, `package:logging`).
 - `DumpWatcher` must not capture in release builds. Its own internal `kDebugMode` guard (unless `allowInRelease`) is load-bearing.
-- `TelescopeRedaction.redactor` semantics are frozen: it runs at insert over log, event, exception and HTTP records, a throw drops the record, and `redacted` is read-only, set only by the store's redaction pass. Never add a `redacted` constructor argument; `TelescopeFileSink` writes only records where it is true.
+- `CrumbsRedaction.redactor` semantics are frozen: it runs at insert over log, event, exception and HTTP records, a throw drops the record, and `redacted` is read-only, set only by the store's redaction pass. Never add a `redacted` constructor argument; `CrumbsFileSink` writes only records where it is true.
 
 ## Style
 
 - `final class` on concrete records and watchers. `abstract class` for contracts.
 - `Queue<T>` (not `List<T>`) for ring buffers; O(1) ends.
-- Chain-preserve every global handler override (save previous, call inside the new handler, restore on uninstall). This is how Sentry and Bugsnag coexist with telescope. Numbered step comments (`// 1.`, `// 2.`) inside `install()` bodies that do this.
+- Chain-preserve every global handler override (save previous, call inside the new handler, restore on uninstall). This is how Sentry and Bugsnag coexist with crumbs. Numbered step comments (`// 1.`, `// 2.`) inside `install()` bodies that do this.
 - Docblocks (`///`) on public classes and abstract contracts only. Skip decorative docstrings on trivial getters.
 - No em-dash (U+2014) or en-dash (U+2013) anywhere (code, comments, docs, commits, PR descriptions). Use comma / colon / semicolon / period / parentheses. ASCII hyphen is fine.

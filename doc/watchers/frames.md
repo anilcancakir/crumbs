@@ -2,13 +2,13 @@
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `frame_perf` |
-| Auto-install | No (opt-in via `TelescopePlugin.registerWatcher(FramePerfWatcher())`) |
-| Ring buffer | `TelescopeStore._framePerf` (own capacity, default 3600, independent of the shared 500-entry cap) |
-| VM extension | `ext.telescope.frames` |
-| CLI command | `telescope:frames` |
-| MCP tool | `telescope_frames` |
+| Auto-install | No (opt-in via `CrumbsPlugin.registerWatcher(FramePerfWatcher())`) |
+| Ring buffer | `CrumbsStore._framePerf` (own capacity, default 3600, independent of the shared 500-entry cap) |
+| VM extension | `ext.crumbs.frames` |
+| CLI command | `crumbs:frames` |
+| MCP tool | `crumbs_frames` |
 | Opt-out | Do not register it; it is never auto-installed |
 
 Captures per-frame performance by joining two sources the engine reports separately: frame
@@ -25,7 +25,7 @@ timings while this watcher is installed.
 
 A static `livenessCounter`, incremented once per drawn frame regardless of whether a measurement
 session is running, is the only reliable proof the engine is rendering. It is exposed alongside
-every `ext.telescope.frames` response so a caller can tell an empty result caused by a quiet app
+every `ext.crumbs.frames` response so a caller can tell an empty result caused by a quiet app
 from one caused by a stalled engine (a backgrounded Chrome tab suspends `requestAnimationFrame`
 while every other in-app health signal keeps reading healthy).
 
@@ -50,12 +50,12 @@ test can only inject synthetic `FrameTiming` values, never a real engine-reporte
 
 ```dart
 if (kDebugMode) {
-  TelescopePlugin.install();
-  TelescopePlugin.registerWatcher(FramePerfWatcher()); // opt-in
+  CrumbsPlugin.install();
+  CrumbsPlugin.registerWatcher(FramePerfWatcher()); // opt-in
 }
 ```
 
 Opt-out: simply omit the `registerWatcher(FramePerfWatcher())` call.
 
-See the [MCP tool reference](../mcp/tool-reference.md#telescope_frames) for the full
-`telescope_frames` input schema and output shape.
+See the [MCP tool reference](../mcp/tool-reference.md#crumbs_frames) for the full
+`crumbs_frames` input schema and output shape.
