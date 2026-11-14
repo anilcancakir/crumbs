@@ -4,7 +4,7 @@ import '../crumbs_redaction.dart';
 
 /// An immutable app event record captured by an event watcher
 /// (e.g. MagicEventWatcher shipped in the `magic` package).
-class EventRecord {
+final class EventRecord {
   EventRecord({
     required this.eventType,
     required this.payload,
@@ -26,6 +26,10 @@ class EventRecord {
   /// construction unless the caller supplies one explicitly. Comparable
   /// across every crumbs record type regardless of wall-clock skew;
   /// [time] stays the wall-clock field for display.
+  ///
+  /// The `since` cursor of `ext.crumbs.events` assumes the buffer's
+  /// insertion order is `atUs` order. An explicit value that runs behind a
+  /// record already buffered breaks that: a cursor read can skip it.
   final int atUs;
 
   /// Correlates this record to others captured during the same logical

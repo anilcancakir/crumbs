@@ -4,7 +4,7 @@ import 'package:logging/logging.dart';
 import '../crumbs_redaction.dart';
 
 /// An immutable log record captured by [LogWatcher].
-class LogRecordEntry {
+final class LogRecordEntry {
   LogRecordEntry({
     required this.level,
     required this.levelValue,
@@ -38,6 +38,10 @@ class LogRecordEntry {
   /// construction unless the caller supplies one explicitly. The same clock
   /// as `EventRecord.atUs`, so a log line orders against an event whatever
   /// the wall-clock skew; [time] stays the wall-clock field for display.
+  ///
+  /// The `since` cursor of `ext.crumbs.console` assumes the buffer's
+  /// insertion order is `atUs` order. An explicit value that runs behind a
+  /// record already buffered breaks that: a cursor read can skip it.
   final int atUs;
 
   /// True when [CrumbsRedaction.redactor] ran over this record before it

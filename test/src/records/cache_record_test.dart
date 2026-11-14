@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:crumbs/src/records/magic_cache_record.dart';
+import 'package:crumbs/src/records/cache_record.dart';
 
 void main() {
-  group('MagicCacheRecord', () {
+  group('CacheRecord', () {
     final time = DateTime(2026, 5, 19, 12, 0, 0);
 
     // -------------------------------------------------------------------------
@@ -14,7 +14,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test('constructor sets all required fields', () {
-      final record = MagicCacheRecord(
+      final record = CacheRecord(
         operation: 'hit',
         key: 'monitors.team-1',
         time: time,
@@ -27,7 +27,7 @@ void main() {
     });
 
     test('constructor sets optional ttl when provided', () {
-      final record = MagicCacheRecord(
+      final record = CacheRecord(
         operation: 'put',
         key: 'monitors.team-1',
         time: time,
@@ -39,11 +39,7 @@ void main() {
 
     test('operation field accepts all cache operation values', () {
       for (final op in ['put', 'get', 'forget', 'hit', 'miss']) {
-        final record = MagicCacheRecord(
-          operation: op,
-          key: 'some.key',
-          time: time,
-        );
+        final record = CacheRecord(operation: op, key: 'some.key', time: time);
         expect(record.operation, equals(op));
       }
     });
@@ -53,7 +49,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test('toJson returns expected map without optional fields', () {
-      final record = MagicCacheRecord(
+      final record = CacheRecord(
         operation: 'miss',
         key: 'monitors.team-1',
         time: time,
@@ -72,7 +68,7 @@ void main() {
     });
 
     test('toJson includes ttlMs when ttl is set', () {
-      final record = MagicCacheRecord(
+      final record = CacheRecord(
         operation: 'put',
         key: 'monitors.team-1',
         time: time,
@@ -85,7 +81,7 @@ void main() {
     });
 
     test('toJson omits ttlMs when ttl is null', () {
-      final record = MagicCacheRecord(
+      final record = CacheRecord(
         operation: 'hit',
         key: 'monitors.team-1',
         time: time,
@@ -100,7 +96,7 @@ void main() {
 
     test('atUs defaults to FlutterTimeline.now captured at construction', () {
       final int before = FlutterTimeline.now;
-      final record = MagicCacheRecord(
+      final record = CacheRecord(
         operation: 'hit',
         key: 'monitors.team-1',
         time: time,
@@ -111,7 +107,7 @@ void main() {
     });
 
     test('atUs accepts an explicit override', () {
-      final record = MagicCacheRecord(
+      final record = CacheRecord(
         operation: 'hit',
         key: 'monitors.team-1',
         time: time,
@@ -124,7 +120,7 @@ void main() {
     test(
       'interactionId and linkedBy default to null and toJson omits them',
       () {
-        final record = MagicCacheRecord(
+        final record = CacheRecord(
           operation: 'hit',
           key: 'monitors.team-1',
           time: time,
@@ -140,7 +136,7 @@ void main() {
     );
 
     test('interactionId and linkedBy are set and serialized when provided', () {
-      final record = MagicCacheRecord(
+      final record = CacheRecord(
         operation: 'hit',
         key: 'monitors.team-1',
         time: time,
@@ -154,7 +150,7 @@ void main() {
     });
 
     test('JSON round-trip survives jsonEncode and jsonDecode', () {
-      final record = MagicCacheRecord(
+      final record = CacheRecord(
         operation: 'put',
         key: 'monitors.team-1',
         time: time,
@@ -177,12 +173,12 @@ void main() {
     test(
       'two records with same fields are not identical (default identity eq)',
       () {
-        final a = MagicCacheRecord(
+        final a = CacheRecord(
           operation: 'hit',
           key: 'monitors.team-1',
           time: time,
         );
-        final b = MagicCacheRecord(
+        final b = CacheRecord(
           operation: 'hit',
           key: 'monitors.team-1',
           time: time,

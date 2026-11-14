@@ -89,6 +89,25 @@ void main() {
 
         expect(recorded, isEmpty);
       });
+
+      test('restores the root level and hierarchical logging it replaced', () {
+        final previousLevel = Logger.root.level;
+        final previousHierarchical = hierarchicalLoggingEnabled;
+        addTearDown(() {
+          hierarchicalLoggingEnabled = previousHierarchical;
+          Logger.root.level = previousLevel;
+        });
+        hierarchicalLoggingEnabled = false;
+        Logger.root.level = Level.WARNING;
+
+        watcher.install();
+        expect(Logger.root.level, Level.ALL);
+        expect(hierarchicalLoggingEnabled, isTrue);
+
+        watcher.uninstall();
+        expect(Logger.root.level, Level.WARNING);
+        expect(hierarchicalLoggingEnabled, isFalse);
+      });
     });
 
     // -------------------------------------------------------------------------

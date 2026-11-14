@@ -19,8 +19,10 @@ import 'watcher.dart';
 /// ```
 ///
 /// [install] is gated on [kDebugMode] (or [allowInRelease] set to true before
-/// calling [install]). In release builds, [install] is a no-op so the entire
-/// watcher is tree-shaken by dart2js and dart2native AOT.
+/// calling [install]). In a release build it returns without replacing
+/// [debugPrint]. [allowInRelease] is read at runtime, so the watcher's code
+/// still ships in a release build that references it; keeping it out is the
+/// consumer's build-mode guard around the registration.
 class DumpWatcher implements CrumbsWatcher {
   /// Allow capturing in release builds. Defaults to false; override before
   /// calling [install] only when you explicitly need release-build capture.

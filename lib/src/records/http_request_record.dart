@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show FlutterTimeline;
 import '../crumbs_redaction.dart';
 
 /// An immutable HTTP request/response record captured by a [CrumbsHttpAdapter].
-class HttpRequestRecord {
+final class HttpRequestRecord {
   HttpRequestRecord({
     required this.url,
     required this.method,
@@ -53,7 +53,9 @@ class HttpRequestRecord {
   /// Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at
   /// construction unless the caller supplies one explicitly. Comparable
   /// across every crumbs record type regardless of wall-clock skew;
-  /// [timestamp] stays the wall-clock field for display.
+  /// [timestamp] stays the wall-clock field for display. Keep an explicit
+  /// value in step with insertion order: a reader that pages by `atUs`
+  /// assumes the two agree.
   final int atUs;
 
   /// Correlates this record to others captured during the same logical
@@ -78,11 +80,12 @@ class HttpRequestRecord {
   /// copy is not [redacted]: the replaced payload is caller input no
   /// redactor has seen.
   HttpRequestRecord copyWith({
+    String? url,
     Map<String, String>? requestHeaders,
     String? requestBody,
     String? responseBody,
   }) => HttpRequestRecord(
-    url: url,
+    url: url ?? this.url,
     method: method,
     statusCode: statusCode,
     durationMs: durationMs,

@@ -1,5 +1,5 @@
 /// An immutable debugPrint output record captured by [DumpWatcher].
-class DumpRecord {
+final class DumpRecord {
   DumpRecord({required this.message, required this.time, this.wrapWidth});
 
   final String message;

@@ -1,31 +1,31 @@
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 
-/// An immutable Magic model lifecycle event captured by MagicModelWatcher
-/// (shipped in `magic` package via CrumbsPlugin.registerWatcher).
-class MagicModelRecord {
-  MagicModelRecord({
-    required this.modelClass,
-    required this.event,
-    required this.modelKey,
+/// An immutable cache operation, recorded through [CrumbsStore.recordCache]
+/// by a watcher of the app's cache layer (on Magic, the cache watcher
+/// `magic_devtools` registers).
+final class CacheRecord {
+  CacheRecord({
+    required this.operation,
+    required this.key,
     required this.time,
-    this.attributes,
+    this.ttl,
     int? atUs,
     this.interactionId,
     this.linkedBy,
   }) : atUs = atUs ?? FlutterTimeline.now;
 
-  final String modelClass;
-
-  /// 'created' | 'saved' | 'deleted'
-  final String event;
-  final String modelKey;
+  /// 'put' | 'get' | 'forget' | 'hit' | 'miss'
+  final String operation;
+  final String key;
   final DateTime time;
-  final Map<String, dynamic>? attributes;
+  final Duration? ttl;
 
   /// Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at
   /// construction unless the caller supplies one explicitly. Comparable
   /// across every crumbs record type regardless of wall-clock skew;
-  /// [time] stays the wall-clock field for display.
+  /// [time] stays the wall-clock field for display. Keep an explicit value
+  /// in step with insertion order: a reader that pages by `atUs` assumes the
+  /// two agree.
   final int atUs;
 
   /// Correlates this record to others captured during the same logical
@@ -39,11 +39,10 @@ class MagicModelRecord {
   final String? linkedBy;
 
   Map<String, dynamic> toJson() => {
-    'modelClass': modelClass,
-    'event': event,
-    'modelKey': modelKey,
+    'operation': operation,
+    'key': key,
     'time': time.toIso8601String(),
-    if (attributes != null) 'attributes': attributes,
+    if (ttl != null) 'ttlMs': ttl!.inMilliseconds,
     'atUs': atUs,
     if (interactionId != null) 'interactionId': interactionId,
     if (linkedBy != null) 'linkedBy': linkedBy,

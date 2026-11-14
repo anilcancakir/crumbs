@@ -10,9 +10,14 @@ import 'watchers/watcher.dart';
 
 /// crumbs plugin install entry. Idempotent.
 ///
-/// V1 auto-installs [LogWatcher] (zero ceremony, package:logging is the
-/// de-facto standard). ExceptionWatcher is opt-in (call install()
-/// separately). HTTP adapters are registered via [registerHttpAdapter].
+/// Auto-installs [LogWatcher] (zero ceremony, package:logging is the
+/// de-facto standard). ExceptionWatcher, DumpWatcher and FramePerfWatcher
+/// are opt-in through [registerWatcher]; HTTP adapters are registered via
+/// [registerHttpAdapter].
+///
+/// With `CRUMBS_DISABLE` set, every entry point returns without installing
+/// anything: no extension is registered, and no watcher or adapter replaces
+/// a global hook to fill buffers nobody can read.
 class CrumbsPlugin {
   CrumbsPlugin._();
 
@@ -27,22 +32,23 @@ class CrumbsPlugin {
   /// [CrumbsHttpAdapter.pendingCount] across every registered adapter
   /// without taking a new public API on [CrumbsStore].
   static void registerHttpAdapter(CrumbsHttpAdapter adapter) {
+    if (_disabled) return;
     _httpAdapters.add(adapter);
     httpAdapterRegistry.add(adapter);
     adapter.install();
   }
 
-  /// Register an additional watcher (Magic model, Magic cache, custom).
-  /// The watcher's install() is called immediately.
+  /// Register an additional watcher (model, cache, custom). The watcher's
+  /// install() is called immediately.
   static void registerWatcher(CrumbsWatcher watcher) {
+    if (_disabled) return;
     _watchers.add(watcher);
     watcher.install();
   }
 
   /// Idempotent install. Auto-installs LogWatcher + registers extensions.
   static void install() {
-    final disable = crumbsDisableEnvValue.toLowerCase().trim();
-    if (disable == '1' || disable == 'true' || disable == 'yes') {
+    if (_disabled) {
       developer.log(
         '[crumbs] install() skipped: CRUMBS_DISABLE set.',
         name: 'crumbs',
@@ -74,6 +80,11 @@ class CrumbsPlugin {
   }
 
   static int _installCount = 0;
+
+  static bool get _disabled {
+    final disable = crumbsDisableEnvValue.toLowerCase().trim();
+    return disable == '1' || disable == 'true' || disable == 'yes';
+  }
 
   @visibleForTesting
   static int get installCount => _installCount;

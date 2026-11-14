@@ -24,8 +24,12 @@ import 'watcher.dart';
 /// returns `false`, which propagates the error to the native platform crash
 /// handler. This is the Sentry-friendly contract: crumbs captures the
 /// record AND lets the downstream library decide whether the error is fatal.
-/// When no previous handler exists, the default is `true` (handled) which
-/// matches the pre-iter-2 single-hook behavior.
+/// When no previous handler exists, the default is `true` (handled), so an
+/// error crumbs recorded does not also reach the native crash handler.
+///
+/// Recording never stands between an error and the previous handler: when
+/// recording throws (an error whose `toString` throws), the previous handler
+/// still runs and the recording failure propagates after it.
 ///
 /// On [uninstall], both handlers are restored to exactly the values they held
 /// before [install] was called. Calling [install] while already installed is
@@ -46,33 +50,39 @@ class ExceptionWatcher implements CrumbsWatcher {
     // 1. Chain-preserve and replace FlutterError.onError (sync framework errors).
     _previousFlutterOnError = FlutterError.onError;
     FlutterError.onError = (FlutterErrorDetails details) {
-      CrumbsStore.recordException(
-        ExceptionRecord(
-          exceptionType: details.exception.runtimeType.toString(),
-          message: details.exceptionAsString(),
-          time: DateTime.now(),
-          stackTrace: details.stack?.toString(),
-        ),
-      );
-      _previousFlutterOnError?.call(details);
+      try {
+        CrumbsStore.recordException(
+          ExceptionRecord(
+            exceptionType: details.exception.runtimeType.toString(),
+            message: details.exceptionAsString(),
+            time: DateTime.now(),
+            stackTrace: details.stack?.toString(),
+          ),
+        );
+      } finally {
+        _previousFlutterOnError?.call(details);
+      }
     };
 
     // 2. Chain-preserve and replace PlatformDispatcher.onError (async + isolate + plugin errors).
     _previousPlatformOnError = PlatformDispatcher.instance.onError;
     PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-      CrumbsStore.recordException(
-        ExceptionRecord(
-          exceptionType: error.runtimeType.toString(),
-          message: error.toString(),
-          time: DateTime.now(),
-          stackTrace: stack.toString(),
-        ),
-      );
-      // Chain-preserve the previous handler's return value so downstream
-      // observability tools (Sentry, Bugsnag) keep their fatal-propagation
-      // semantics. If no previous handler exists, default to `true` (handled)
-      // to match the legacy single-hook behavior.
-      return _previousPlatformOnError?.call(error, stack) ?? true;
+      bool? verdict;
+      try {
+        CrumbsStore.recordException(
+          ExceptionRecord(
+            exceptionType: error.runtimeType.toString(),
+            message: error.toString(),
+            time: DateTime.now(),
+            stackTrace: stack.toString(),
+          ),
+        );
+      } finally {
+        // The previous handler's verdict is returned as is, so Sentry or
+        // Bugsnag keep deciding whether the error is fatal.
+        verdict = _previousPlatformOnError?.call(error, stack);
+      }
+      return verdict ?? true;
     };
   }
 

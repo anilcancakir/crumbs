@@ -19,8 +19,9 @@ import 'commands/crumbs_tail_command.dart';
 /// crumbs:queries, crumbs:caches, crumbs:events, crumbs:gates,
 /// crumbs:dumps, crumbs:frames, crumbs:clear, crumbs:files) and the MCP tools
 /// are backed by ext.crumbs.* VM Service extensions registered by
-/// [registerAllCrumbsExtensions]. The pause/resume extensions are BACKLOG
-/// per D5 and are intentionally absent from mcpTools().
+/// [registerAllCrumbsExtensions]. The pause, resume and timeline file
+/// extensions have no MCP tool on purpose; the timeline files are read
+/// through crumbs:files.
 class CrumbsDowelProvider extends DowelServiceProvider {
   @override
   String get providerName => 'crumbs';
@@ -61,6 +62,9 @@ class CrumbsDowelProvider extends DowelServiceProvider {
           'size).\n'
           '- Pass `level: "<name>"` (e.g. `"WARNING"`, `"SEVERE"`) to '
           'filter by minimum log level; omit for all levels.\n'
+          '- Pass `logger: "<name>"` to keep one logger\'s records.\n'
+          '- Pass the returned `cursor` back as `since` to read only newer '
+          'records; with `since`, `limit` keeps the oldest N after it.\n'
           '- Returned oldest-first (last entry is newest); pair with crumbs_clear before a '
           'repro to isolate just the relevant logs.\n'
           '- For HTTP traffic use crumbs_requests; for crashes use '
@@ -74,6 +78,19 @@ class CrumbsDowelProvider extends DowelServiceProvider {
                 'Minimum log level to include. Common '
                 'values: `FINE`, `INFO`, `WARNING`, `SEVERE`, '
                 '`SHOUT`. Omit for all levels.',
+          },
+          'logger': {
+            'type': 'string',
+            'description':
+                'Exact logger name to include. Omit for every logger.',
+          },
+          'since': {
+            'type': 'integer',
+            'description':
+                'Microseconds, exclusive, compared with each record\'s '
+                '`atUs`: pass the `cursor` of the previous answer to read '
+                'only newer records. A value that is not an integer is '
+                'refused.',
           },
           'limit': {
             'type': 'integer',
@@ -93,8 +110,8 @@ class CrumbsDowelProvider extends DowelServiceProvider {
           'running Flutter app.\n'
           '\n'
           'Reads the Crumbs HTTP ring buffer (populated by an HTTP '
-          'adapter; for Dio, call `DioHttpAdapter.recordRequest` from '
-          'your own interceptor). Each record carries method, url, status code, '
+          'adapter, or by the app\'s own interceptor calling '
+          '`CrumbsStore.recordHttp`). Each record carries method, url, status code, '
           'duration, request headers, response body snippet, and '
           'error if the call failed. Use this to debug API issues '
           'without instrumenting the app or watching network panels '
@@ -127,7 +144,7 @@ class CrumbsDowelProvider extends DowelServiceProvider {
           'Clear every Crumbs ring buffer in one call.\n'
           '\n'
           'Wipes all 10 ring buffers atomically (http, logs, '
-          'exceptions, events, gates, dumps, queries, caches, magic '
+          'exceptions, events, gates, dumps, queries, caches, '
           'models, frame perf) so the next crumbs_* read returns only '
           'records '
           'produced AFTER this clear. Useful as a "set zero" before '
@@ -197,6 +214,10 @@ class CrumbsDowelProvider extends DowelServiceProvider {
           'size).\n'
           '- Returned oldest-first (last entry is newest); pair with crumbs_clear before a '
           'repro to isolate just the relevant event sequence.\n'
+          '- Pass `type: "<prefix>"` to keep the events whose type starts '
+          'with it.\n'
+          '- Pass the returned `cursor` back as `since` to read only newer '
+          'records; with `since`, `limit` keeps the oldest N after it.\n'
           '- Only events dispatched through the Magic `Event` facade '
           'are recorded; raw `ChangeNotifier.notifyListeners` calls '
           'are invisible to this tool.\n'
@@ -211,6 +232,20 @@ class CrumbsDowelProvider extends DowelServiceProvider {
                 'Maximum number of event records to return '
                 '(oldest-first; last entry is newest). Omit for the whole buffer (cap '
                 'enforced by the ring-buffer size, typically 500).',
+          },
+          'type': {
+            'type': 'string',
+            'description':
+                'Prefix of the event type to include. Omit for every '
+                'event.',
+          },
+          'since': {
+            'type': 'integer',
+            'description':
+                'Microseconds, exclusive, compared with each record\'s '
+                '`atUs`: pass the `cursor` of the previous answer to read '
+                'only newer records. A value that is not an integer is '
+                'refused.',
           },
         },
       },

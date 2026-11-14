@@ -1,28 +1,34 @@
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 
-/// An immutable Magic cache operation record captured by MagicCacheWatcher
-/// (shipped in `magic` package).
-class MagicCacheRecord {
-  MagicCacheRecord({
-    required this.operation,
-    required this.key,
+/// An immutable model lifecycle event, recorded through
+/// [CrumbsStore.recordModel] by a watcher of the app's model layer (on Magic,
+/// the model watcher `magic_devtools` registers).
+final class ModelRecord {
+  ModelRecord({
+    required this.modelClass,
+    required this.event,
+    required this.modelKey,
     required this.time,
-    this.ttl,
+    this.attributes,
     int? atUs,
     this.interactionId,
     this.linkedBy,
   }) : atUs = atUs ?? FlutterTimeline.now;
 
-  /// 'put' | 'get' | 'forget' | 'hit' | 'miss'
-  final String operation;
-  final String key;
+  final String modelClass;
+
+  /// 'created' | 'saved' | 'deleted'
+  final String event;
+  final String modelKey;
   final DateTime time;
-  final Duration? ttl;
+  final Map<String, dynamic>? attributes;
 
   /// Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at
   /// construction unless the caller supplies one explicitly. Comparable
   /// across every crumbs record type regardless of wall-clock skew;
-  /// [time] stays the wall-clock field for display.
+  /// [time] stays the wall-clock field for display. Keep an explicit value
+  /// in step with insertion order: a reader that pages by `atUs` assumes the
+  /// two agree.
   final int atUs;
 
   /// Correlates this record to others captured during the same logical
@@ -36,10 +42,11 @@ class MagicCacheRecord {
   final String? linkedBy;
 
   Map<String, dynamic> toJson() => {
-    'operation': operation,
-    'key': key,
+    'modelClass': modelClass,
+    'event': event,
+    'modelKey': modelKey,
     'time': time.toIso8601String(),
-    if (ttl != null) 'ttlMs': ttl!.inMilliseconds,
+    if (attributes != null) 'attributes': attributes,
     'atUs': atUs,
     if (interactionId != null) 'interactionId': interactionId,
     if (linkedBy != null) 'linkedBy': linkedBy,

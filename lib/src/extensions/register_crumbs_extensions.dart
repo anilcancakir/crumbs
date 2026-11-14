@@ -38,7 +38,7 @@ Future<developer.ServiceExtensionResponse> requestsHandler(
   final limit = int.tryParse(params['limit'] ?? '');
   final records = CrumbsStore.recentHttp(limit: limit);
   return developer.ServiceExtensionResponse.result(
-    jsonEncode({'records': records.map((r) => r.toJson()).toList()}),
+    jsonEncode({'requests': records.map((r) => r.toJson()).toList()}),
   );
 }
 
@@ -147,9 +147,9 @@ Future<developer.ServiceExtensionResponse> eventsHandler(
   );
 }
 
-/// Handler for ext.crumbs.gates.
+/// Handler for ext.crumbs.queries.
 ///
-/// Returns recent [GateRecord] entries from [CrumbsStore]. Accepts an
+/// Returns recent [QueryRecord] entries from [CrumbsStore]. Accepts an
 /// optional `limit` param (stringified integer) to cap the result set.
 @visibleForTesting
 Future<developer.ServiceExtensionResponse> queriesHandler(
@@ -165,7 +165,7 @@ Future<developer.ServiceExtensionResponse> queriesHandler(
 
 /// Handler for ext.crumbs.caches.
 ///
-/// Returns recent [MagicCacheRecord] entries from [CrumbsStore]. Accepts
+/// Returns recent [CacheRecord] entries from [CrumbsStore]. Accepts
 /// an optional `limit` param (stringified integer) to cap the result set.
 @visibleForTesting
 Future<developer.ServiceExtensionResponse> cachesHandler(
@@ -357,6 +357,12 @@ developer.ServiceExtensionResponse _invalidSince() =>
 /// `atUs` ([atUs] reads it), so the page may exceed [limit] by those ties:
 /// the next read filters strictly after the cursor and would otherwise never
 /// see them.
+///
+/// Both guarantees assume [records] (store order, which is insertion order)
+/// is also `atUs` order. That holds while every record takes its `atUs` from
+/// `FlutterTimeline.now` at construction; `atUs` is a constructor argument,
+/// though, and a record inserted with a value behind one already returned
+/// sits at or before the cursor, so the next read skips it.
 List<T> _page<T>(
   List<T> records,
   int? limit, {

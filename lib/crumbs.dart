@@ -1,4 +1,4 @@
-/// crumbs: passive inspector for Flutter apps (Telescope/Pail analog).
+/// crumbs: passive runtime inspector for Flutter apps.
 ///
 /// Captures HTTP traffic (a pluggable adapter), logs, uncaught exceptions,
 /// debug dumps, events, gate checks, queries and cache operations into
@@ -7,15 +7,15 @@
 /// Extension points:
 /// - [CrumbsPlugin.registerHttpAdapter] for pluggable HTTP capture (Dio,
 ///   package:http, Chopper, Magic's Http facade).
-/// - [CrumbsPlugin.registerWatcher] for additional data collectors (Magic
-///   model lifecycle, Magic cache events, custom domain events).
+/// - [CrumbsPlugin.registerWatcher] for additional data collectors (model
+///   lifecycle, cache operations, custom domain events).
 ///
 /// Records are read via [CrumbsStore.recent<X>(limit)]. Live updates via
 /// broadcast streams ([CrumbsStore.onHttpRecord], etc.).
 library;
 
-export 'src/adapters/dio_http_adapter.dart';
 export 'src/adapters/http_adapter.dart';
+export 'src/records/cache_record.dart';
 export 'src/records/dump_record.dart';
 export 'src/records/event_record.dart';
 export 'src/records/exception_record.dart';
@@ -23,8 +23,7 @@ export 'src/records/frame_perf_record.dart';
 export 'src/records/gate_record.dart';
 export 'src/records/http_request_record.dart';
 export 'src/records/log_record_entry.dart';
-export 'src/records/magic_cache_record.dart';
-export 'src/records/magic_model_record.dart';
+export 'src/records/model_record.dart';
 export 'src/records/query_record.dart';
 export 'src/crumbs_dowel_provider.dart';
 export 'src/crumbs_file_sink.dart';

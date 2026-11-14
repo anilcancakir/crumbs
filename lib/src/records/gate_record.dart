@@ -1,6 +1,6 @@
 /// An immutable authorization gate check record captured by a gate watcher
 /// (e.g. MagicGateWatcher shipped in the `magic` package).
-class GateRecord {
+final class GateRecord {
   GateRecord({
     required this.ability,
     required this.result,

@@ -847,5 +847,57 @@ void main() {
         expect(File(mainDartPath).readAsStringSync(), equals(afterFirst));
       });
     });
+
+    group('the kDebugMode import', () {
+      late Directory tempDir;
+
+      setUp(() {
+        tempDir = Directory.systemTemp.createTempSync('crumbs_install_debug_');
+      });
+
+      tearDown(() => tempDir.deleteSync(recursive: true));
+
+      test('is skipped when foundation.dart is already imported in full, '
+          'which would make it an unnecessary_import', () async {
+        final mainDartPath = _seedProject(
+          tempDir,
+          mainDartContents: '''
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(const App());
+}
+''',
+        );
+
+        await _runInstallIn(tempDir, BufferedOutput());
+
+        final result = File(mainDartPath).readAsStringSync();
+        expect(result, isNot(contains('show kDebugMode')));
+        expect(result, contains('if (kDebugMode) {'));
+        expect(result, contains("import 'package:crumbs/crumbs.dart';"));
+      });
+
+      test('is added when foundation.dart is not imported', () async {
+        final mainDartPath = _seedProject(
+          tempDir,
+          mainDartContents: '''
+import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(const App());
+}
+''',
+        );
+
+        await _runInstallIn(tempDir, BufferedOutput());
+
+        expect(
+          File(mainDartPath).readAsStringSync(),
+          contains("import 'package:flutter/foundation.dart' show kDebugMode;"),
+        );
+      });
+    });
   });
 }

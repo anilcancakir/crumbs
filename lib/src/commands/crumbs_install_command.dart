@@ -171,8 +171,12 @@ class CrumbsInstallCommand extends DowelCommand {
         magicSupport == MagicDevtoolsCrumbsSupport.available;
 
     // 3a. Imports first. ConfigEditor.addImportToFile (delegated by
-    //     MainDartEditor.addImport) is idempotent on duplicates.
-    if (wiresCrumbs || wiresMagic) {
+    //     MainDartEditor.addImport) skips only an exact duplicate, so a file
+    //     that already imports foundation.dart in full would gain a redundant
+    //     `show kDebugMode` import, which the analyzer flags as
+    //     unnecessary_import.
+    if ((wiresCrumbs || wiresMagic) &&
+        !_fullFoundationImport.hasMatch(original)) {
       MainDartEditor.addImport(
         mainDartPath,
         "import 'package:flutter/foundation.dart' show kDebugMode;",
@@ -354,6 +358,13 @@ class CrumbsInstallCommand extends DowelCommand {
     if (!pubspec.existsSync()) return false;
     return RegExp(r'\n  magic_devtools:').hasMatch(pubspec.readAsStringSync());
   }
+
+  /// An import of `package:flutter/foundation.dart` with no prefix and no
+  /// `show` or `hide`, which already brings `kDebugMode` into scope.
+  static final RegExp _fullFoundationImport = RegExp(
+    r'''^\s*import\s+['"]package:flutter/foundation\.dart['"]\s*;''',
+    multiLine: true,
+  );
 }
 
 /// What the consumer's resolved `magic_devtools` offers crumbs, read by

@@ -19,11 +19,14 @@ const Set<String> defaultHiddenRequestHeaders = <String>{
 
 // Laravel hides `password` and `password_confirmation`; the rest are the
 // names a Fortify-style password change, two-factor challenge
-// (`two_factor_token`, `recovery_code`) and OAuth or social login
-// (`authorization_code`, `id_token`) send a credential under. Kept to names
-// that are credentials in practice, so a debugging agent still sees the
-// ordinary fields of a request. A one-time `code` is left visible: the name
-// is too generic to hide.
+// (`two_factor_token`, `recovery_code`), OAuth or social login
+// (`authorization_code`, `id_token`), an API key and a signed or presigned
+// URL (`signature`, `sig`, the `x-amz-*` credentials) send a credential
+// under. The same set masks the request URL's query, where a callback or a
+// presigned link carries them. Kept to names that are credentials in
+// practice, so a debugging agent still sees the ordinary fields of a
+// request. A one-time `code` is left visible: the name is too generic to
+// hide.
 const Set<String> defaultHiddenRequestParameters = <String>{
   'password',
   'password_confirmation',
@@ -38,6 +41,13 @@ const Set<String> defaultHiddenRequestParameters = <String>{
   'id_token',
   'two_factor_token',
   'recovery_code',
+  'api_key',
+  'apikey',
+  'signature',
+  'sig',
+  'x-amz-signature',
+  'x-amz-credential',
+  'x-amz-security-token',
 };
 
 // Laravel hides nothing in a response by default, but a Sanctum login
