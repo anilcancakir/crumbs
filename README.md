@@ -67,7 +67,7 @@ void main() {
 
 The guard belongs to the call site: crumbs installs none of its own. `!kReleaseMode` is what the installer writes: it keeps crumbs in debug and profile builds, and a frame measurement needs a profile build. A release build tree-shakes crumbs. Without a guard crumbs ships in release, and anyone who reaches that app's VM Service can read every buffer. `--dart-define=CRUMBS_DISABLE=1` makes `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` return without installing anything, in a build that must not expose the extensions. The [`example/`](example/) app wires the core watchers and routes Dio traffic into the HTTP buffer.
 
-On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter and the model, cache, event, gate and query watchers. [`magic_devtools`](https://pub.dev/packages/magic_devtools) 1.0.0 and later ship the crumbs integration (`package:magic_devtools/crumbs.dart`); with an earlier release the installer warns and skips the Magic wiring.
+On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter and the model, cache, event, gate and query watchers. A [`magic_devtools`](https://pub.dev/packages/magic_devtools) release built on crumbs ships the Magic integration (`package:magic_devtools/crumbs.dart`); the installer wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade.
 
 ## What it captures
 
@@ -157,7 +157,7 @@ dart run dowel commands:refresh
 dart run crumbs mcp:install
 ```
 
-The old dispatcher and codegen barrels import `fluttersdk_artisan`, and the installer keeps a file that exists, so they go first. Rename the imports and identifiers below, and in your own commands under `lib/app/commands/` replace `package:fluttersdk_artisan/artisan.dart` with `package:dowel/dowel.dart` and `Artisan*` with `Dowel*` before `commands:refresh`. Delete the `fluttersdk` entry from `.mcp.json` and run `/mcp reconnect dowel`. On a Magic app, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs: `magic_devtools` 1.0.0 and later ship the crumbs integration, so upgrade to it and rerun `dart run crumbs crumbs:install`.
+The old dispatcher and codegen barrels import `fluttersdk_artisan`, and the installer keeps a file that exists, so they go first. Rename the imports and identifiers below, and in your own commands under `lib/app/commands/` replace `package:fluttersdk_artisan/artisan.dart` with `package:dowel/dowel.dart` and `Artisan*` with `Dowel*` before `commands:refresh`. Delete the `fluttersdk` entry from `.mcp.json` and run `/mcp reconnect dowel`. On a Magic app, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs: a `magic_devtools` release built on crumbs ships the crumbs integration, so upgrade to it and rerun `dart run crumbs crumbs:install`.
 
 | Before | After |
 |---|---|

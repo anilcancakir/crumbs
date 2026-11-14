@@ -58,7 +58,7 @@ In a `magic_devtools` release built on crumbs, `MagicCrumbsIntegration`, `MagicH
 | `CrumbsFileSink` writes only records with `redacted: true` | A record made before a redactor existed was never masked | `flutter test test/src/crumbs_file_sink_test.dart --plain-name "unredacted"` |
 | A caller's file name is only compared with the sink's listing, never joined into a path | Traversal through `ext.crumbs.file` | `flutter test test/src/crumbs_file_sink_test.dart --plain-name "refuses"` |
 | A failed background flush stops the sink instead of throwing | A thrown write would be recorded as an exception, written, and fail again | `flutter test test/src/crumbs_file_sink_test.dart --plain-name "a failed batch write stops the sink"` |
-| A cursor read never skips or repeats a record, while insertion order is `atUs` order (a record built with an explicit `atUs` behind one already read is skipped); a non-integer `since` is refused | Agents page with `--follow` and trust an empty page | `flutter test test/src/extensions/register_crumbs_extensions_test.dart --plain-name "cursor"` |
+| A cursor read never skips or repeats a record that exists when the page is read, while insertion order is `atUs` order (a record built with an explicit `atUs` behind one already read is skipped, and a record added later with the same `atUs` as the page's last record can be missed); a non-integer `since` is refused | Agents page with `--follow` and trust an empty page | `flutter test test/src/extensions/register_crumbs_extensions_test.dart --plain-name "cursor"` |
 | Replaced global hooks are chain-preserved and restored exactly, and the previous handler runs even when recording throws | Sentry and Bugsnag share them | `flutter test test/src/watchers/exception_watcher_test.dart test/src/watchers/dump_watcher_test.dart` |
 | One `FramePerfWatcher` counts frames, however many are registered | A doubled `livenessCounter` hides a stalled engine | `flutter test test/src/watchers/frame_perf_watcher_test.dart --plain-name "SECOND watcher instance"` |
 
@@ -115,4 +115,4 @@ Timeline on disk:
 - `livenessCounter` advances from a post-frame callback, which also runs while a deferred first frame keeps frames from the engine: `lib/src/watchers/frame_perf_watcher.dart`
 - `vsyncStartUs` is not proven to share the `atUs` clock: `lib/src/records/frame_perf_record.dart`
 
-Last reviewed: 2026-11-14, after the review fixes to redaction and the shipped watchers.
+Last reviewed: 2026-11-14, after the review fixes to redaction, the shipped watchers and the cursor paging claim.

@@ -1,6 +1,6 @@
 # Cursor and filters
 
-Follow the log and event buffers without re-reading them or skipping a record: the filters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events`, the matching CLI flags, and the `followCursor` loop.
+Follow the log and event buffers without re-reading them: the filters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events`, the matching CLI flags, and the `followCursor` loop.
 
 The parameters belong to the VM Service extensions and the CLI, and the MCP tools declare them too: `crumbs_tail` takes `limit`, `level`, `logger` and `since`, and `crumbs_events` takes `limit`, `type` and `since`. The answer carries the same `cursor`.
 
@@ -33,8 +33,10 @@ were new.
 
 The filters run first, then `limit`:
 
-- With `since`, `limit` keeps the OLDEST N records after it. Paging by `cursor` then skips nothing. A page cut
-  inside a run of records sharing one `atUs` keeps the whole run, so it may exceed `limit` by those ties.
+- With `since`, `limit` keeps the OLDEST N records after it. A page cut inside a run of records
+  sharing one `atUs` keeps the whole run, so it may exceed `limit` by those ties. Paging by `cursor` is exact for
+  the records that exist when the page is read; a record added later with the same microsecond `atUs` as the
+  page's last record can be missed, because the next read is exclusive.
 - Without `since`, `limit` keeps the NEWEST N records that matched.
 
 Records come back oldest first either way.

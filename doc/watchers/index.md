@@ -259,7 +259,7 @@ if (!kReleaseMode) {
 }
 ```
 
-`magic_devtools` 1.0.0 and later ship the crumbs integration (`package:magic_devtools/crumbs.dart`); with an earlier release the installer warns and skips the Magic wiring. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
+A `magic_devtools` release built on crumbs ships the Magic integration (`package:magic_devtools/crumbs.dart`); the installer wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
 
 | Watcher | Name | Subscribes to | Record |
 |:--------|:-----|:--------------|:-------|

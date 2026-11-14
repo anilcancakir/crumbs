@@ -37,7 +37,7 @@ Record fields are in `records.md`.
 - `crumbs_tail`: `level` is a minimum level name, compared case-insensitively against the `package:logging` order `FINEST`, `FINER`, `FINE`, `CONFIG`, `INFO`, `WARNING`, `SEVERE`, `SHOUT`. A name outside that list (`ALL`, a typo) matches nothing. The buffer keeps every level; the filter runs at read time.
 - `crumbs_exceptions`: errors that reach `FlutterError.onError` or `PlatformDispatcher.instance.onError`. An exception the code caught appears only if it logged it, and then in `crumbs_tail`.
 - `crumbs_dumps`: `debugPrint` output only. `print` and `stdout.write` do not go through `debugPrint`.
-- `crumbs_events`, `crumbs_gates`, `crumbs_queries`, `crumbs_caches`: filled only by the Magic watchers `MagicCrumbsIntegration` registers, which `magic_devtools` 1.0.0 and later ship (auth, database and gate-definition events, checks through `Gate`, queries that dispatch `QueryExecuted`, `Cache` facade operations). Magic model events go to the model buffer, which no tool serves.
+- `crumbs_events`, `crumbs_gates`, `crumbs_queries`, `crumbs_caches`: filled only by the Magic watchers `MagicCrumbsIntegration` registers, which a `magic_devtools` release built on crumbs ships (auth, database and gate-definition events, checks through `Gate`, queries that dispatch `QueryExecuted`, `Cache` facade operations). Magic model events go to the model buffer, which no tool serves.
 - `crumbs_frames`: `livenessCounter` is present on every answer, the list empty or not. It counts the frames an installed `FramePerfWatcher` has seen drawn, so it stays at zero when none is registered; when it does not move between two reads, either no watcher is installed or no frame was drawn between them. `blocks` is filled only while `FlutterTimeline` collection is on (a tapir perf session in its default attribution mode turns it on).
 - `crumbs_clear`: empties every buffer the store holds, frames included. It does not touch the file sink's files or any other reporter.
 
@@ -53,7 +53,7 @@ The extensions `ext.crumbs.pause`, `ext.crumbs.resume`, `ext.crumbs.files` and `
 | `logger` | tail | Exact logger name |
 | `type` | events | Prefix of `eventType` |
 
-`cursor` in the answer is the largest `atUs` returned; with nothing returned it is the `since` you passed, or null without one. With `since`, `limit` keeps the oldest N after it and extends the page to every record sharing the last `atUs`, so passing `cursor` back as `since` reads every record exactly once. Without `since`, `limit` keeps the newest N.
+`cursor` in the answer is the largest `atUs` returned; with nothing returned it is the `since` you passed, or null without one. With `since`, `limit` keeps the oldest N after it and extends the page to every record sharing the last `atUs`, so passing `cursor` back as `since` reads each record that exists when the page is read exactly once; a record added later with the same microsecond `atUs` as the page's last record can be missed. Without `since`, `limit` keeps the newest N.
 
 ```text
 crumbs_tail { logger: "Sync", limit: 20 }             {messages: [...], cursor: 1734567890123}

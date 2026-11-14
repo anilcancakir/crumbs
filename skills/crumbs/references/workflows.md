@@ -42,7 +42,7 @@ Exception records carry no `atUs`; line them up by `time`. To reproduce it clean
 
 ## Trace a Magic action
 
-With `MagicCrumbsIntegration` installed (`magic_devtools` 1.0.0 and later ship it), one action fans out across buffers:
+With `MagicCrumbsIntegration` installed (a `magic_devtools` release built on crumbs ships it), one action fans out across buffers:
 
 ```text
 1. crumbs_clear
@@ -70,7 +70,7 @@ Join events, queries, requests and caches on `atUs`; gates have only `time`.
 ./bin/dowel crumbs:events --type=Auth --json --since=<that atUs> # only what came after
 ```
 
-Over MCP, pass the `cursor` of one answer as `since` on the next: `crumbs_events { type: "Auth", since: <cursor> }`. With `since`, `limit` keeps the oldest records after it, so paging never skips one.
+Over MCP, pass the `cursor` of one answer as `since` on the next: `crumbs_events { type: "Auth", since: <cursor> }`. With `since`, `limit` keeps the oldest records after it, so paging is exact for the records that exist when the page is read; a record added later with the same microsecond `atUs` as the page's last record can be missed.
 
 ## Read the timeline on disk
 
