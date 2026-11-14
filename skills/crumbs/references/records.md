@@ -1,6 +1,6 @@
 # Records reference
 
-The JSON keys of each record as `toJson()` writes it, which is what every tool, command and timeline line carries. A key marked optional is left out when its value is null.
+The JSON keys of each record as `toJson()` writes it, which is what an MCP answer, a `--json` line and a timeline line carry; a command's text line prints a subset. A key marked optional is left out when its value is null.
 
 ## Contents
 
@@ -41,6 +41,8 @@ Answer key `records`. The credential masking of `CrumbsRedaction` has already ru
 | `startUs`, `endUs` | int | Optional; send and arrival on the `atUs` clock |
 | `atUs`, `interactionId`, `linkedBy`, `redacted` | | See above |
 
+The bundled `DioHttpAdapter.recordRequest` fills `url`, `method`, `statusCode`, `durationMs`, `isError`, `requestHeaders`, the two bodies, and `timestamp` and `atUs` from the clock; `requestId`, `startUs`, `endUs`, `attributedHeuristically`, `interactionId` and `linkedBy` come from an adapter that sets them.
+
 ## LogRecordEntry
 
 Answer key `messages`. Written by `LogWatcher` from `package:logging`.
@@ -63,7 +65,7 @@ Answer key `exceptions`. Written by `ExceptionWatcher`.
 | `exceptionType` | String | The runtime type |
 | `message` | String | |
 | `time` | String | Wall clock; no `atUs` |
-| `stackTrace`, `isolate` | String | Optional |
+| `stackTrace`, `isolate` | String | Optional; `ExceptionWatcher` never sets `isolate` |
 | `redacted` | bool | |
 
 ## DumpRecord
@@ -72,7 +74,7 @@ Answer key `dumps`. Written by `DumpWatcher` from `debugPrint`: `message`, `time
 
 ## EventRecord
 
-Answer key `events`. Written by an event watcher (Magic's, through `MagicCrumbsIntegration`).
+Answer key `events`. Written by an event watcher (Magic's, through `MagicCrumbsIntegration` in a `magic_devtools` release built on crumbs).
 
 | Key | Type | Notes |
 |---|---|---|

@@ -35,14 +35,14 @@ The fault already happened, so do not clear.
 1. crumbs_exceptions { limit: 5 }       the newest is last: read exceptionType, message, stackTrace
 2. crumbs_tail { limit: 100 }           the log lines before it, by time
 3. crumbs_requests { limit: 20 }        a 4xx or 5xx just before the throw is the usual cause
-4. crumbs_gates { limit: 10 }           on a Magic app, a denied ability before an authorisation error
+4. crumbs_gates { limit: 10 }           with the Magic integration, a denied ability before an authorisation error
 ```
 
 Exception records carry no `atUs`; line them up by `time`. To reproduce it cleanly afterwards, run the verify loop above.
 
 ## Trace a Magic action
 
-With `MagicCrumbsIntegration` installed, one action fans out across buffers:
+With `MagicCrumbsIntegration` installed (it exists only in a `magic_devtools` release built on crumbs), one action fans out across buffers:
 
 ```text
 1. crumbs_clear
@@ -82,7 +82,7 @@ When the host runs a `CrumbsFileSink`, redacted log, event and exception records
 ./bin/dowel crumbs:files --name=<file> --offset=<next offset>    # continue
 ```
 
-Each line is `{"kind": "log"|"event"|"exception", ...}` followed by the record's keys; join kinds on `atUs` (exceptions have only `time`). "No timeline file sink is running." means the host started none. A sink that runs but writes nothing has no `redactor` set (it writes only `redacted: true` records) or stopped after a failed write.
+Each line is `{"kind": "log"|"event"|"exception", ...}` followed by the record's keys; join kinds on `atUs` (exceptions have only `time`). "No timeline file sink is running." means the host started none, or the sink stopped after a failed write. A sink that runs but writes nothing has no `redactor` set (it writes only `redacted: true` records).
 
 ## Capture HTTP in an app without Magic
 
@@ -129,7 +129,7 @@ final class CrumbsDioInterceptor extends Interceptor {
 }
 ```
 
-Inside the debug guard: `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter());` and `dio.interceptors.add(CrumbsDioInterceptor());`. Headers and bodies are masked at insert. This adapter reports no in-flight count, so `CrumbsStore.pendingHttpCount` stays 0; an adapter that tracks one overrides `pendingCount`.
+Inside the debug guard: `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter());` and `dio.interceptors.add(CrumbsDioInterceptor());`. Headers and bodies are masked at insert, but the store masks only JSON and form strings: run a body held as a `Map` through `CrumbsRedaction.redactParameters` first, and a string body through `CrumbsRedaction.redactBody` before truncating it, because a cut JSON body no longer parses. This adapter reports no in-flight count, so `CrumbsStore.pendingHttpCount` stays 0; an adapter that tracks one overrides `pendingCount`.
 
 ## Turn on redaction and the timeline
 
@@ -142,7 +142,7 @@ CrumbsRedaction.redactor =
 await CrumbsFileSink.start(directory: timelineDirectory); // an absolute directory the app owns
 ```
 
-The redactor must be pure and total: a throw drops the record rather than let it through unmasked. Set it before the records you want on disk are made; a record buffered while it was null stays `redacted: false` and the sink skips it. `start` throws when the directory cannot be created, and on web.
+The redactor must be pure and total: a throw drops the record rather than let it through unmasked. Set it before the records you want on disk are made; a record buffered while it was null stays `redacted: false` and the sink skips it. `start` throws a `FileSystemException` when the directory cannot be created or written. The sink writes through `dart:io`, so it needs a native target; `maxFileBytes` (default 1 MiB) and `maxFiles` (default 8) bound its disk use.
 
 ## Coexist with Sentry or Bugsnag
 
