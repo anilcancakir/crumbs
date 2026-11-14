@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/gate_record.dart';
+import 'package:crumbs/src/records/gate_record.dart';
 
 void main() {
   group('GateRecord', () {

@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/frame_perf_record.dart';
-import 'package:fluttersdk_telescope/src/records/http_request_record.dart';
-import 'package:fluttersdk_telescope/src/telescope_store.dart';
+import 'package:crumbs/src/records/frame_perf_record.dart';
+import 'package:crumbs/src/records/http_request_record.dart';
+import 'package:crumbs/src/crumbs_store.dart';
 
 void main() {
   final fixedTime = DateTime.utc(2026, 8, 25, 12, 0, 0);
 
   setUp(() {
-    TelescopeStore.resetForTesting();
+    CrumbsStore.resetForTesting();
   });
 
   group('FramePerfRecord', () {
@@ -126,7 +126,7 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // Clock, interaction link (shared shape across every telescope record)
+    // Clock, interaction link (shared shape across every crumbs record)
     // -------------------------------------------------------------------------
 
     test('atUs defaults to FlutterTimeline.now captured at construction', () {
@@ -210,7 +210,7 @@ void main() {
     });
   });
 
-  group('TelescopeStore frame perf buffer', () {
+  group('CrumbsStore frame perf buffer', () {
     FramePerfRecord frame(int n) => FramePerfRecord(
           frameNumber: n,
           buildMicros: n,
@@ -222,11 +222,11 @@ void main() {
         );
 
     test('recordFramePerf appends and recentFramePerf returns in order', () {
-      TelescopeStore.recordFramePerf(frame(1));
-      TelescopeStore.recordFramePerf(frame(2));
-      TelescopeStore.recordFramePerf(frame(3));
+      CrumbsStore.recordFramePerf(frame(1));
+      CrumbsStore.recordFramePerf(frame(2));
+      CrumbsStore.recordFramePerf(frame(3));
 
-      final recent = TelescopeStore.recentFramePerf();
+      final recent = CrumbsStore.recentFramePerf();
 
       expect(
         recent.map((r) => r.frameNumber).toList(),
@@ -237,13 +237,13 @@ void main() {
     test(
         'setting the frame buffer own cap and recording cap+5 evicts the '
         'oldest, leaving exactly cap surviving', () {
-      TelescopeStore.setFramePerfCapacity(10);
+      CrumbsStore.setFramePerfCapacity(10);
 
       for (var i = 0; i < 15; i++) {
-        TelescopeStore.recordFramePerf(frame(i));
+        CrumbsStore.recordFramePerf(frame(i));
       }
 
-      final recent = TelescopeStore.recentFramePerf();
+      final recent = CrumbsStore.recentFramePerf();
 
       expect(recent.length, equals(10));
       // Oldest 5 (frameNumber 0..4) evicted; surviving range is 5..14.
@@ -254,13 +254,13 @@ void main() {
     test(
         'recording many frames leaves the shared _cap (other buffers) '
         'untouched', () {
-      TelescopeStore.setFramePerfCapacity(10);
+      CrumbsStore.setFramePerfCapacity(10);
 
       for (var i = 0; i < 15; i++) {
-        TelescopeStore.recordFramePerf(frame(i));
+        CrumbsStore.recordFramePerf(frame(i));
       }
 
-      TelescopeStore.recordHttp(HttpRequestRecord(
+      CrumbsStore.recordHttp(HttpRequestRecord(
         url: 'https://example.test/',
         method: 'GET',
         statusCode: 200,
@@ -270,7 +270,7 @@ void main() {
       ));
 
       for (var i = 0; i < 600; i++) {
-        TelescopeStore.recordHttp(HttpRequestRecord(
+        CrumbsStore.recordHttp(HttpRequestRecord(
           url: 'https://example.test/',
           method: 'GET',
           statusCode: 200,
@@ -282,12 +282,12 @@ void main() {
 
       // The shared _cap default (500) governs the http buffer; the frame
       // buffer's own cap of 10 must not have leaked into it.
-      expect(TelescopeStore.recentHttp().length, equals(500));
+      expect(CrumbsStore.recentHttp().length, equals(500));
     });
 
     test('clearFramePerf() empties only the frame buffer', () {
-      TelescopeStore.recordFramePerf(frame(1));
-      TelescopeStore.recordHttp(HttpRequestRecord(
+      CrumbsStore.recordFramePerf(frame(1));
+      CrumbsStore.recordHttp(HttpRequestRecord(
         url: 'https://example.test/',
         method: 'GET',
         statusCode: 200,
@@ -296,30 +296,30 @@ void main() {
         timestamp: fixedTime,
       ));
 
-      TelescopeStore.clearFramePerf();
+      CrumbsStore.clearFramePerf();
 
-      expect(TelescopeStore.recentFramePerf(), isEmpty);
-      expect(TelescopeStore.recentHttp(), isNotEmpty);
+      expect(CrumbsStore.recentFramePerf(), isEmpty);
+      expect(CrumbsStore.recentHttp(), isNotEmpty);
     });
 
     test('resetForTesting() empties the frame buffer and restores its cap', () {
-      TelescopeStore.setFramePerfCapacity(5);
+      CrumbsStore.setFramePerfCapacity(5);
 
       for (var i = 0; i < 8; i++) {
-        TelescopeStore.recordFramePerf(frame(i));
+        CrumbsStore.recordFramePerf(frame(i));
       }
 
-      TelescopeStore.resetForTesting();
+      CrumbsStore.resetForTesting();
 
-      expect(TelescopeStore.recentFramePerf(), isEmpty);
+      expect(CrumbsStore.recentFramePerf(), isEmpty);
 
       for (var i = 0; i < 4000; i++) {
-        TelescopeStore.recordFramePerf(frame(i));
+        CrumbsStore.recordFramePerf(frame(i));
       }
 
       // Default frame-perf capacity is 3600; verify it was restored rather
       // than left at the small test value of 5.
-      expect(TelescopeStore.recentFramePerf().length, equals(3600));
+      expect(CrumbsStore.recentFramePerf().length, equals(3600));
     });
   });
 }

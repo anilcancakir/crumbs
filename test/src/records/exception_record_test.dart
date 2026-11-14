@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/exception_record.dart';
-import 'package:fluttersdk_telescope/src/telescope_redaction.dart';
+import 'package:crumbs/src/records/exception_record.dart';
+import 'package:crumbs/src/crumbs_redaction.dart';
 
 void main() {
   group('ExceptionRecord', () {
@@ -63,14 +63,14 @@ void main() {
     });
 
     test('redacted is true only on the copy a redactor produced', () {
-      addTearDown(TelescopeRedaction.resetForTesting);
+      addTearDown(CrumbsRedaction.resetForTesting);
       final plain = ExceptionRecord(
         exceptionType: 'StateError',
         message: 'm',
         time: time,
       );
-      TelescopeRedaction.redactor = (String s) => s;
-      final masked = TelescopeRedaction.redactExceptionRecord(plain)!;
+      CrumbsRedaction.redactor = (String s) => s;
+      final masked = CrumbsRedaction.redactExceptionRecord(plain)!;
 
       expect(plain.redacted, isFalse);
       expect(masked.redacted, isTrue);

@@ -1,26 +1,26 @@
 # Watchers
 
-Telescope ships 10 watcher units across three categories. Each unit implements one of two contracts:
-`TelescopeWatcher` (for event-driven and hook-based capture) or `TelescopeHttpAdapter` (for HTTP
-traffic capture). All units feed the matching ring buffer inside `TelescopeStore` and expose their
+Crumbs ships 10 watcher units across three categories. Each unit implements one of two contracts:
+`CrumbsWatcher` (for event-driven and hook-based capture) or `CrumbsHttpAdapter` (for HTTP
+traffic capture). All units feed the matching ring buffer inside `CrumbsStore` and expose their
 data via a VM Service extension method.
 
 <a name="call-site-guard"></a>
 ## Call-site guard
 
-`TelescopePlugin.install()` installs no mode guard of its own. The consumer gates the entire telescope
+`CrumbsPlugin.install()` installs no mode guard of its own. The consumer gates the entire crumbs
 install at the call site, and `kDebugMode` and `!kReleaseMode` both tree-shake it from release builds:
 
 ```dart
 if (!kReleaseMode) {
-  TelescopePlugin.install();
+  CrumbsPlugin.install();
   // register additional watchers here
 }
 ```
 
-- `kDebugMode` is what `telescope:install` writes into `lib/main.dart`. Debug builds carry telescope;
+- `kDebugMode` is what `crumbs:install` writes into `lib/main.dart`. Debug builds carry crumbs;
   profile and release builds do not.
-- `!kReleaseMode` also keeps telescope in profile builds. Use it when you measure performance, since a
+- `!kReleaseMode` also keeps crumbs in profile builds. Use it when you measure performance, since a
   frame measurement needs a profile build, since debug frame timings do not describe a shipped app. It is the
   guard `magic_devtools` uses and documents. Keep the guard at the call site, never inside a helper, or
   the call stays live in release and the tree-shake is lost.
@@ -35,7 +35,7 @@ internal `kDebugMode` guard (see below) and so captures nothing in a profile bui
 
 Any watcher that overrides a global Dart/Flutter hook saves the previous handler before replacing it
 and calls it inside the new handler body. On `uninstall()`, the previous handler is restored
-symmetrically. This is the Sentry/Bugsnag coexistence contract: telescope captures the record AND
+symmetrically. This is the Sentry/Bugsnag coexistence contract: crumbs captures the record AND
 forwards to whatever was registered before it. The numbered step comments in `ExceptionWatcher` are
 the canonical reference for this pattern:
 
@@ -43,14 +43,14 @@ the canonical reference for this pattern:
 // 1. Chain-preserve FlutterError.onError (sync framework errors).
 _previousOnError = FlutterError.onError;
 FlutterError.onError = (details) {
-  TelescopeStore.recordException(...);
+  CrumbsStore.recordException(...);
   _previousOnError?.call(details);
 };
 
 // 2. Chain-preserve PlatformDispatcher.instance.onError (async + isolate errors).
 _previousPlatformOnError = PlatformDispatcher.instance.onError;
 PlatformDispatcher.instance.onError = (error, stack) {
-  TelescopeStore.recordException(...);
+  CrumbsStore.recordException(...);
   return _previousPlatformOnError?.call(error, stack) ?? true;
 };
 ```
@@ -59,23 +59,23 @@ PlatformDispatcher.instance.onError = (error, stack) {
 
 ## Framework-agnostic watchers
 
-These three units are part of the `fluttersdk_telescope` core package. They have no dependency on
+These three units are part of the `crumbs` core package. They have no dependency on
 Magic or any other application framework.
 
 ### LogWatcher
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `log` |
-| Auto-install | Yes (auto-registered by `TelescopePlugin.install()`) |
-| Ring buffer | `TelescopeStore._logs` |
-| VM extension | `ext.telescope.console` |
-| Opt-out | Call `TelescopePlugin.install()` then remove it by not calling `LogWatcher().install()` directly; or skip the default auto-install path and register manually |
+| Auto-install | Yes (auto-registered by `CrumbsPlugin.install()`) |
+| Ring buffer | `CrumbsStore._logs` |
+| VM extension | `ext.crumbs.console` |
+| Opt-out | Call `CrumbsPlugin.install()` then remove it by not calling `LogWatcher().install()` directly; or skip the default auto-install path and register manually |
 
 Subscribes to `Logger.root.onRecord` from `package:logging`. Every log record that flows through
 the root logger (at any level) is converted to a `LogRecordEntry` (stamped with a monotonic `atUs`) and
-pushed to the store, through `TelescopeRedaction.redactor` when the host set one.
+pushed to the store, through `CrumbsRedaction.redactor` when the host set one.
 
 `hierarchicalLoggingEnabled` is set to `true` during install so named child loggers (`Logger('http')`,
 `Logger('auth')`, etc.) funnel through root. Install is idempotent: a second call when the
@@ -83,12 +83,12 @@ subscription is already live is a no-op.
 
 If the app does not use `package:logging`, the watcher is dormant (no records flow through
 `Logger.root`). It is still registered because adding `package:logging` later immediately benefits
-from capture without any telescope config change.
+from capture without any crumbs config change.
 
 Registration (auto-installed, shown for completeness):
 
 ```dart
-TelescopePlugin.install(); // LogWatcher registered automatically
+CrumbsPlugin.install(); // LogWatcher registered automatically
 ```
 
 Manual opt-out (skip auto-registration) is not exposed in the V1 API; file a feature request if
@@ -100,12 +100,12 @@ selective watcher exclusion is needed.
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `exception` |
-| Auto-install | No (opt-in via `TelescopePlugin.registerWatcher(ExceptionWatcher())` after install) |
-| Ring buffer | `TelescopeStore._exceptions` |
-| VM extension | `ext.telescope.exceptions` |
-| Opt-out | Simply do not register; absent registration means no error capture. To coexist with Sentry / Bugsnag, install them BEFORE telescope: the chain-preserve wraps the handler that was already there, so a reporter installed after telescope keeps receiving errors only if it preserves the chain itself. |
+| Auto-install | No (opt-in via `CrumbsPlugin.registerWatcher(ExceptionWatcher())` after install) |
+| Ring buffer | `CrumbsStore._exceptions` |
+| VM extension | `ext.crumbs.exceptions` |
+| Opt-out | Simply do not register; absent registration means no error capture. To coexist with Sentry / Bugsnag, install them BEFORE crumbs: the chain-preserve wraps the handler that was already there, so a reporter installed after crumbs keeps receiving errors only if it preserves the chain itself. |
 
 Hooks both `FlutterError.onError` (synchronous framework and widget errors) and
 `PlatformDispatcher.instance.onError` (asynchronous errors, isolate errors, plugin-originated
@@ -113,17 +113,17 @@ errors). Both hooks follow the chain-preserve pattern.
 
 The `PlatformDispatcher.onError` handler returns `_previousPlatformOnError?.call(...) ?? true`.
 When a previously-registered handler (e.g. Sentry) returns `false` to signal a fatal error and let
-the native crash reporter take over, telescope preserves that semantics. When no previous handler
+the native crash reporter take over, crumbs preserves that semantics. When no previous handler
 exists, the default `true` (handled) matches pre-install behavior.
 
 On `uninstall()`, both handlers are restored to exactly the values they held before `install()` was
 called. Calling `install()` while already installed is a no-op.
 
-Registration (opt-in; add after `TelescopePlugin.install()`):
+Registration (opt-in; add after `CrumbsPlugin.install()`):
 
 ```dart
-TelescopePlugin.install();
-TelescopePlugin.registerWatcher(ExceptionWatcher());
+CrumbsPlugin.install();
+CrumbsPlugin.registerWatcher(ExceptionWatcher());
 ```
 
 Coexistence with Sentry (the chain-preserve contract means order matters; install Sentry first):
@@ -131,7 +131,7 @@ Coexistence with Sentry (the chain-preserve contract means order matters; instal
 ```dart
 SentryFlutter.init((_) {});         // registers FlutterError.onError + PlatformDispatcher.onError
 if (kDebugMode) {
-  TelescopePlugin.install();        // wraps Sentry's handlers; Sentry still fires
+  CrumbsPlugin.install();        // wraps Sentry's handlers; Sentry still fires
 }
 ```
 
@@ -141,11 +141,11 @@ if (kDebugMode) {
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `dump` |
-| Auto-install | No (opt-in via `TelescopePlugin.registerWatcher(DumpWatcher())`) |
-| Ring buffer | `TelescopeStore._dumps` |
-| VM extension | `ext.telescope.dumps` |
+| Auto-install | No (opt-in via `CrumbsPlugin.registerWatcher(DumpWatcher())`) |
+| Ring buffer | `CrumbsStore._dumps` |
+| VM extension | `ext.crumbs.dumps` |
 | Opt-out | Do not register it; it is never auto-installed |
 
 Captures all `debugPrint` output by replacing the global `debugPrint` callback with an interceptor.
@@ -161,8 +161,8 @@ Registration:
 
 ```dart
 if (kDebugMode) {
-  TelescopePlugin.install();
-  TelescopePlugin.registerWatcher(DumpWatcher()); // opt-in
+  CrumbsPlugin.install();
+  CrumbsPlugin.registerWatcher(DumpWatcher()); // opt-in
 }
 ```
 
@@ -174,11 +174,11 @@ Opt-out: simply omit the `registerWatcher(DumpWatcher())` call.
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `frame_perf` |
-| Auto-install | No (opt-in via `TelescopePlugin.registerWatcher(FramePerfWatcher())`) |
-| Ring buffer | `TelescopeStore._framePerf` |
-| VM extension | `ext.telescope.frames` |
+| Auto-install | No (opt-in via `CrumbsPlugin.registerWatcher(FramePerfWatcher())`) |
+| Ring buffer | `CrumbsStore._framePerf` |
+| VM extension | `ext.crumbs.frames` |
 | Opt-out | Do not register it; it is never auto-installed |
 
 Joins two sources the engine reports separately: frame magnitude from
@@ -191,7 +191,7 @@ bounded pending map and the timings callback pops the matching map to emit one c
 nothing to chain-preserve here: every other listener (sentry_flutter's among them) keeps receiving
 timings while this watcher is installed. A static `livenessCounter`, incremented once per drawn
 frame regardless of whether a measurement session is running, is the only reliable proof the
-engine is rendering; it is exposed alongside every `ext.telescope.frames` response.
+engine is rendering; it is exposed alongside every `ext.crumbs.frames` response.
 
 Attribution only flows while `FlutterTimeline.debugCollectionEnabled` is true. Until a measurement
 session turns that on, the watcher records frame magnitude alone and every record's `blocks` map
@@ -201,8 +201,8 @@ Registration:
 
 ```dart
 if (kDebugMode) {
-  TelescopePlugin.install();
-  TelescopePlugin.registerWatcher(FramePerfWatcher()); // opt-in
+  CrumbsPlugin.install();
+  CrumbsPlugin.registerWatcher(FramePerfWatcher()); // opt-in
 }
 ```
 
@@ -212,14 +212,14 @@ Opt-out: simply omit the `registerWatcher(FramePerfWatcher())` call.
 
 ## HTTP adapters
 
-HTTP adapters implement `TelescopeHttpAdapter` (three methods: `name`, `install`, `uninstall`, plus
-the optional `pendingCount` getter). They feed `TelescopeStore.recordHttp` and their in-flight
-counts sum into `TelescopeStore.pendingHttpCount` (consumed by Dusk's `wait_for_network_idle`).
+HTTP adapters implement `CrumbsHttpAdapter` (three methods: `name`, `install`, `uninstall`, plus
+the optional `pendingCount` getter). They feed `CrumbsStore.recordHttp` and their in-flight
+counts sum into `CrumbsStore.pendingHttpCount` (consumed by Tapir's `wait_for_network_idle`).
 
 ### Credential redaction
 
-The HTTP buffer is served to AI agents over `ext.telescope.requests` and MCP, so
-`TelescopeStore.recordHttp` masks credentials before it buffers a record, and `onHttpRecord`
+The HTTP buffer is served to AI agents over `ext.crumbs.requests` and MCP, so
+`CrumbsStore.recordHttp` masks credentials before it buffers a record, and `onHttpRecord`
 subscribers receive the masked copy too. The model is Laravel Telescope's: three name lists,
 matched case-insensitively, each value under a matching name replaced with `********`.
 
@@ -232,9 +232,9 @@ matched case-insensitively, each value under a matching name replaced with `****
 Extend a list at install time; an addition merges with the defaults, it never replaces them:
 
 ```dart
-TelescopeRedaction.hideRequestHeaders(['X-Auth']);
-TelescopeRedaction.hideRequestParameters(['pin']);
-TelescopeRedaction.hideResponseParameters(['recovery_codes']);
+CrumbsRedaction.hideRequestHeaders(['X-Auth']);
+CrumbsRedaction.hideRequestParameters(['pin']);
+CrumbsRedaction.hideResponseParameters(['recovery_codes']);
 ```
 
 An empty value (null, `false`, `''`, `[]`, `{}`) stays visible: it is not a secret, and it explains a
@@ -250,21 +250,21 @@ over. An adapter must therefore mask a body before it stringifies or truncates i
 
 ```dart
 // A body held as a Dart structure.
-final Object? safe = TelescopeRedaction.redactParameters(
+final Object? safe = CrumbsRedaction.redactParameters(
   data,
-  TelescopeRedaction.hiddenRequestParameters,
+  CrumbsRedaction.hiddenRequestParameters,
 );
 
 // A body held as a string, before it is cut to size.
-final String? safeText = TelescopeRedaction.redactBody(
+final String? safeText = CrumbsRedaction.redactBody(
   text,
-  TelescopeRedaction.hiddenResponseParameters,
+  CrumbsRedaction.hiddenResponseParameters,
 );
 ```
 
 Both return a masked copy and never mutate their input.
 
-Beyond these name lists, a host can set `TelescopeRedaction.redactor` to run its own text redactor over
+Beyond these name lists, a host can set `CrumbsRedaction.redactor` to run its own text redactor over
 every field of the log, event, exception and HTTP records, after the key masking above; a redactor that
 throws drops the record. See [Redaction](../getting-started/redaction.md).
 
@@ -272,26 +272,26 @@ throws drops the record. See [Redaction](../getting-started/redaction.md).
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeHttpAdapter` |
+| Contract | `CrumbsHttpAdapter` |
 | Name | `dio` |
-| Auto-install | No (opt-in via `TelescopePlugin.registerHttpAdapter(DioHttpAdapter())`) |
-| Ring buffer | `TelescopeStore._http` |
-| VM extension | `ext.telescope.requests` |
+| Auto-install | No (opt-in via `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter())`) |
+| Ring buffer | `CrumbsStore._http` |
+| VM extension | `ext.crumbs.requests` |
 | Opt-out | Do not register it |
 
 Vanilla Dio adapter for Flutter apps that use raw Dio instances (not the Magic Http facade). V1
 ships as a stub: the actual Dio interceptor subclass requires `package:dio`, which is not in
-telescope's own pubspec to keep the core package HTTP-library-agnostic. The consumer adds `package:dio`
+crumbs's own pubspec to keep the core package HTTP-library-agnostic. The consumer adds `package:dio`
 to their own pubspec and wires the adapter by calling the static helper:
 
 ```dart
 // consumer pubspec: dio: ^5.x
-import 'package:fluttersdk_telescope/telescope.dart';
+import 'package:crumbs/crumbs.dart';
 
 // After constructing your Dio instance:
-dio.interceptors.add(_MyTelescopeInterceptor());
+dio.interceptors.add(_MyCrumbsInterceptor());
 
-class _MyTelescopeInterceptor extends Interceptor {
+class _MyCrumbsInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     DioHttpAdapter.recordRequest(
@@ -305,10 +305,10 @@ class _MyTelescopeInterceptor extends Interceptor {
 }
 
 // Register so the adapter shows up in the store's adapter list:
-TelescopePlugin.registerHttpAdapter(DioHttpAdapter());
+CrumbsPlugin.registerHttpAdapter(DioHttpAdapter());
 ```
 
-V1.x will move the Dio-coupled glue into a `fluttersdk_telescope_dio` sub-package so the core stays
+V1.x will move the Dio-coupled glue into a `crumbs_dio` sub-package so the core stays
 HTTP-library-agnostic.
 
 ---
@@ -317,12 +317,12 @@ HTTP-library-agnostic.
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeHttpAdapter` |
+| Contract | `CrumbsHttpAdapter` |
 | Name | `magic_http_facade` |
-| Auto-install | Yes (registered by `MagicTelescopeIntegration.install()`) |
-| Ring buffer | `TelescopeStore._http` |
-| VM extension | `ext.telescope.requests` |
-| Opt-out | Call `TelescopePlugin.install()` without calling `MagicTelescopeIntegration.install()` |
+| Auto-install | Yes (registered by `MagicCrumbsIntegration.install()`) |
+| Ring buffer | `CrumbsStore._http` |
+| VM extension | `ext.crumbs.requests` |
+| Opt-out | Call `CrumbsPlugin.install()` without calling `MagicCrumbsIntegration.install()` |
 
 Captures every request flowing through Magic's `network` driver by registering a
 `MagicNetworkInterceptor` on the driver. The interceptor pairs `onRequest` (start stopwatch) with
@@ -333,49 +333,49 @@ contract does not carry a correlation handle across `onRequest`/`onResponse` cal
 matching by call order.
 
 `pendingCount` returns the current length of the in-flight FIFO, surfaced into
-`TelescopeStore.pendingHttpCount` for Dusk's network-idle detection.
+`CrumbsStore.pendingHttpCount` for Tapir's network-idle detection.
 
 The adapter masks request and response bodies before it truncates them
-(`TelescopeRedaction.redactParameters` for a Dart structure, `redactBody` for a JSON or form-encoded string), and
-`MagicTelescopeIntegration.install()` hides the header named by magic's `auth.token.header` config
+(`CrumbsRedaction.redactParameters` for a Dart structure, `redactBody` for a JSON or form-encoded string), and
+`MagicCrumbsIntegration.install()` hides the header named by magic's `auth.token.header` config
 (default `Authorization`) in addition to the defaults. See
 [Credential redaction](#credential-redaction).
 
-Registration (via `MagicTelescopeIntegration`, the only documented entry point; ships in
-`magic_devtools` via `import 'package:magic_devtools/telescope.dart'`):
+Registration (via `MagicCrumbsIntegration`, the only documented entry point; ships in
+`magic_devtools` via `import 'package:magic_devtools/crumbs.dart'`):
 
 ```dart
-import 'package:magic_devtools/telescope.dart';
+import 'package:magic_devtools/crumbs.dart';
 
 if (kDebugMode) {
-  TelescopePlugin.install();
-  MagicTelescopeIntegration.install(); // registers MagicHttpFacadeAdapter + 5 watchers
+  CrumbsPlugin.install();
+  MagicCrumbsIntegration.install(); // registers MagicHttpFacadeAdapter + 5 watchers
 }
 ```
 
 `install()` is a no-op if `Magic.bound('network')` returns false (called too early, before
-`Magic.init()` completes). Call `MagicTelescopeIntegration.install()` after `Magic.init()`.
+`Magic.init()` completes). Call `MagicCrumbsIntegration.install()` after `Magic.init()`.
 
 ---
 
 ## Magic-stack watchers
 
-These five watchers are shipped inside the `magic_devtools` package via `MagicTelescopeIntegration`.
-They are not part of the `fluttersdk_telescope` core and are not part of the `magic` core package.
-All five are registered by a single `MagicTelescopeIntegration.install()` call. Add `magic_devtools`
-to `dev_dependencies` and import `package:magic_devtools/telescope.dart` to use them.
+These five watchers are shipped inside the `magic_devtools` package via `MagicCrumbsIntegration`.
+They are not part of the `crumbs` core and are not part of the `magic` core package.
+All five are registered by a single `MagicCrumbsIntegration.install()` call. Add `magic_devtools`
+to `dev_dependencies` and import `package:magic_devtools/crumbs.dart` to use them.
 
 ### MagicModelWatcher
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `magic_model` |
-| Package | `magic_devtools` (import `package:magic_devtools/telescope.dart`) |
-| Auto-install | Yes (via `MagicTelescopeIntegration.install()`) |
-| Ring buffer | `TelescopeStore._models` |
-| VM extension | `ext.telescope.requests` (via models key; MCP tool: `telescope_models`) |
-| Opt-out | Do not call `MagicTelescopeIntegration.install()` |
+| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
+| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
+| Ring buffer | `CrumbsStore._models` |
+| VM extension | `ext.crumbs.requests` (via models key; MCP tool: `crumbs_models`) |
+| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
 
 Subscribes to `ModelCreated`, `ModelSaved`, and `ModelDeleted` events dispatched by Magic's
 `EventDispatcher`. Each event is converted to a `MagicModelRecord` carrying: `modelClass` (runtime
@@ -385,11 +385,11 @@ and `attributes` (snapshot of `model.attributes` at capture time).
 Registration:
 
 ```dart
-import 'package:magic_devtools/telescope.dart';
+import 'package:magic_devtools/crumbs.dart';
 
 if (kDebugMode) {
-  TelescopePlugin.install();
-  MagicTelescopeIntegration.install(); // MagicModelWatcher is included
+  CrumbsPlugin.install();
+  MagicCrumbsIntegration.install(); // MagicModelWatcher is included
 }
 ```
 
@@ -402,13 +402,13 @@ clean dispatcher call `EventDispatcher.instance.clear()` in their `setUp`.
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `magic_cache` |
-| Package | `magic_devtools` (import `package:magic_devtools/telescope.dart`) |
-| Auto-install | Yes (via `MagicTelescopeIntegration.install()`) |
-| Ring buffer | `TelescopeStore._caches` |
-| VM extension | `ext.telescope.caches` |
-| Opt-out | Do not call `MagicTelescopeIntegration.install()` |
+| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
+| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
+| Ring buffer | `CrumbsStore._caches` |
+| VM extension | `ext.crumbs.caches` |
+| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
 
 Subscribes to five cache lifecycle events emitted by Magic's `CacheManager`: `CacheHit`, `CacheMiss`,
 `CachePut`, `CacheForget`, and `CacheFlush`. Each event is converted to a `MagicCacheRecord` carrying
@@ -418,11 +418,11 @@ Subscribes to five cache lifecycle events emitted by Magic's `CacheManager`: `Ca
 Registration:
 
 ```dart
-import 'package:magic_devtools/telescope.dart';
+import 'package:magic_devtools/crumbs.dart';
 
 if (kDebugMode) {
-  TelescopePlugin.install();
-  MagicTelescopeIntegration.install(); // MagicCacheWatcher is included
+  CrumbsPlugin.install();
+  MagicCrumbsIntegration.install(); // MagicCacheWatcher is included
 }
 ```
 
@@ -434,13 +434,13 @@ if (kDebugMode) {
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `magic_event` |
-| Package | `magic_devtools` (import `package:magic_devtools/telescope.dart`) |
-| Auto-install | Yes (via `MagicTelescopeIntegration.install()`) |
-| Ring buffer | `TelescopeStore._events` |
-| VM extension | `ext.telescope.events` |
-| Opt-out | Do not call `MagicTelescopeIntegration.install()` |
+| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
+| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
+| Ring buffer | `CrumbsStore._events` |
+| VM extension | `ext.crumbs.events` |
+| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
 
 Subscribes to a curated set of Magic app-lifecycle events: `AuthLogin`, `AuthLogout`, `AuthFailed`,
 `AuthRestored` (auth lifecycle), `DatabaseConnected` (database connection), and `GateAbilityDefined`,
@@ -454,11 +454,11 @@ follow-up release while the `EventRecord` wire shape stabilises.
 Registration:
 
 ```dart
-import 'package:magic_devtools/telescope.dart';
+import 'package:magic_devtools/crumbs.dart';
 
 if (kDebugMode) {
-  TelescopePlugin.install();
-  MagicTelescopeIntegration.install(); // MagicEventWatcher is included
+  CrumbsPlugin.install();
+  MagicCrumbsIntegration.install(); // MagicEventWatcher is included
 }
 ```
 
@@ -470,13 +470,13 @@ if (kDebugMode) {
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `magic_gate` |
-| Package | `magic_devtools` (import `package:magic_devtools/telescope.dart`) |
-| Auto-install | Yes (via `MagicTelescopeIntegration.install()`) |
-| Ring buffer | `TelescopeStore._gates` |
-| VM extension | `ext.telescope.gates` |
-| Opt-out | Do not call `MagicTelescopeIntegration.install()` |
+| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
+| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
+| Ring buffer | `CrumbsStore._gates` |
+| VM extension | `ext.crumbs.gates` |
+| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
 
 Subscribes to `GateAccessChecked`, which covers both `Gate.allows` and `Gate.denies` outcomes via
 its `allowed: bool` field. `GateAccessDenied` is intentionally not subscribed to avoid
@@ -493,11 +493,11 @@ anything else falls back to `toString()`.
 Registration:
 
 ```dart
-import 'package:magic_devtools/telescope.dart';
+import 'package:magic_devtools/crumbs.dart';
 
 if (kDebugMode) {
-  TelescopePlugin.install();
-  MagicTelescopeIntegration.install(); // MagicGateWatcher is included
+  CrumbsPlugin.install();
+  MagicCrumbsIntegration.install(); // MagicGateWatcher is included
 }
 ```
 
@@ -509,29 +509,29 @@ if (kDebugMode) {
 
 | Field | Value |
 |---|---|
-| Contract | `TelescopeWatcher` |
+| Contract | `CrumbsWatcher` |
 | Name | `magic_query` |
-| Package | `magic_devtools` (import `package:magic_devtools/telescope.dart`) |
-| Auto-install | Yes (via `MagicTelescopeIntegration.install()`) |
-| Ring buffer | `TelescopeStore._queries` |
-| VM extension | `ext.telescope.queries` |
-| Opt-out | Do not call `MagicTelescopeIntegration.install()` |
+| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
+| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
+| Ring buffer | `CrumbsStore._queries` |
+| VM extension | `ext.crumbs.queries` |
+| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
 
 Subscribes to `QueryExecuted`, dispatched by Magic's `QueryBuilder` after every SQL run. Each event
 is converted to a `QueryRecord` carrying: `sql` (the full SQL string), `bindings` (parameter list),
 `timeMs` (execution duration in milliseconds), `connectionName` (driver connection identifier), and
 `time` (capture timestamp).
 
-Surfaced via the `telescope:queries` CLI command and the `telescope_queries` MCP tool.
+Surfaced via the `crumbs:queries` CLI command and the `crumbs_queries` MCP tool.
 
 Registration:
 
 ```dart
-import 'package:magic_devtools/telescope.dart';
+import 'package:magic_devtools/crumbs.dart';
 
 if (kDebugMode) {
-  TelescopePlugin.install();
-  MagicTelescopeIntegration.install(); // MagicQueryWatcher is included
+  CrumbsPlugin.install();
+  MagicCrumbsIntegration.install(); // MagicQueryWatcher is included
 }
 ```
 

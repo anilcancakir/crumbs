@@ -1,24 +1,24 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fluttersdk_telescope/telescope.dart';
+import 'package:crumbs/crumbs.dart';
 import 'package:logging/logging.dart';
 
 import 'package:example/main.dart';
 
-// Install the telescope core (LogWatcher + VM extensions) once for the process.
-// TelescopePlugin.install() is idempotent; repeated calls after the first are
+// Install the crumbs core (LogWatcher + VM extensions) once for the process.
+// CrumbsPlugin.install() is idempotent; repeated calls after the first are
 // no-ops, so setUpAll is the right place for the core install.
-void _installTelescopeCore() {
-  TelescopePlugin.install();
+void _installCrumbsCore() {
+  CrumbsPlugin.install();
   Logger.root.level = Level.ALL;
 }
 
 Widget _buildApp() => App(dio: Dio());
 
 void main() {
-  setUpAll(_installTelescopeCore);
-  tearDown(TelescopeStore.resetForTesting);
+  setUpAll(_installCrumbsCore);
+  tearDown(CrumbsStore.resetForTesting);
 
   // ---------------------------------------------------------------------------
   // Smoke test: 4 Card sections + status bar + global controls render.
@@ -34,7 +34,7 @@ void main() {
       await tester.pumpWidget(_buildApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('Telescope Showroom'), findsOneWidget);
+      expect(find.text('Crumbs Showroom'), findsOneWidget);
       expect(find.text('HTTP via DioHttpAdapter'), findsOneWidget);
       expect(find.text('Logs via package:logging'), findsOneWidget);
       expect(find.text('Exceptions via ExceptionWatcher'), findsOneWidget);
@@ -44,11 +44,11 @@ void main() {
   );
 
   // ---------------------------------------------------------------------------
-  // Log trigger: Logger.info tap routes into TelescopeStore.recentLogs.
-  // LogWatcher is auto-installed by TelescopePlugin.install() in setUpAll.
+  // Log trigger: Logger.info tap routes into CrumbsStore.recentLogs.
+  // LogWatcher is auto-installed by CrumbsPlugin.install() in setUpAll.
   // ---------------------------------------------------------------------------
 
-  testWidgets('Logger.info button increments TelescopeStore.recentLogs', (
+  testWidgets('Logger.info button increments CrumbsStore.recentLogs', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1200, 2000);
@@ -61,11 +61,11 @@ void main() {
     await tester.tap(find.text('Logger.info'));
     await tester.pumpAndSettle();
 
-    expect(TelescopeStore.recentLogs().length, 1);
+    expect(CrumbsStore.recentLogs().length, 1);
   });
 
   // ---------------------------------------------------------------------------
-  // Dump trigger: debugPrint button routes into TelescopeStore.recentDumps.
+  // Dump trigger: debugPrint button routes into CrumbsStore.recentDumps.
   //
   // DumpWatcher replaces the global debugPrint function. The test framework's
   // debugAssertAllFoundationVarsUnset check fires if debugPrint is not restored
@@ -78,7 +78,7 @@ void main() {
   // ---------------------------------------------------------------------------
 
   testWidgets(
-    'debugPrint single line button increments TelescopeStore.recentDumps',
+    'debugPrint single line button increments CrumbsStore.recentDumps',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 2000);
       tester.view.devicePixelRatio = 1.0;
@@ -96,7 +96,7 @@ void main() {
       await tester.tap(find.text('debugPrint single line'));
       await tester.pumpAndSettle();
 
-      final dumpCount = TelescopeStore.recentDumps().length;
+      final dumpCount = CrumbsStore.recentDumps().length;
 
       // Restore debugPrint before the test body exits so _verifyInvariants
       // sees the original flutter_test override (debugPrintSynchronously).
@@ -123,7 +123,7 @@ void main() {
   // ---------------------------------------------------------------------------
 
   testWidgets(
-    'Sync throw (caught) button records into TelescopeStore.recentExceptions',
+    'Sync throw (caught) button records into CrumbsStore.recentExceptions',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 2000);
       tester.view.devicePixelRatio = 1.0;
@@ -143,7 +143,7 @@ void main() {
       await tester.tap(find.text('Sync throw (caught)'));
       await tester.pumpAndSettle();
 
-      final exceptionCount = TelescopeStore.recentExceptions().length;
+      final exceptionCount = CrumbsStore.recentExceptions().length;
 
       // 2. Restore both FlutterError.onError and PlatformDispatcher.onError
       //    before _verifyInvariants runs (which happens before addTearDown).
@@ -161,7 +161,7 @@ void main() {
   // suite. httpbin.org network calls are non-deterministic in CI (DNS failures,
   // rate limits, timeouts) and produce flaky results. The 4 HTTP buttons are
   // verified present by this test. The recordRequest interceptor path is
-  // exercised in the root telescope test suite. For HTTP visual QA, run
+  // exercised in the root crumbs test suite. For HTTP visual QA, run
   // `flutter run -d chrome` and tap each HTTP button; the live-tail panel in
   // the HTTP section updates within ~1 second per request.
   // ---------------------------------------------------------------------------

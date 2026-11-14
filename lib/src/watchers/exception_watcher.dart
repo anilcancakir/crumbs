@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 
 import '../records/exception_record.dart';
-import '../telescope_store.dart';
+import '../crumbs_store.dart';
 import 'watcher.dart';
 
 /// Hooks both [FlutterError.onError] and [PlatformDispatcher.instance.onError]
@@ -22,7 +22,7 @@ import 'watcher.dart';
 /// handler's return value (`_previousPlatformOnError?.call(...) ?? true`).
 /// When a previously-registered handler returns `false`, this watcher also
 /// returns `false`, which propagates the error to the native platform crash
-/// handler. This is the Sentry-friendly contract: telescope captures the
+/// handler. This is the Sentry-friendly contract: crumbs captures the
 /// record AND lets the downstream library decide whether the error is fatal.
 /// When no previous handler exists, the default is `true` (handled) which
 /// matches the pre-iter-2 single-hook behavior.
@@ -30,7 +30,7 @@ import 'watcher.dart';
 /// On [uninstall], both handlers are restored to exactly the values they held
 /// before [install] was called. Calling [install] while already installed is
 /// a no-op (idempotent).
-class ExceptionWatcher implements TelescopeWatcher {
+class ExceptionWatcher implements CrumbsWatcher {
   @override
   String get name => 'exception';
 
@@ -46,7 +46,7 @@ class ExceptionWatcher implements TelescopeWatcher {
     // 1. Chain-preserve and replace FlutterError.onError (sync framework errors).
     _previousFlutterOnError = FlutterError.onError;
     FlutterError.onError = (FlutterErrorDetails details) {
-      TelescopeStore.recordException(
+      CrumbsStore.recordException(
         ExceptionRecord(
           exceptionType: details.exception.runtimeType.toString(),
           message: details.exceptionAsString(),
@@ -60,7 +60,7 @@ class ExceptionWatcher implements TelescopeWatcher {
     // 2. Chain-preserve and replace PlatformDispatcher.onError (async + isolate + plugin errors).
     _previousPlatformOnError = PlatformDispatcher.instance.onError;
     PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-      TelescopeStore.recordException(
+      CrumbsStore.recordException(
         ExceptionRecord(
           exceptionType: error.runtimeType.toString(),
           message: error.toString(),

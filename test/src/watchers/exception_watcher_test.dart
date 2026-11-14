@@ -1,16 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/exception_record.dart';
-import 'package:fluttersdk_telescope/src/telescope_store.dart';
-import 'package:fluttersdk_telescope/src/watchers/exception_watcher.dart';
+import 'package:crumbs/src/records/exception_record.dart';
+import 'package:crumbs/src/crumbs_store.dart';
+import 'package:crumbs/src/watchers/exception_watcher.dart';
 
 void main() {
   group('ExceptionWatcher', () {
     late ExceptionWatcher watcher;
 
     setUp(() {
-      TelescopeStore.resetForTesting();
+      CrumbsStore.resetForTesting();
       // Restore global handlers to null before each test to ensure isolation.
       FlutterError.onError = null;
       PlatformDispatcher.instance.onError = null;
@@ -71,16 +71,15 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // (c) records flow into TelescopeStore.onExceptionRecord for BOTH paths
+    // (c) records flow into CrumbsStore.onExceptionRecord for BOTH paths
     // -------------------------------------------------------------------------
 
     group('recording', () {
-      test('FlutterError.reportError path records into TelescopeStore',
-          () async {
+      test('FlutterError.reportError path records into CrumbsStore', () async {
         watcher.install();
 
         final recorded = <ExceptionRecord>[];
-        final sub = TelescopeStore.onExceptionRecord.listen(recorded.add);
+        final sub = CrumbsStore.onExceptionRecord.listen(recorded.add);
 
         FlutterError.reportError(
           FlutterErrorDetails(exception: StateError('flutter-error-path')),
@@ -93,12 +92,12 @@ void main() {
         expect(recorded.first.message, contains('flutter-error-path'));
       });
 
-      test('PlatformDispatcher.onError path records into TelescopeStore',
+      test('PlatformDispatcher.onError path records into CrumbsStore',
           () async {
         watcher.install();
 
         final recorded = <ExceptionRecord>[];
-        final sub = TelescopeStore.onExceptionRecord.listen(recorded.add);
+        final sub = CrumbsStore.onExceptionRecord.listen(recorded.add);
 
         // Simulate a PlatformDispatcher.onError invocation.
         final handled = PlatformDispatcher.instance.onError!(
@@ -177,7 +176,7 @@ void main() {
         watcher.install(); // second call must be a no-op
 
         final recorded = <ExceptionRecord>[];
-        final sub = TelescopeStore.onExceptionRecord.listen(recorded.add);
+        final sub = CrumbsStore.onExceptionRecord.listen(recorded.add);
 
         FlutterError.reportError(
           FlutterErrorDetails(exception: Exception('idempotency-check')),

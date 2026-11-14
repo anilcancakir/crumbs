@@ -5,9 +5,9 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/frame_perf_record.dart';
-import 'package:fluttersdk_telescope/src/telescope_store.dart';
-import 'package:fluttersdk_telescope/src/watchers/frame_perf_watcher.dart';
+import 'package:crumbs/src/records/frame_perf_record.dart';
+import 'package:crumbs/src/crumbs_store.dart';
+import 'package:crumbs/src/watchers/frame_perf_watcher.dart';
 
 /// Builds a [FrameTiming] with the raw microsecond timestamps the public
 /// factory takes. That factory exists for unit tests (its own docstring says
@@ -58,14 +58,14 @@ void main() {
 
     setUp(() {
       TestWidgetsFlutterBinding.ensureInitialized();
-      TelescopeStore.resetForTesting();
+      CrumbsStore.resetForTesting();
       FramePerfWatcher.resetLivenessCounterForTesting();
       watcher = FramePerfWatcher();
     });
 
     tearDown(() {
       watcher.uninstall();
-      TelescopeStore.resetForTesting();
+      CrumbsStore.resetForTesting();
       FramePerfWatcher.resetLivenessCounterForTesting();
       // Statics restored: collection left enabled would make the next file's
       // frames collect blocks, and a stale counter would fail the liveness
@@ -85,7 +85,7 @@ void main() {
 
         fireTimings(<FrameTiming>[buildTiming(frameNumber: 7)]);
 
-        final List<FramePerfRecord> records = TelescopeStore.recentFramePerf();
+        final List<FramePerfRecord> records = CrumbsStore.recentFramePerf();
         expect(records, hasLength(1));
         expect(records.single.frameNumber, 7);
         expect(records.single.buildMicros, 5000);
@@ -99,7 +99,7 @@ void main() {
           'counter', (WidgetTester tester) async {
         // Two registrations is the expected case, not a mistake:
         // MagicPerfIntegration registers one and this class's own docs tell a
-        // host to register one, while TelescopePlugin.registerWatcher appends
+        // host to register one, while CrumbsPlugin.registerWatcher appends
         // without deduping. The counter is static, so a second installed
         // instance would increment it twice per frame. That is not cosmetic:
         // a backgrounded page produces exactly ONE frame, two watchers make
@@ -132,7 +132,7 @@ void main() {
         fireTimings(<FrameTiming>[buildTiming()]);
 
         expect(sentinelCalls, 1);
-        expect(TelescopeStore.recentFramePerf(), hasLength(1));
+        expect(CrumbsStore.recentFramePerf(), hasLength(1));
       });
 
       testWidgets('a frame does not throw while collection is disabled',
@@ -155,7 +155,7 @@ void main() {
 
         fireTimings(<FrameTiming>[buildTiming()]);
 
-        expect(TelescopeStore.recentFramePerf(), isEmpty);
+        expect(CrumbsStore.recentFramePerf(), isEmpty);
       });
 
       test('uninstalling before installing is a no-op', () {
@@ -164,7 +164,7 @@ void main() {
         // And the watcher is still installable afterwards.
         watcher.install();
         fireTimings(<FrameTiming>[buildTiming()]);
-        expect(TelescopeStore.recentFramePerf(), hasLength(1));
+        expect(CrumbsStore.recentFramePerf(), hasLength(1));
       });
     });
 
@@ -214,7 +214,7 @@ void main() {
 
         fireTimings(<FrameTiming>[buildTiming(frameNumber: 99)]);
 
-        final FramePerfRecord record = TelescopeStore.recentFramePerf().single;
+        final FramePerfRecord record = CrumbsStore.recentFramePerf().single;
         expect(record.frameNumber, 99);
         expect(record.buildMicros, 5000);
         expect(record.blocks, isNotEmpty);
@@ -229,7 +229,7 @@ void main() {
           <FrameTiming>[buildTiming(frameNumber: 42, vsyncStart: 123456)],
         );
 
-        final FramePerfRecord record = TelescopeStore.recentFramePerf().single;
+        final FramePerfRecord record = CrumbsStore.recentFramePerf().single;
         expect(record.vsyncStartUs, equals(123456));
       });
 
@@ -242,7 +242,7 @@ void main() {
         fireTimings(<FrameTiming>[buildTiming(frameNumber: 7)]);
         final int after = FlutterTimeline.now;
 
-        final FramePerfRecord record = TelescopeStore.recentFramePerf().single;
+        final FramePerfRecord record = CrumbsStore.recentFramePerf().single;
         expect(record.atUs, inInclusiveRange(before, after));
       });
 
@@ -253,7 +253,7 @@ void main() {
         await tester.pumpWidget(const SizedBox.shrink());
         fireTimings(<FrameTiming>[buildTiming(frameNumber: 3)]);
 
-        final FramePerfRecord record = TelescopeStore.recentFramePerf().single;
+        final FramePerfRecord record = CrumbsStore.recentFramePerf().single;
         expect(record.frameNumber, 3);
         expect(record.blocks, isEmpty);
       });
@@ -290,7 +290,7 @@ void main() {
 
         fireTimings(<FrameTiming>[buildTiming(frameNumber: 64)]);
 
-        final FramePerfRecord record = TelescopeStore.recentFramePerf().single;
+        final FramePerfRecord record = CrumbsStore.recentFramePerf().single;
         final outer = record.blocks['OuterBlock']!;
         final inner = record.blocks['InnerBlock']!;
 

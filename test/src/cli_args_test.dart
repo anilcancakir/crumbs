@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/cli_args.dart';
+import 'package:crumbs/src/cli_args.dart';
 
 void main() {
   group('injectInvocationForMcpInstall()', () {
@@ -8,7 +8,7 @@ void main() {
         () {
       final result = injectInvocationForMcpInstall(
         ['list'],
-        'fluttersdk_telescope',
+        'crumbs',
       );
       expect(result, equals(['list']));
     });
@@ -17,11 +17,11 @@ void main() {
         () {
       final result = injectInvocationForMcpInstall(
         ['mcp:install'],
-        'fluttersdk_telescope',
+        'crumbs',
       );
       expect(
         result,
-        equals(['mcp:install', '--invocation=fluttersdk_telescope']),
+        equals(['mcp:install', '--invocation=crumbs']),
       );
     });
 
@@ -30,7 +30,7 @@ void main() {
         () {
       final result = injectInvocationForMcpInstall(
         ['mcp:install', '--invocation=foo'],
-        'fluttersdk_telescope',
+        'crumbs',
       );
       expect(result, equals(['mcp:install', '--invocation=foo']));
     });
@@ -40,7 +40,7 @@ void main() {
         () {
       final result = injectInvocationForMcpInstall(
         ['mcp:install', '--invocation', 'foo'],
-        'fluttersdk_telescope',
+        'crumbs',
       );
       expect(result, equals(['mcp:install', '--invocation', 'foo']));
     });

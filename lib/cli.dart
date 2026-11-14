@@ -2,27 +2,19 @@
 ///
 /// Imported by the consumer's `lib/app/_plugins.g.dart` codegen (which runs
 /// under `dart run` on the pure Dart VM, not under `flutter run`). Re-exports
-/// the artisan provider class, the pure-Dart [followCursor] loop that a
-/// `--follow` command builds on, plus the codegen-convention alias so
-/// `dart run artisan list` and `dart run fluttersdk_artisan:mcp` can wire
-/// telescope without dragging the Flutter runtime into the consumer wrapper.
+/// the dowel provider class and the pure-Dart [followCursor] loop that a
+/// `--follow` command builds on, so `dart run dowel list` and
+/// `dart run dowel:mcp` can wire crumbs without dragging the Flutter runtime
+/// into the consumer wrapper.
 ///
-/// Runtime / widget code keeps using `package:fluttersdk_telescope/telescope.dart`
-/// (the full barrel that re-exports `TelescopePlugin` + watchers + adapters +
-/// records + the store) and the original [TelescopeArtisanProvider] symbol.
+/// `dowel`'s `plugins:refresh` generates the import as
+/// `<PascalCasePackageName>DowelProvider`, which for this package is
+/// [CrumbsDowelProvider] itself.
+///
+/// Runtime / widget code keeps using `package:crumbs/crumbs.dart`
+/// (the full barrel that re-exports `CrumbsPlugin` + watchers + adapters +
+/// records + the store).
 library;
 
-import 'src/telescope_artisan_provider.dart';
-
 export 'src/cursor_follow.dart' show followCursor;
-export 'src/telescope_artisan_provider.dart' show TelescopeArtisanProvider;
-
-/// Codegen-convention alias for [TelescopeArtisanProvider].
-///
-/// `fluttersdk_artisan`'s `plugins:refresh` generates plugin imports as
-/// `<PascalCasePackageName>ArtisanProvider`; for this package that resolves
-/// to `FluttersdkTelescopeArtisanProvider`. The alias keeps the legacy
-/// `TelescopeArtisanProvider` symbol stable for hand-written callers
-/// (magic, uptizm-app) while letting the codegen-generated
-/// `_plugins.g.dart` find a class name matching its convention.
-typedef FluttersdkTelescopeArtisanProvider = TelescopeArtisanProvider;
+export 'src/crumbs_dowel_provider.dart' show CrumbsDowelProvider;

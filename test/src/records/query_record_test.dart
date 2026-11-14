@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/query_record.dart';
+import 'package:crumbs/src/records/query_record.dart';
 
 void main() {
   group('QueryRecord', () {
@@ -56,7 +56,7 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // Clock, interaction link (shared shape across every telescope record)
+    // Clock, interaction link (shared shape across every crumbs record)
     // -------------------------------------------------------------------------
 
     test('atUs defaults to FlutterTimeline.now captured at construction', () {

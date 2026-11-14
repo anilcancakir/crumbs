@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/dump_record.dart';
-import 'package:fluttersdk_telescope/src/telescope_store.dart';
-import 'package:fluttersdk_telescope/src/watchers/dump_watcher.dart';
+import 'package:crumbs/src/records/dump_record.dart';
+import 'package:crumbs/src/crumbs_store.dart';
+import 'package:crumbs/src/watchers/dump_watcher.dart';
 
 void main() {
   group('DumpWatcher', () {
@@ -11,7 +11,7 @@ void main() {
     late DebugPrintCallback previousDebugPrint;
 
     setUp(() {
-      TelescopeStore.resetForTesting();
+      CrumbsStore.resetForTesting();
       // Save and restore the real debugPrint around every test.
       previousDebugPrint = debugPrint;
       watcher = DumpWatcher();
@@ -64,7 +64,7 @@ void main() {
         watcher.install();
 
         final recorded = <DumpRecord>[];
-        final sub = TelescopeStore.onDumpRecord.listen(recorded.add);
+        final sub = CrumbsStore.onDumpRecord.listen(recorded.add);
 
         debugPrint('hello');
 
@@ -79,7 +79,7 @@ void main() {
         watcher.install();
 
         final recorded = <DumpRecord>[];
-        final sub = TelescopeStore.onDumpRecord.listen(recorded.add);
+        final sub = CrumbsStore.onDumpRecord.listen(recorded.add);
 
         // debugPrint allows null message per its signature.
         debugPrint(null);
@@ -95,7 +95,7 @@ void main() {
         watcher.install();
 
         final recorded = <DumpRecord>[];
-        final sub = TelescopeStore.onDumpRecord.listen(recorded.add);
+        final sub = CrumbsStore.onDumpRecord.listen(recorded.add);
 
         debugPrint('wide message', wrapWidth: 80);
 
@@ -152,7 +152,7 @@ void main() {
         watcher.install(); // second call must be a no-op
 
         final recorded = <DumpRecord>[];
-        final sub = TelescopeStore.onDumpRecord.listen(recorded.add);
+        final sub = CrumbsStore.onDumpRecord.listen(recorded.add);
 
         debugPrint('idempotency-check');
 

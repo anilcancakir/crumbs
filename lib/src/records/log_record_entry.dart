@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 import 'package:logging/logging.dart';
 
-import '../telescope_redaction.dart';
+import '../crumbs_redaction.dart';
 
 /// An immutable log record captured by [LogWatcher].
 class LogRecordEntry {
@@ -40,12 +40,12 @@ class LogRecordEntry {
   /// the wall-clock skew; [time] stays the wall-clock field for display.
   final int atUs;
 
-  /// True when [TelescopeRedaction.redactor] ran over this record before it
+  /// True when [CrumbsRedaction.redactor] ran over this record before it
   /// was buffered: only the store's redaction pass sets it, so a record a
   /// caller constructs is always false. A record made while no redactor was
   /// registered is false too, and a consumer that persists records (a file
   /// sink) writes only the true ones.
-  bool get redacted => TelescopeRedaction.isRedacted(this);
+  bool get redacted => CrumbsRedaction.isRedacted(this);
 
   Map<String, dynamic> toJson() => {
         'level': level,

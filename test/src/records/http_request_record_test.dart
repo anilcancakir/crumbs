@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/records/http_request_record.dart';
-import 'package:fluttersdk_telescope/src/telescope_redaction.dart';
+import 'package:crumbs/src/records/http_request_record.dart';
+import 'package:crumbs/src/crumbs_redaction.dart';
 
 void main() {
   group('HttpRequestRecord', () {
@@ -87,7 +87,7 @@ void main() {
     });
 
     test('redacted is true only on the copy a redactor produced', () {
-      addTearDown(TelescopeRedaction.resetForTesting);
+      addTearDown(CrumbsRedaction.resetForTesting);
       final plain = HttpRequestRecord(
         url: 'https://api.uptizm.com/monitors',
         method: 'GET',
@@ -96,8 +96,8 @@ void main() {
         isError: false,
         timestamp: timestamp,
       );
-      TelescopeRedaction.redactor = (String s) => s;
-      final masked = TelescopeRedaction.redactHttpRecord(plain)!;
+      CrumbsRedaction.redactor = (String s) => s;
+      final masked = CrumbsRedaction.redactHttpRecord(plain)!;
 
       expect(plain.redacted, isFalse);
       expect(masked.redacted, isTrue);

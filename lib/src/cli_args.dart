@@ -1,4 +1,4 @@
-/// Args massagers for the telescope CLI wrapper.
+/// Args massagers for the crumbs CLI wrapper.
 ///
 /// Pure functions (no IO, no Flutter dependencies) so the bin entrypoint
 /// stays Flutter-free and the logic is unit-testable.
@@ -12,7 +12,7 @@ library;
 /// Otherwise returns [args] unchanged.
 ///
 /// Reason: surfaces plugin invocation context to the substrate's `.mcp.json`
-/// writer (`fluttersdk_artisan` McpInstallCommand three-branch payload).
+/// writer (`dowel` McpInstallCommand three-branch payload).
 /// When fastcli is absent, substrate writes `dart run <invocation> mcp:serve`
 /// instead of the legacy `:dispatcher` fallback.
 List<String> injectInvocationForMcpInstall(

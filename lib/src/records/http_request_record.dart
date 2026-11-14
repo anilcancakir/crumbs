@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 
-import '../telescope_redaction.dart';
+import '../crumbs_redaction.dart';
 
-/// An immutable HTTP request/response record captured by a [TelescopeHttpAdapter].
+/// An immutable HTTP request/response record captured by a [CrumbsHttpAdapter].
 class HttpRequestRecord {
   HttpRequestRecord({
     required this.url,
@@ -52,7 +52,7 @@ class HttpRequestRecord {
 
   /// Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at
   /// construction unless the caller supplies one explicitly. Comparable
-  /// across every telescope record type regardless of wall-clock skew;
+  /// across every crumbs record type regardless of wall-clock skew;
   /// [timestamp] stays the wall-clock field for display.
   final int atUs;
 
@@ -66,12 +66,12 @@ class HttpRequestRecord {
   /// site does not link at all.
   final String? linkedBy;
 
-  /// True when [TelescopeRedaction.redactor] ran over this record before it
+  /// True when [CrumbsRedaction.redactor] ran over this record before it
   /// was buffered: only the store's redaction pass sets it, so a record a
   /// caller constructs is always false. A record made while no redactor was
   /// registered is false too, and a consumer that persists records (a file
   /// sink) writes only the true ones.
-  bool get redacted => TelescopeRedaction.isRedacted(this);
+  bool get redacted => CrumbsRedaction.isRedacted(this);
 
   /// Copy with the capture payload replaced; every other field, [atUs]
   /// included, carries over so the copy keeps its place on the trace. The

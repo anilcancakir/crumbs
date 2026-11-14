@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fluttersdk_telescope/src/cursor_follow.dart';
+import 'package:crumbs/src/cursor_follow.dart';
 
 void main() {
   group('followCursor', () {

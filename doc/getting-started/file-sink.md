@@ -1,8 +1,8 @@
 # File sink
 
-The ring buffers live in memory and reset on every launch. `TelescopeFileSink` keeps a timeline on disk: a
+The ring buffers live in memory and reset on every launch. `CrumbsFileSink` keeps a timeline on disk: a
 rotating set of JSONL files holding the log, event and exception records, readable through the VM
-service, the `telescope:files` command, or any tool that reads the directory.
+service, the `crumbs:files` command, or any tool that reads the directory.
 
 The package looks up no directory. The host passes one, so it chooses where the files live (an app
 support directory, a temp directory, a path inside a test sandbox).
@@ -10,12 +10,12 @@ support directory, a temp directory, a path inside a test sandbox).
 ## Start and stop
 
 ```dart
-import 'package:fluttersdk_telescope/telescope.dart';
+import 'package:crumbs/crumbs.dart';
 
-TelescopeRedaction.redactor = maskSecrets; // required, see "Fail closed"
-TelescopePlugin.install();
-await TelescopeFileSink.start(
-  directory: '${supportDir.path}/telescope',
+CrumbsRedaction.redactor = maskSecrets; // required, see "Fail closed"
+CrumbsPlugin.install();
+await CrumbsFileSink.start(
+  directory: '${supportDir.path}/crumbs',
   maxFileBytes: 1048576, // default: 1 MiB per file
   maxFiles: 8,           // default: keep 8 timeline files
 );
@@ -23,8 +23,8 @@ await TelescopeFileSink.start(
 
 | Member | Meaning |
 |---|---|
-| `TelescopeFileSink.start({required directory, maxFileBytes = 1048576, maxFiles = 8})` | Creates the directory, opens the first file, subscribes to the store, and returns the running sink. A sink already running is stopped first. Throws a `FileSystemException` when the directory or first file cannot be created; the sink then neither listens nor becomes current. |
-| `TelescopeFileSink.current` | The running sink, or null. |
+| `CrumbsFileSink.start({required directory, maxFileBytes = 1048576, maxFiles = 8})` | Creates the directory, opens the first file, subscribes to the store, and returns the running sink. A sink already running is stopped first. Throws a `FileSystemException` when the directory or first file cannot be created; the sink then neither listens nor becomes current. |
+| `CrumbsFileSink.current` | The running sink, or null. |
 | `files()` | `[{name, bytes}]` for every timeline file in the directory, earlier launches included, newest first. |
 | `read(name, {offset = 0, maxBytes = 65536})` | Whole lines of one file as `{lines, next}`. Null when refused. |
 | `flush()` | Writes the batched lines now. Throws a `FileSystemException` when the write fails. |
@@ -58,7 +58,7 @@ bytes toward `maxFileBytes`; it never truncates it.
 ## Fail closed
 
 The sink writes only redacted records. A record whose `redacted` flag is false, which means it was buffered
-while no `TelescopeRedaction.redactor` was registered, is never written and is counted in
+while no `CrumbsRedaction.redactor` was registered, is never written and is counted in
 `droppedUnredacted`. Register the redactor before the sink starts (see [Redaction](redaction.md)); with
 none registered the sink stays empty and the counter climbs.
 
@@ -85,20 +85,20 @@ read sees every accepted line.
 
 | Extension | Params | Answer |
 |---|---|---|
-| `ext.telescope.files` | none | `{files: [{name, bytes}]}`, newest first |
-| `ext.telescope.file` | `name`, `offset` (default 0), `maxBytes` (default 65536) | `{lines, next}` |
+| `ext.crumbs.files` | none | `{files: [{name, bytes}]}`, newest first |
+| `ext.crumbs.file` | `name`, `offset` (default 0), `maxBytes` (default 65536) | `{lines, next}` |
 
-Both answer `{error: "No timeline file sink is running."}` when `TelescopeFileSink.current` is null.
-`ext.telescope.file` answers one fixed `{error}` message for every refusal (unknown name, bad offset, bad
+Both answer `{error: "No timeline file sink is running."}` when `CrumbsFileSink.current` is null.
+`ext.crumbs.file` answers one fixed `{error}` message for every refusal (unknown name, bad offset, bad
 `maxBytes`), so the answer leaks nothing about the file system. The extensions have no MCP tool; reach them
 through the CLI or the VM service directly.
 
 ### CLI
 
 ```bash
-./bin/fsa telescope:files                       # list: "<name> <bytes>" per line
-./bin/fsa telescope:files --name=timeline-20261010T091500Z-0.jsonl
-./bin/fsa telescope:files --name=<file> --offset=<next>
+./bin/dowel crumbs:files                       # list: "<name> <bytes>" per line
+./bin/dowel crumbs:files --name=timeline-20261010T091500Z-0.jsonl
+./bin/dowel crumbs:files --name=<file> --offset=<next>
 ```
 
 | Option | Default | Meaning |

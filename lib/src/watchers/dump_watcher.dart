@@ -1,27 +1,27 @@
 import 'package:flutter/foundation.dart';
 
 import '../records/dump_record.dart';
-import '../telescope_store.dart';
+import '../crumbs_store.dart';
 import 'watcher.dart';
 
 /// Captures all [debugPrint] output by overriding the global callback.
 ///
 /// Installs by replacing the global [debugPrint] function with an interceptor
-/// that records a [DumpRecord] to [TelescopeStore] AND calls the previous
+/// that records a [DumpRecord] to [CrumbsStore] AND calls the previous
 /// [debugPrint] value (chain-preserve; Sentry/Bugsnag pattern). On [uninstall],
 /// restores the previous reference exactly.
 ///
-/// This watcher is opt-in and NOT auto-installed by [TelescopePlugin.install].
+/// This watcher is opt-in and NOT auto-installed by [CrumbsPlugin.install].
 /// Register it explicitly:
 ///
 /// ```dart
-/// TelescopePlugin.registerWatcher(DumpWatcher());
+/// CrumbsPlugin.registerWatcher(DumpWatcher());
 /// ```
 ///
 /// [install] is gated on [kDebugMode] (or [allowInRelease] set to true before
 /// calling [install]). In release builds, [install] is a no-op so the entire
 /// watcher is tree-shaken by dart2js and dart2native AOT.
-class DumpWatcher implements TelescopeWatcher {
+class DumpWatcher implements CrumbsWatcher {
   /// Allow capturing in release builds. Defaults to false; override before
   /// calling [install] only when you explicitly need release-build capture.
   bool allowInRelease = false;
@@ -46,7 +46,7 @@ class DumpWatcher implements TelescopeWatcher {
     // so Sentry, Bugsnag, or user-defined handlers are not silently masked.
     _previous = debugPrint;
     debugPrint = (String? message, {int? wrapWidth}) {
-      TelescopeStore.recordDump(
+      CrumbsStore.recordDump(
         DumpRecord(
           message: message ?? '',
           time: DateTime.now(),

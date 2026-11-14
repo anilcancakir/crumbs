@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart' show FlutterTimeline;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 
-import 'package:fluttersdk_telescope/src/records/log_record_entry.dart';
-import 'package:fluttersdk_telescope/src/telescope_redaction.dart';
+import 'package:crumbs/src/records/log_record_entry.dart';
+import 'package:crumbs/src/crumbs_redaction.dart';
 
 void main() {
   group('LogRecordEntry', () {
@@ -20,14 +20,14 @@ void main() {
         level: 'INFO',
         levelValue: 800,
         message: 'Monitor checked successfully',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
       );
 
       expect(record.level, equals('INFO'));
       expect(record.levelValue, equals(800));
       expect(record.message, equals('Monitor checked successfully'));
-      expect(record.loggerName, equals('telescope'));
+      expect(record.loggerName, equals('crumbs'));
       expect(record.time, equals(time));
       expect(record.error, isNull);
       expect(record.stackTrace, isNull);
@@ -38,7 +38,7 @@ void main() {
         level: 'SEVERE',
         levelValue: 1000,
         message: 'Unexpected failure',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
         error: 'StateError: Bad state',
         stackTrace: '#0 main (main.dart:1)',
@@ -57,7 +57,7 @@ void main() {
         level: 'INFO',
         levelValue: 800,
         message: 'Monitor checked successfully',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
         atUs: 999,
       );
@@ -68,7 +68,7 @@ void main() {
           'level': 'INFO',
           'levelValue': 800,
           'message': 'Monitor checked successfully',
-          'loggerName': 'telescope',
+          'loggerName': 'crumbs',
           'time': time.toIso8601String(),
           'atUs': 999,
           'redacted': false,
@@ -82,7 +82,7 @@ void main() {
         level: 'INFO',
         levelValue: 800,
         message: 'm',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
       );
       final int after = FlutterTimeline.now;
@@ -95,7 +95,7 @@ void main() {
         level: 'INFO',
         levelValue: 800,
         message: 'm',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
         atUs: 555,
       );
@@ -106,7 +106,7 @@ void main() {
     test('fromLogRecord stamps atUs from the monotonic clock', () {
       final int before = FlutterTimeline.now;
       final record = LogRecordEntry.fromLogRecord(
-        LogRecord(Level.INFO, 'm', 'telescope'),
+        LogRecord(Level.INFO, 'm', 'crumbs'),
       );
       final int after = FlutterTimeline.now;
 
@@ -114,16 +114,16 @@ void main() {
     });
 
     test('redacted is true only on the copy a redactor produced', () {
-      addTearDown(TelescopeRedaction.resetForTesting);
+      addTearDown(CrumbsRedaction.resetForTesting);
       final plain = LogRecordEntry(
         level: 'INFO',
         levelValue: 800,
         message: 'm',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
       );
-      TelescopeRedaction.redactor = (String s) => s;
-      final masked = TelescopeRedaction.redactLogRecord(plain)!;
+      CrumbsRedaction.redactor = (String s) => s;
+      final masked = CrumbsRedaction.redactLogRecord(plain)!;
 
       expect(plain.redacted, isFalse);
       expect(masked.redacted, isTrue);
@@ -139,7 +139,7 @@ void main() {
             #level: 'INFO',
             #levelValue: 800,
             #message: 'm',
-            #loggerName: 'telescope',
+            #loggerName: 'crumbs',
             #time: time,
             #redacted: true,
           },
@@ -153,7 +153,7 @@ void main() {
         level: 'SEVERE',
         levelValue: 1000,
         message: 'Unexpected failure',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
         error: 'StateError: Bad state',
         stackTrace: '#0 main (main.dart:1)',
@@ -170,7 +170,7 @@ void main() {
         level: 'WARNING',
         levelValue: 900,
         message: 'Slow response detected',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
       );
 
@@ -185,7 +185,7 @@ void main() {
         level: 'INFO',
         levelValue: 800,
         message: 'Monitor checked successfully',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
         error: 'some error',
       );
@@ -196,7 +196,7 @@ void main() {
       expect(decoded['level'], equals('INFO'));
       expect(decoded['levelValue'], equals(800));
       expect(decoded['message'], equals('Monitor checked successfully'));
-      expect(decoded['loggerName'], equals('telescope'));
+      expect(decoded['loggerName'], equals('crumbs'));
       expect(decoded['time'], equals(time.toIso8601String()));
       expect(decoded['error'], equals('some error'));
     });
@@ -211,14 +211,14 @@ void main() {
         level: 'INFO',
         levelValue: 800,
         message: 'Monitor checked successfully',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
       );
       final b = LogRecordEntry(
         level: 'INFO',
         levelValue: 800,
         message: 'Monitor checked successfully',
-        loggerName: 'telescope',
+        loggerName: 'crumbs',
         time: time,
       );
 

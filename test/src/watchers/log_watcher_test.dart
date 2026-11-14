@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 
-import 'package:fluttersdk_telescope/src/records/log_record_entry.dart';
-import 'package:fluttersdk_telescope/src/telescope_store.dart';
-import 'package:fluttersdk_telescope/src/watchers/log_watcher.dart';
+import 'package:crumbs/src/records/log_record_entry.dart';
+import 'package:crumbs/src/crumbs_store.dart';
+import 'package:crumbs/src/watchers/log_watcher.dart';
 
 void main() {
   group('LogWatcher', () {
     late LogWatcher watcher;
 
     setUp(() {
-      TelescopeStore.resetForTesting();
+      CrumbsStore.resetForTesting();
       // Allow all log levels to flow through the root logger.
       Logger.root.level = Level.ALL;
       watcher = LogWatcher();
@@ -36,12 +36,12 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('install()', () {
-      test('a log message emitted after install is recorded in TelescopeStore',
+      test('a log message emitted after install is recorded in CrumbsStore',
           () async {
         watcher.install();
 
         final recorded = <LogRecordEntry>[];
-        final sub = TelescopeStore.onLogRecord.listen(recorded.add);
+        final sub = CrumbsStore.onLogRecord.listen(recorded.add);
 
         Logger('test').info('hello');
 
@@ -57,7 +57,7 @@ void main() {
         watcher.install();
 
         final recorded = <LogRecordEntry>[];
-        final sub = TelescopeStore.onLogRecord.listen(recorded.add);
+        final sub = CrumbsStore.onLogRecord.listen(recorded.add);
 
         Logger('level-check').warning('watch out');
 
@@ -78,7 +78,7 @@ void main() {
         watcher.uninstall();
 
         final recorded = <LogRecordEntry>[];
-        final sub = TelescopeStore.onLogRecord.listen(recorded.add);
+        final sub = CrumbsStore.onLogRecord.listen(recorded.add);
 
         Logger('after-uninstall').info('should not appear');
 
@@ -100,7 +100,7 @@ void main() {
         watcher.install(); // second call must be a no-op
 
         final recorded = <LogRecordEntry>[];
-        final sub = TelescopeStore.onLogRecord.listen(recorded.add);
+        final sub = CrumbsStore.onLogRecord.listen(recorded.add);
 
         Logger('idempotency-check').info('one-message');
 

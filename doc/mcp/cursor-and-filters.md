@@ -1,10 +1,10 @@
 # Cursor and filters
 
-`ext.telescope.console` (log records) and `ext.telescope.events` (event records) accept filters and answer
+`ext.crumbs.console` (log records) and `ext.crumbs.events` (event records) accept filters and answer
 a `cursor`, so a reader can follow a buffer without re-reading it or skipping a record. The parameters
-are part of the VM Service extension and the CLI. The MCP descriptors for `telescope_tail` and
-`telescope_events` still declare only `limit` (and `level` on tail); an MCP agent that needs the cursor
-reads the extension through the CLI (`telescope:tail --json`, `telescope:events --json`).
+are part of the VM Service extension and the CLI. The MCP descriptors for `crumbs_tail` and
+`crumbs_events` still declare only `limit` (and `level` on tail); an MCP agent that needs the cursor
+reads the extension through the CLI (`crumbs:tail --json`, `crumbs:events --json`).
 
 ## Extension parameters
 
@@ -12,9 +12,9 @@ All values are strings on the wire, as with every VM Service extension.
 
 | Extension | Parameter | Meaning |
 |---|---|---|
-| `ext.telescope.console` | `level` | Minimum `package:logging` level name. An unknown name matches nothing. |
-| `ext.telescope.console` | `logger` | Exact logger name. |
-| `ext.telescope.events` | `type` | Prefix of `eventType`. |
+| `ext.crumbs.console` | `level` | Minimum `package:logging` level name. An unknown name matches nothing. |
+| `ext.crumbs.console` | `logger` | Exact logger name. |
+| `ext.crumbs.events` | `type` | Prefix of `eventType`. |
 | both | `since` | Microseconds, exclusive, compared with the record's `atUs`. |
 | both | `limit` | Applied after the filters. A zero or negative value returns nothing. |
 
@@ -46,14 +46,14 @@ else null. Pass it back as `since` and the next answer holds only newer records.
 }
 ```
 
-`ext.telescope.console` answers its records under `messages`, `ext.telescope.events` under `events`.
+`ext.crumbs.console` answers its records under `messages`, `ext.crumbs.events` under `events`.
 Every other read extension keeps its existing envelope and takes `limit` only.
 
 ## CLI
 
-`telescope:tail` and `telescope:events` expose the same parameters as flags:
+`crumbs:tail` and `crumbs:events` expose the same parameters as flags:
 
-| Flag | `telescope:tail` | `telescope:events` | Meaning |
+| Flag | `crumbs:tail` | `crumbs:events` | Meaning |
 |---|---|---|---|
 | `--limit=<n>` | yes (50) | yes (50) | Records to print. |
 | `--level=<name>` | yes | no | Minimum log level. |
@@ -69,17 +69,17 @@ previous one, so a quiet buffer never rewinds. Without `--json` an empty read pr
 empty-buffer hint; with `--json` or `--follow` it prints nothing.
 
 ```bash
-./bin/fsa telescope:tail --logger=Sync --json --follow
-./bin/fsa telescope:events --type=Auth --since=81234567
+./bin/dowel crumbs:tail --logger=Sync --json --follow
+./bin/dowel crumbs:events --type=Auth --since=81234567
 ```
 
 ## `followCursor`
 
-The loop behind `--follow` is a pure Dart function, exported from `package:fluttersdk_telescope/cli.dart`
+The loop behind `--follow` is a pure Dart function, exported from `package:crumbs/cli.dart`
 so a command that runs under `dart run` can build on it:
 
 ```dart
-import 'package:fluttersdk_telescope/cli.dart' show followCursor;
+import 'package:crumbs/cli.dart' show followCursor;
 
 await followCursor(
   since: null,

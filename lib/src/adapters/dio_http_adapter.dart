@@ -1,5 +1,5 @@
 import '../records/http_request_record.dart';
-import '../telescope_store.dart';
+import '../crumbs_store.dart';
 import 'http_adapter.dart';
 
 /// Vanilla Dio HTTP adapter. Hook by calling
@@ -7,15 +7,15 @@ import 'http_adapter.dart';
 /// after constructing the adapter.
 ///
 /// NOT a Magic-coupled implementation — vanilla Flutter apps using raw Dio
-/// instances feed TelescopeStore via this adapter. Magic-app users get the
-/// Magic.Http facade adapter via magic's MagicTelescopeIntegration instead.
+/// instances feed CrumbsStore via this adapter. Magic-app users get the
+/// Magic.Http facade adapter via magic's MagicCrumbsIntegration instead.
 ///
 /// V1 stub: the actual Dio Interceptor subclass requires `package:dio` which
-/// is not in telescope's pubspec (vanilla Flutter friendly — we avoid
+/// is not in crumbs's pubspec (vanilla Flutter friendly — we avoid
 /// declaring opinionated HTTP lib deps). Consumers add `dio` to THEIR pubspec
-/// and wire this adapter manually. V1.x: move this to `fluttersdk_telescope_dio`
+/// and wire this adapter manually. V1.x: move this to `crumbs_dio`
 /// adapter sub-package.
-class DioHttpAdapter implements TelescopeHttpAdapter {
+class DioHttpAdapter implements CrumbsHttpAdapter {
   DioHttpAdapter();
 
   @override
@@ -26,10 +26,10 @@ class DioHttpAdapter implements TelescopeHttpAdapter {
     // V1 stub. Consumer code wires this adapter by calling
     // `dio.interceptors.add(_DioInterceptor())` where _DioInterceptor extends
     // Dio's Interceptor class and routes onRequest/onResponse/onError to
-    // TelescopeStore.recordHttp(HttpRequestRecord(...)).
+    // CrumbsStore.recordHttp(HttpRequestRecord(...)).
     //
-    // V1.x will move the Dio-coupled glue into `fluttersdk_telescope_dio` so
-    // the core telescope package stays HTTP-library-agnostic.
+    // V1.x will move the Dio-coupled glue into `crumbs_dio` so
+    // the core crumbs package stays HTTP-library-agnostic.
   }
 
   @override
@@ -40,12 +40,12 @@ class DioHttpAdapter implements TelescopeHttpAdapter {
   /// V1 stub adapter does not track in-flight requests (the Dio interceptor
   /// wiring lives in consumer code). Explicit override is required because
   /// Dart's `implements` clause does not inherit default method bodies from
-  /// the [TelescopeHttpAdapter] contract.
+  /// the [CrumbsHttpAdapter] contract.
   @override
   int get pendingCount => 0;
 
   /// Convenience: programmatically record an HTTP request/response pair into
-  /// TelescopeStore from any HTTP library wrapper (Dio, http, Chopper, raw).
+  /// CrumbsStore from any HTTP library wrapper (Dio, http, Chopper, raw).
   static void recordRequest({
     required String url,
     required String method,
@@ -56,7 +56,7 @@ class DioHttpAdapter implements TelescopeHttpAdapter {
     String? requestBody,
     String? responseBody,
   }) {
-    TelescopeStore.recordHttp(
+    CrumbsStore.recordHttp(
       HttpRequestRecord(
         url: url,
         method: method,

@@ -8,6 +8,21 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking, nothing is migrated automatically.** In a consumer project: (1) swap the dependencies with `flutter pub remove fluttersdk_telescope fluttersdk_artisan && flutter pub add crumbs dowel` and rename the imports (`package:fluttersdk_telescope/telescope.dart` is `package:crumbs/crumbs.dart`) and the `Telescope*` identifiers; (2) follow the dowel 0.0.21 migration (move `.artisan/` to `.dowel/`, delete `.dowel/plugins.json`), delete `bin/dispatcher.dart`, `bin/fsa` and `lib/app/_plugins.g.dart` (the installer keeps an existing `bin/dispatcher.dart`, and the old one imports `fluttersdk_artisan`, so `bin/` no longer analyses) and run `dart run crumbs crumbs:install` again; (3) rename `telescope_*` to `crumbs_*` in any saved MCP allow list, prompt or script (a Claude Code allow-list entry `mcp__fluttersdk__telescope_*` becomes `mcp__dowel__crumbs_*`, since the server key is now `dowel`), `telescope:*` to `crumbs:*` in CLI calls and `TELESCOPE_DISABLE` to `CRUMBS_DISABLE` in a build that must not register the extensions; (4) delete the stale `fluttersdk` server entry from `.mcp.json` (dowel leaves entries an earlier release wrote) and reconnect the MCP client; (5) in a Magic app, `MagicTelescopeIntegration` and `package:magic_devtools/telescope.dart` stay on the old names until a `magic_devtools` release built on crumbs ships (see the installer entry below).
+- **Renamed from `fluttersdk_telescope` to `crumbs`.** The package, the repository (`anilcancakir/crumbs`), the barrels (`package:crumbs/crumbs.dart` and `package:crumbs/cli.dart`), every `Telescope*` class (now `Crumbs*`, and `TelescopeArtisanProvider` is `CrumbsDowelProvider`), the executable (`dart run crumbs`) and the file names carry the new name. Also renamed: the `ext.telescope.*` VM Service extensions (now `ext.crumbs.*`), the MCP tools (`telescope_*` is `crumbs_*`), the CLI commands (`telescope:*` is `crumbs:*`), the environment variable (`TELESCOPE_DISABLE` is `CRUMBS_DISABLE`), the MCP registry name (`io.github.anilcancakir/crumbs`), the skill (`fluttersdk-telescope` is `crumbs`) and the docs URLs (`https://anilcancakir.com/crumbs`).
+- **Built on `dowel`.** `fluttersdk_artisan ^0.0.20` is now `dowel ^0.0.21`. The `.mcp.json` server key written by `mcp:install` is `dowel`.
+- **The Magic step of `crumbs:install` needs a `magic_devtools` built on crumbs.** When the consumer's pubspec names `magic_devtools` and the resolved release ships `package:magic_devtools/crumbs.dart`, the installer wires `MagicCrumbsIntegration` from it. The `magic_devtools` releases that still ship `MagicTelescopeIntegration` have no such library, so with one of them the installer skips the Magic lines and warns; upgrade `magic_devtools` to a release built on crumbs and rerun `dart run crumbs crumbs:install` (see Fixed).
+
+### Fixed
+
+- **`crumbs:install` wires Magic only when the installed `magic_devtools` ships `crumbs.dart`.** The pubspec entry alone decided it, so a `magic_devtools` release that predates crumbs got an import of a library it does not have and a `lib/main.dart` that did not compile. The installer now resolves the package through the nearest `.dart_tool/package_config.json` at or above the project (a pub workspace member uses the one at the workspace root; an unreadable or invalid one counts as unresolved) and, without `lib/crumbs.dart`, skips the Magic lines and warns to upgrade and rerun. (`lib/src/commands/crumbs_install_command.dart`)
+
+### Removed
+
+- **The `FluttersdkTelescopeArtisanProvider` alias in `package:crumbs/cli.dart`.** The class dowel's `plugins:refresh` generates for this package, `CrumbsDowelProvider`, is the provider itself, so the alias is gone.
+
 ---
 
 ## [0.0.12] - 2026-10-13

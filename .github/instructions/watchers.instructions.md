@@ -5,10 +5,10 @@ applyTo: '**'
 
 ## Contract
 
-Every watcher implements `TelescopeWatcher` (in `lib/src/watchers/watcher.dart`):
+Every watcher implements `CrumbsWatcher` (in `lib/src/watchers/watcher.dart`):
 
 ```dart
-abstract class TelescopeWatcher {
+abstract class CrumbsWatcher {
   String get name;
   void install();
   void uninstall();
@@ -31,7 +31,7 @@ handler saved only once); uninstalling when not installed is a no-op.
 Any watcher that overrides a global hook (`FlutterError.onError`, `PlatformDispatcher.instance.onError`,
 `debugPrint`) saves the previous handler before replacing it and calls the previous handler inside the new
 handler body. `uninstall()` restores the previous handler symmetrically. This is how Sentry and Bugsnag coexist
-with telescope without masking each other. Use numbered step comments:
+with crumbs without masking each other. Use numbered step comments:
 
 ```dart
 // 1. Chain-preserve FlutterError.onError (sync framework errors).
@@ -56,14 +56,14 @@ install time is the gate for all watchers.
 
 ## Record feeding
 
-Every watcher calls the matching `TelescopeStore.record*` static method and nothing else. Watchers do not reach
+Every watcher calls the matching `CrumbsStore.record*` static method and nothing else. Watchers do not reach
 into the store's internal `Queue` or `StreamController` fields. Imports stay minimal: the watcher file imports
-its specific record type and `TelescopeStore`; it does not import `telescope_plugin.dart` or `adapters/`.
+its specific record type and `CrumbsStore`; it does not import `crumbs_plugin.dart` or `adapters/`.
 
 ## Test placement
 
 Mirror `lib/src/watchers/` under `test/src/watchers/`. One production file, one test file. Tests for
 chain-preserve: install a sentinel handler first, then install the watcher, trigger an error, assert the sentinel
-was also called. Verify `uninstall()` restores the sentinel correctly. Use `TelescopeStore.resetForTesting()` in
+was also called. Verify `uninstall()` restores the sentinel correctly. Use `CrumbsStore.resetForTesting()` in
 `tearDown` and restore replaced global handlers via `addTearDown` (see `.claude/rules/tests.md` for the full test
 discipline).

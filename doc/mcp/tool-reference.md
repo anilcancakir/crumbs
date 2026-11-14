@@ -1,61 +1,61 @@
-# Telescope MCP Tool Reference
+# Crumbs MCP Tool Reference
 
-Catalog of every MCP tool contributed by `fluttersdk_telescope` via
-`TelescopeArtisanProvider.mcpTools()`. All 10 tools use the `telescope_` prefix and dispatch
-through `ext.telescope.*` VM Service extensions registered inside the running Flutter app by
-`registerAllTelescopeExtensions()`.
+Catalog of every MCP tool contributed by `crumbs` via
+`CrumbsDowelProvider.mcpTools()`. All 10 tools use the `crumbs_` prefix and dispatch
+through `ext.crumbs.*` VM Service extensions registered inside the running Flutter app by
+`registerAllCrumbsExtensions()`.
 
-**Requires a running app.** Every telescope tool dispatches via the VM Service. Boot the
-app via the artisan fast-cli (`./bin/fsa start`) or the MCP equivalent (`artisan_start`)
-and confirm `artisan_status` shows a live `vmServiceUri` before invoking these tools.
+**Requires a running app.** Every crumbs tool dispatches via the VM Service. Boot the
+app via the dowel fast-cli (`./bin/dowel start`) or the MCP equivalent (`dowel_start`)
+and confirm `dowel_status` shows a live `vmServiceUri` before invoking these tools.
 
 ---
 
 ## Table of Contents
 
 - [Common conventions](#common-conventions)
-- [telescope_tail](#telescope_tail)
-- [telescope_requests](#telescope_requests)
-- [telescope_exceptions](#telescope_exceptions)
-- [telescope_events](#telescope_events)
-- [telescope_gates](#telescope_gates)
-- [telescope_dumps](#telescope_dumps)
-- [telescope_queries](#telescope_queries)
-- [telescope_caches](#telescope_caches)
-- [telescope_frames](#telescope_frames)
-- [telescope_clear](#telescope_clear)
+- [crumbs_tail](#crumbs_tail)
+- [crumbs_requests](#crumbs_requests)
+- [crumbs_exceptions](#crumbs_exceptions)
+- [crumbs_events](#crumbs_events)
+- [crumbs_gates](#crumbs_gates)
+- [crumbs_dumps](#crumbs_dumps)
+- [crumbs_queries](#crumbs_queries)
+- [crumbs_caches](#crumbs_caches)
+- [crumbs_frames](#crumbs_frames)
+- [crumbs_clear](#crumbs_clear)
 - [Related](#related)
 
 ---
 
 ## Common Conventions
 
-All buffer-reading tools (every tool except `telescope_clear`) share these conventions:
+All buffer-reading tools (every tool except `crumbs_clear`) share these conventions:
 
 - **Newest-first ordering.** The most recent record is always at index 0 of the returned array.
 - **`limit` parameter.** All buffer tools accept an optional `limit: integer` parameter that caps
   the number of records returned. When omitted, the entire ring buffer is returned (subject to the
   ring-buffer capacity, 500 records per buffer).
 - **Empty array on empty buffer.** When the buffer holds no records (fresh start or after
-  `telescope_clear`), the response is `{"records": []}`. This is not an error.
+  `crumbs_clear`), the response is `{"records": []}`. This is not an error.
 - **JSON envelope.** Every tool returns a JSON object. The outer shape is always
   `{"records": [...]}`. Individual record field shapes are documented per tool below.
 - **Redaction.** Log, event, exception and HTTP records are masked at insert when the host registered a
-  `TelescopeRedaction.redactor` (see [Redaction](../getting-started/redaction.md)), and each carries a
+  `CrumbsRedaction.redactor` (see [Redaction](../getting-started/redaction.md)), and each carries a
   `redacted` boolean. An unknown log `level` and a zero or negative `limit` return nothing.
 - **Error shape.** On failure (app not running, VM Service unreachable), `McpServer` returns
   `CallToolResult` with `isError: true` and an actionable plain-text message.
 
 ---
 
-## telescope_tail
+## crumbs_tail
 
 Return recent log records from the running Flutter app.
 
-Reads the Telescope log ring buffer populated by every `package:logging` `Logger` call in the app.
-Use this to inspect what the app logged without scraping `flutter run` stdout via `artisan_logs`.
+Reads the Crumbs log ring buffer populated by every `package:logging` `Logger` call in the app.
+Use this to inspect what the app logged without scraping `flutter run` stdout via `dowel_logs`.
 
-**VM Service extension:** `ext.telescope.console`
+**VM Service extension:** `ext.crumbs.console`
 
 ### Input Schema
 
@@ -96,7 +96,7 @@ descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md
 | `loggerName` | string | yes | Name of the `Logger` instance that emitted the record |
 | `time` | string | yes | ISO 8601 UTC timestamp |
 | `atUs` | integer | yes | Monotonic microseconds from `FlutterTimeline.now`, the same clock as event records |
-| `redacted` | boolean | yes | True when `TelescopeRedaction.redactor` ran over the record before it was buffered |
+| `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
 | `error` | string | no | Error object stringified, when one was attached |
 | `stackTrace` | string | no | Stack trace stringified, when one was attached |
 | `cursor` | integer or null | yes (envelope) | Largest `atUs` returned, else the `since` given, else null |
@@ -105,32 +105,32 @@ descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md
 
 ```
 # Last 10 log lines at any level
-telescope_tail limit=10
+crumbs_tail limit=10
 
 # Last 20 WARNING-and-above entries
-telescope_tail limit=20 level=WARNING
+crumbs_tail limit=20 level=WARNING
 
 # All SEVERE entries in the buffer
-telescope_tail level=SEVERE
+crumbs_tail level=SEVERE
 ```
 
 ### Related Tools
 
-- `telescope_exceptions`: uncaught exceptions (not expected `try/catch` flows)
-- `telescope_requests`: HTTP traffic
-- `telescope_clear`: wipe the buffer before a repro
+- `crumbs_exceptions`: uncaught exceptions (not expected `try/catch` flows)
+- `crumbs_requests`: HTTP traffic
+- `crumbs_clear`: wipe the buffer before a repro
 
 ---
 
-## telescope_requests
+## crumbs_requests
 
 Return recent HTTP request records from the running Flutter app.
 
-Reads the Telescope HTTP ring buffer populated by the Telescope Dio interceptor or any
-`TelescopeHttpAdapter` the app installs (e.g. `MagicHttpFacadeAdapter` from the magic package).
+Reads the Crumbs HTTP ring buffer populated by the Crumbs Dio interceptor or any
+`CrumbsHttpAdapter` the app installs (e.g. `MagicHttpFacadeAdapter` from the magic package).
 Use this to debug API issues without instrumenting the app or watching network panels in DevTools.
 
-**VM Service extension:** `ext.telescope.requests`
+**VM Service extension:** `ext.crumbs.requests`
 
 ### Input Schema
 
@@ -180,40 +180,40 @@ Use this to debug API issues without instrumenting the app or watching network p
 | `atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at record construction |
 | `interactionId` | string | no | Correlates this record to others captured during the same logical interaction |
 | `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window` |
-| `redacted` | boolean | yes | True when `TelescopeRedaction.redactor` ran over the record before it was buffered |
+| `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
 
 ### Example Invocations
 
 ```
 # Last 5 HTTP requests
-telescope_requests limit=5
+crumbs_requests limit=5
 
 # All requests in the buffer
-telescope_requests
+crumbs_requests
 ```
 
 ### Notes
 
-- Only HTTP calls that go through an installed Telescope adapter are recorded. Raw
+- Only HTTP calls that go through an installed Crumbs adapter are recorded. Raw
   `dart:io HttpClient` calls are invisible to this tool.
-- Pair with `telescope_clear` before a user action to isolate exactly the traffic that action
+- Pair with `crumbs_clear` before a user action to isolate exactly the traffic that action
   produces.
 - Credentials are masked before a record is buffered, the way Laravel Telescope does it: the
-  value of a hidden header or a hidden JSON body key reads `********`, which is telescope's mask
+  value of a hidden header or a hidden JSON body key reads `********`, which is crumbs's mask
   and not what the app sent. See [Credential redaction](../watchers/index.md#credential-redaction)
   for the default lists and how to extend them.
 
 ---
 
-## telescope_exceptions
+## crumbs_exceptions
 
 Return recent uncaught exception records from the running Flutter app.
 
-Reads the Telescope exception ring buffer populated by the `FlutterError.onError` hook that
-`TelescopePlugin.install()` chains. Use this when a crash or unhandled `Exception` was thrown and
+Reads the Crumbs exception ring buffer populated by the `FlutterError.onError` hook that
+`CrumbsPlugin.install()` chains. Use this when a crash or unhandled `Exception` was thrown and
 you need the stack without scraping `flutter run` stdout.
 
-**VM Service extension:** `ext.telescope.exceptions`
+**VM Service extension:** `ext.crumbs.exceptions`
 
 ### Input Schema
 
@@ -245,16 +245,16 @@ you need the stack without scraping `flutter run` stdout.
 | `time` | string | yes | ISO 8601 UTC timestamp |
 | `stackTrace` | string | no | Full stack trace, when available |
 | `isolate` | string | no | Isolate name where the exception was caught |
-| `redacted` | boolean | yes | True when `TelescopeRedaction.redactor` ran over the record before it was buffered |
+| `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
 
 ### Example Invocations
 
 ```
 # Last 3 uncaught exceptions
-telescope_exceptions limit=3
+crumbs_exceptions limit=3
 
 # All exceptions in the buffer
-telescope_exceptions
+crumbs_exceptions
 ```
 
 ### Notes
@@ -263,19 +263,19 @@ telescope_exceptions
   `try/catch` flows do not surface here.
 - The watcher chain-preserves the previous `FlutterError.onError` handler (e.g. Sentry) so both
   coexist safely.
-- Pair with `telescope_tail` to see what the app logged in the moments before the crash.
+- Pair with `crumbs_tail` to see what the app logged in the moments before the crash.
 
 ---
 
-## telescope_events
+## crumbs_events
 
 Return recent in-app event records from the running Flutter app.
 
-Reads the Telescope events ring buffer populated by `MagicEventWatcher` whenever `Event.dispatch()`
+Reads the Crumbs events ring buffer populated by `MagicEventWatcher` whenever `Event.dispatch()`
 is called via the Magic `Event` facade. Use this to trace event-driven side effects (cache
 invalidation, broadcast echoes, model lifecycle transitions) without adding `print` statements.
 
-**VM Service extension:** `ext.telescope.events`
+**VM Service extension:** `ext.crumbs.events`
 
 ### Input Schema
 
@@ -314,36 +314,36 @@ descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md
 | `time` | string | yes | ISO 8601 UTC timestamp |
 | `listenerCount` | integer | no | Number of listeners notified at dispatch time, when available |
 | `atUs` | integer | yes | Monotonic microseconds from `FlutterTimeline.now` |
-| `redacted` | boolean | yes | True when `TelescopeRedaction.redactor` ran over the record before it was buffered |
+| `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
 | `cursor` | integer or null | yes (envelope) | Largest `atUs` returned, else the `since` given, else null |
 
 ### Example Invocations
 
 ```
 # Last 10 events
-telescope_events limit=10
+crumbs_events limit=10
 
 # All events in the buffer
-telescope_events
+crumbs_events
 ```
 
 ### Notes
 
 - Only events dispatched through the Magic `Event` facade are captured. Raw
   `ChangeNotifier.notifyListeners` calls are invisible to this tool.
-- For Gate authorization checks use `telescope_gates`; for HTTP traffic use `telescope_requests`.
+- For Gate authorization checks use `crumbs_gates`; for HTTP traffic use `crumbs_requests`.
 
 ---
 
-## telescope_gates
+## crumbs_gates
 
 Return recent Gate authorization check records from the running Flutter app.
 
-Reads the Telescope gates ring buffer populated by `MagicGateWatcher` on every
+Reads the Crumbs gates ring buffer populated by `MagicGateWatcher` on every
 `Gate.allows` / `Gate.denies` call via the Magic `Gate` facade. Use this to debug authorization
 issues (why a button is hidden, why a route is blocked) without modifying policy classes.
 
-**VM Service extension:** `ext.telescope.gates`
+**VM Service extension:** `ext.crumbs.gates`
 
 ### Input Schema
 
@@ -379,29 +379,29 @@ issues (why a button is hidden, why a route is blocked) without modifying policy
 
 ```
 # Last 20 gate checks
-telescope_gates limit=20
+crumbs_gates limit=20
 
 # All gate checks in the buffer
-telescope_gates
+crumbs_gates
 ```
 
 ### Notes
 
 - Only checks routed through the Magic `Gate` facade are captured. Direct policy class calls
   are not recorded.
-- Pair with `telescope_clear` before walking a guarded flow to isolate just the relevant checks.
+- Pair with `crumbs_clear` before walking a guarded flow to isolate just the relevant checks.
 
 ---
 
-## telescope_dumps
+## crumbs_dumps
 
 Return recent `debugPrint` output records from the running Flutter app.
 
-Reads the Telescope dumps ring buffer populated by `DumpWatcher`, which overrides `debugPrint`
+Reads the Crumbs dumps ring buffer populated by `DumpWatcher`, which overrides `debugPrint`
 globally. Use this to read `print()` / `debugPrint()` output from within the running app without
 scraping `flutter run` stdout.
 
-**VM Service extension:** `ext.telescope.dumps`
+**VM Service extension:** `ext.crumbs.dumps`
 
 ### Input Schema
 
@@ -433,10 +433,10 @@ scraping `flutter run` stdout.
 
 ```
 # Last 10 debugPrint calls
-telescope_dumps limit=10
+crumbs_dumps limit=10
 
 # All dump records in the buffer
-telescope_dumps
+crumbs_dumps
 ```
 
 ### Notes
@@ -444,20 +444,20 @@ telescope_dumps
 - Only output routed through the `debugPrint` global override is captured. `dart:io stdout.write`
   calls are invisible to this tool.
 - `DumpWatcher` gates on `kDebugMode`: release builds tree-shake it entirely.
-- For structured logs use `telescope_tail`; for crashes use `telescope_exceptions`.
+- For structured logs use `crumbs_tail`; for crashes use `crumbs_exceptions`.
 
 ---
 
-## telescope_queries
+## crumbs_queries
 
 Return recent database query records from the running Flutter app.
 
-Reads the Telescope queries ring buffer populated by `MagicQueryWatcher`, which subscribes to
+Reads the Crumbs queries ring buffer populated by `MagicQueryWatcher`, which subscribes to
 magic's `QueryExecuted` event dispatched by the Magic QueryBuilder. Each record carries the SQL
 string, bindings, execution time, and connection name. Use this to inspect what queries the app
 dispatched without attaching a separate SQL profiler.
 
-**VM Service extension:** `ext.telescope.queries`
+**VM Service extension:** `ext.crumbs.queries`
 
 ### Input Schema
 
@@ -493,31 +493,31 @@ dispatched without attaching a separate SQL profiler.
 
 ```
 # Last 5 queries
-telescope_queries limit=5
+crumbs_queries limit=5
 
 # All queries in the buffer
-telescope_queries
+crumbs_queries
 ```
 
 ### Notes
 
 - Only queries that go through magic's QueryBuilder (dispatching `QueryExecuted` via
   `EventDispatcher`) are recorded. Raw `sqlite3` or direct Dio SQL calls bypass this tool.
-- For Magic Cache traffic use `telescope_caches`; for HTTP use `telescope_requests`; for log
-  lines use `telescope_tail`.
+- For Magic Cache traffic use `crumbs_caches`; for HTTP use `crumbs_requests`; for log
+  lines use `crumbs_tail`.
 
 ---
 
-## telescope_caches
+## crumbs_caches
 
 Return recent Magic Cache operation records from the running Flutter app.
 
-Reads the Telescope caches ring buffer populated by `MagicCacheWatcher`, which subscribes to
+Reads the Crumbs caches ring buffer populated by `MagicCacheWatcher`, which subscribes to
 magic's `CacheHit` / `CacheMiss` / `CachePut` / `CacheForget` / `CacheFlush` events. Each record
 carries timestamp, operation tag, cache key, and optional TTL. Use this to inspect cache traffic
 without instrumenting the consumer code.
 
-**VM Service extension:** `ext.telescope.caches`
+**VM Service extension:** `ext.crumbs.caches`
 
 ### Input Schema
 
@@ -551,31 +551,31 @@ without instrumenting the consumer code.
 
 ```
 # Last 20 cache operations
-telescope_caches limit=20
+crumbs_caches limit=20
 
 # All cache operations in the buffer
-telescope_caches
+crumbs_caches
 ```
 
 ### Notes
 
 - Only Magic `Cache` facade calls dispatch the watcher events. Raw driver-level cache calls
   bypass this tool.
-- For DB queries use `telescope_queries`; for HTTP use `telescope_requests`.
+- For DB queries use `crumbs_queries`; for HTTP use `crumbs_requests`.
 
 ---
 
-## telescope_frames
+## crumbs_frames
 
 Return recent per-frame performance records from the running Flutter app.
 
-Reads the Telescope frame-perf ring buffer populated by `FramePerfWatcher`, which joins
+Reads the Crumbs frame-perf ring buffer populated by `FramePerfWatcher`, which joins
 `SchedulerBinding` frame timings with a per-frame `FlutterTimeline` block-attribution drain. Each
 record carries frame number, build/raster/vsync-overhead/total-span durations in microseconds, a
 timestamp, and a `blocks` map of named spans to their aggregated duration and call count. Use this
 to attribute jank to a specific widget or layout phase after driving an interaction.
 
-**VM Service extension:** `ext.telescope.frames`
+**VM Service extension:** `ext.crumbs.frames`
 
 ### Input Schema
 
@@ -626,10 +626,10 @@ to attribute jank to a specific widget or layout phase after driving an interact
 
 ```
 # Last 100 frames
-telescope_frames limit=100
+crumbs_frames limit=100
 
 # All frames in the buffer
-telescope_frames
+crumbs_frames
 ```
 
 ### Notes
@@ -641,17 +641,17 @@ telescope_frames
 
 ---
 
-## telescope_clear
+## crumbs_clear
 
-Clear every Telescope ring buffer.
+Clear every Crumbs ring buffer.
 
-Wipes all ring buffers in one call so the next `telescope_tail` / `telescope_requests` /
-`telescope_exceptions` / `telescope_events` / `telescope_gates` / `telescope_dumps` /
-`telescope_queries` / `telescope_caches` / `telescope_frames` returns only records produced
+Wipes all ring buffers in one call so the next `crumbs_tail` / `crumbs_requests` /
+`crumbs_exceptions` / `crumbs_events` / `crumbs_gates` / `crumbs_dumps` /
+`crumbs_queries` / `crumbs_caches` / `crumbs_frames` returns only records produced
 **after** this clear. Useful as a "set zero" before reproducing a bug or capturing the output of a
 specific user action.
 
-**VM Service extension:** `ext.telescope.clear`
+**VM Service extension:** `ext.crumbs.clear`
 
 ### Input Schema
 
@@ -673,20 +673,20 @@ No parameters.
 
 ```
 # Clear all buffers before a repro
-telescope_clear
+crumbs_clear
 
 # Common pattern: clear, perform the action, then read
-telescope_clear
+crumbs_clear
 # ... trigger the user action ...
-telescope_requests limit=20
-telescope_tail limit=50
+crumbs_requests limit=20
+crumbs_tail limit=50
 ```
 
 ### Notes
 
 - Idempotent: safe to call when buffers are already empty.
 - Does NOT affect the live `package:logging` stream; only the captured ring buffers.
-- The `ext.telescope.pause` and `ext.telescope.resume` extensions exist in the running app but
+- The `ext.crumbs.pause` and `ext.crumbs.resume` extensions exist in the running app but
   are not exposed as MCP tools in the current release (V1.x backlog).
 
 ---
@@ -695,9 +695,9 @@ telescope_tail limit=50
 
 - [Cursor and filters](cursor-and-filters.md): `since`, `type`, `logger` and `cursor` on the console and
   events extensions.
-- [Overview](overview.md): how the 10 tools surface through `TelescopeArtisanProvider` and route
+- [Overview](overview.md): how the 10 tools surface through `CrumbsDowelProvider` and route
   through the VM Service.
-- [Setup guide](setup.md): install telescope, register `TelescopeArtisanProvider`, and connect
+- [Setup guide](setup.md): install crumbs, register `CrumbsDowelProvider`, and connect
   Claude Code.
-- [artisan MCP tool reference](https://fluttersdk.com/artisan/mcp/tool-reference): the 10 substrate
-  tools (`artisan_start`, `artisan_stop`, `artisan_tinker`, etc.) and filter configuration.
+- [dowel MCP tool reference](https://anilcancakir.com/dowel/docs/mcp/tool-reference): the 10 substrate
+  tools (`dowel_start`, `dowel_stop`, `dowel_tinker`, etc.) and filter configuration.

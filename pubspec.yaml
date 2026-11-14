@@ -1,10 +1,9 @@
-name: fluttersdk_telescope
+name: crumbs
 description: "Passive runtime inspector for Flutter. Captures HTTP, logs, exceptions, DB queries, and Magic events via VM Service extensions. CLI tail and MCP tools for Claude Code."
 version: 0.0.12
-homepage: https://fluttersdk.com/telescope
-repository: https://github.com/fluttersdk/telescope
-issue_tracker: https://github.com/fluttersdk/telescope/issues
-documentation: https://fluttersdk.com/telescope
+homepage: https://anilcancakir.com/crumbs
+repository: https://github.com/anilcancakir/crumbs
+issue_tracker: https://github.com/anilcancakir/crumbs/issues
 
 # pub.dev search topics (max 5, lowercase + hyphens, regex ^[a-z][a-z0-9-]{0,31}$).
 # Order = priority. `mcp-server` + `ai-agents` are blue-ocean (2 packages each
@@ -25,15 +24,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  fluttersdk_artisan: ^0.0.20
+  dowel: ^0.0.21
   logging: ^1.2.0
   meta: ^1.16.0
 
 executables:
-  # `dart run fluttersdk_telescope <cmd>` ; telescope-flavoured artisan wrapper.
-  # Proxies the full artisan CLI surface AND surfaces the 6 telescope CLI
-  # commands + 9 telescope_* MCP tools via TelescopeArtisanProvider.
-  fluttersdk_telescope: fluttersdk_telescope
+  # `dart run crumbs <cmd>`: the dowel CLI with the crumbs commands and
+  # MCP tools added through CrumbsDowelProvider.
+  crumbs: crumbs
 
 dev_dependencies:
   flutter_test:

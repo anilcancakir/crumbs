@@ -1,0 +1,363 @@
+import 'dart:async';
+import 'dart:collection';
+
+import 'package:meta/meta.dart';
+
+import 'internal/http_adapter_registry.dart';
+import 'internal/redaction_lists.dart';
+import 'records/dump_record.dart';
+import 'records/event_record.dart';
+import 'records/exception_record.dart';
+import 'records/frame_perf_record.dart';
+import 'records/gate_record.dart';
+import 'records/http_request_record.dart';
+import 'records/log_record_entry.dart';
+import 'records/magic_cache_record.dart';
+import 'records/magic_model_record.dart';
+import 'records/query_record.dart';
+import 'crumbs_redaction.dart';
+
+/// The ten ring buffers of [CrumbsStore], for [CrumbsStore.setCapacity].
+enum CrumbsKind {
+  http,
+  logs,
+  exceptions,
+  models,
+  caches,
+  events,
+  gates,
+  dumps,
+  queries,
+  framePerf,
+}
+
+/// In-memory ring-buffer store for the 9 V1+alpha-2 watcher record types
+/// plus the frame-perf buffer.
+///
+/// Default cap: 500 entries per buffer (configurable via [setCapacity], for
+/// every buffer at once or for one [CrumbsKind]). The frame-perf buffer
+/// has its own capacity (default 3600) rather than sharing [_cap]; see its
+/// field docblock.
+///
+/// The log, event, exception and HTTP buffers hold records already run
+/// through [CrumbsRedaction.redactor] when one is registered.
+///
+/// Singleton accessed via static methods. Hot-restart resets the buffers
+/// naturally (statics re-run their initializers).
+class CrumbsStore {
+  CrumbsStore._();
+
+  static int _cap = 500;
+  static bool _paused = false;
+
+  /// The frame-perf buffer's own capacity, independent of [_cap].
+  ///
+  /// `_cap` is shared by all nine sibling buffers; raising it to hold a
+  /// useful frame window (500 frames is about 8 seconds at 60fps) would
+  /// simultaneously inflate the HTTP, log, exception, dump, model, cache,
+  /// event, gate and query buffers by the same factor. A frame buffer's
+  /// natural size is an order of magnitude larger than an exception
+  /// buffer's, so it gets its own field: 3600 is about a minute at 60fps.
+  static int _framePerfCap = 3600;
+
+  /// Caps set for one [CrumbsKind]; each wins over [_cap] for its buffer.
+  /// Frame perf is not here, it keeps [_framePerfCap].
+  static final Map<CrumbsKind, int> _kindCaps = <CrumbsKind, int>{};
+
+  static final Queue<HttpRequestRecord> _http = Queue<HttpRequestRecord>();
+  static final Queue<LogRecordEntry> _logs = Queue<LogRecordEntry>();
+  static final Queue<ExceptionRecord> _exceptions = Queue<ExceptionRecord>();
+  static final Queue<MagicModelRecord> _models = Queue<MagicModelRecord>();
+  static final Queue<MagicCacheRecord> _caches = Queue<MagicCacheRecord>();
+  static final Queue<EventRecord> _events = Queue<EventRecord>();
+  static final Queue<GateRecord> _gates = Queue<GateRecord>();
+  static final Queue<DumpRecord> _dumps = Queue<DumpRecord>();
+  static final Queue<QueryRecord> _queries = Queue<QueryRecord>();
+  static final Queue<FramePerfRecord> _framePerf = Queue<FramePerfRecord>();
+
+  static final StreamController<HttpRequestRecord> _httpStream =
+      StreamController<HttpRequestRecord>.broadcast();
+  static final StreamController<LogRecordEntry> _logStream =
+      StreamController<LogRecordEntry>.broadcast();
+  static final StreamController<ExceptionRecord> _exceptionStream =
+      StreamController<ExceptionRecord>.broadcast();
+  static final StreamController<MagicModelRecord> _modelStream =
+      StreamController<MagicModelRecord>.broadcast();
+  static final StreamController<MagicCacheRecord> _cacheStream =
+      StreamController<MagicCacheRecord>.broadcast();
+  static final StreamController<EventRecord> _eventStream =
+      StreamController<EventRecord>.broadcast();
+  static final StreamController<GateRecord> _gateStream =
+      StreamController<GateRecord>.broadcast();
+  static final StreamController<DumpRecord> _dumpStream =
+      StreamController<DumpRecord>.broadcast();
+  static final StreamController<QueryRecord> _queryStream =
+      StreamController<QueryRecord>.broadcast();
+  static final StreamController<FramePerfRecord> _framePerfStream =
+      StreamController<FramePerfRecord>.broadcast();
+
+  /// Set the capacity of every buffer but frame perf (default 500), or of
+  /// the one buffer [kind] names.
+  ///
+  /// A [kind] cap wins over the shared one whichever was set last, and the
+  /// shared call leaves it alone. A cap below the current length trims on
+  /// the next record, not retroactively. Zero or negative keeps nothing.
+  static void setCapacity(int cap, {CrumbsKind? kind}) {
+    if (kind == null) {
+      _cap = cap;
+    } else if (kind == CrumbsKind.framePerf) {
+      _framePerfCap = cap;
+    } else {
+      _kindCaps[kind] = cap;
+    }
+  }
+
+  /// Set the frame-perf buffer's own capacity (default 3600). Independent
+  /// of the shared [setCapacity]; see [_framePerfCap] for why.
+  static void setFramePerfCapacity(int cap) =>
+      setCapacity(cap, kind: CrumbsKind.framePerf);
+
+  static int _capacityOf(CrumbsKind kind) => _kindCaps[kind] ?? _cap;
+
+  /// Pause all recording. Calls become no-ops until [resume].
+  static void pause() => _paused = true;
+
+  /// Resume recording.
+  static void resume() => _paused = false;
+
+  /// Clear all buffers.
+  static void clear() {
+    _http.clear();
+    _logs.clear();
+    _exceptions.clear();
+    _models.clear();
+    _caches.clear();
+    _events.clear();
+    _gates.clear();
+    _dumps.clear();
+    _queries.clear();
+    _framePerf.clear();
+  }
+
+  /// Clear only the frame-perf buffer.
+  ///
+  /// Public and NOT `@visibleForTesting`: a measurement session needs to
+  /// zero this buffer from production code (another package assigns this
+  /// into a session-reset hook) without wiping the HTTP, log and exception
+  /// history a developer may also be reading, which [clear] would do.
+  static void clearFramePerf() => _framePerf.clear();
+
+  /// Buffer [r] with its credentials masked by [CrumbsRedaction], and
+  /// emit the masked copy on [onHttpRecord]. Never throws on a malformed
+  /// body: one that is not JSON is buffered as given. When a
+  /// [CrumbsRedaction.redactor] is registered it runs after the key
+  /// masking, before the record enters the queue or the stream; a record
+  /// the redactor throws on is dropped, neither buffered nor emitted.
+  static void recordHttp(HttpRequestRecord r) {
+    if (_paused) return;
+    final HttpRequestRecord? redacted = CrumbsRedaction.redactHttpRecord(r);
+    if (redacted == null) return;
+    _http.addLast(redacted);
+    while (_http.length > _capacityOf(CrumbsKind.http)) {
+      _http.removeFirst();
+    }
+    _httpStream.add(redacted);
+  }
+
+  /// Buffer [r] and emit it on [onLogRecord], after the registered
+  /// [CrumbsRedaction.redactor] (if any) ran over its text; dropped when
+  /// the redactor throws.
+  static void recordLog(LogRecordEntry r) {
+    if (_paused) return;
+    final LogRecordEntry? redacted = CrumbsRedaction.redactLogRecord(r);
+    if (redacted == null) return;
+    _logs.addLast(redacted);
+    while (_logs.length > _capacityOf(CrumbsKind.logs)) {
+      _logs.removeFirst();
+    }
+    _logStream.add(redacted);
+  }
+
+  /// Buffer [r] and emit it on [onExceptionRecord], after the registered
+  /// [CrumbsRedaction.redactor] (if any) ran over its message and stack;
+  /// dropped when the redactor throws.
+  static void recordException(ExceptionRecord r) {
+    if (_paused) return;
+    final ExceptionRecord? redacted = CrumbsRedaction.redactExceptionRecord(r);
+    if (redacted == null) return;
+    _exceptions.addLast(redacted);
+    while (_exceptions.length > _capacityOf(CrumbsKind.exceptions)) {
+      _exceptions.removeFirst();
+    }
+    _exceptionStream.add(redacted);
+  }
+
+  static void recordMagicModel(MagicModelRecord r) {
+    if (_paused) return;
+    _models.addLast(r);
+    while (_models.length > _capacityOf(CrumbsKind.models)) {
+      _models.removeFirst();
+    }
+    _modelStream.add(r);
+  }
+
+  static void recordMagicCache(MagicCacheRecord r) {
+    if (_paused) return;
+    _caches.addLast(r);
+    while (_caches.length > _capacityOf(CrumbsKind.caches)) {
+      _caches.removeFirst();
+    }
+    _cacheStream.add(r);
+  }
+
+  /// Buffer [r] and emit it on [onEventRecord], with its payload made
+  /// JSON-safe and run through the registered [CrumbsRedaction.redactor]
+  /// (if any) first; dropped when the redactor throws. See
+  /// [CrumbsRedaction.redactEventRecord].
+  static void recordEvent(EventRecord r) {
+    if (_paused) return;
+    final EventRecord? redacted = CrumbsRedaction.redactEventRecord(r);
+    if (redacted == null) return;
+    _events.addLast(redacted);
+    while (_events.length > _capacityOf(CrumbsKind.events)) {
+      _events.removeFirst();
+    }
+    _eventStream.add(redacted);
+  }
+
+  static void recordGate(GateRecord r) {
+    if (_paused) return;
+    _gates.addLast(r);
+    while (_gates.length > _capacityOf(CrumbsKind.gates)) {
+      _gates.removeFirst();
+    }
+    _gateStream.add(r);
+  }
+
+  static void recordDump(DumpRecord r) {
+    if (_paused) return;
+    _dumps.addLast(r);
+    while (_dumps.length > _capacityOf(CrumbsKind.dumps)) {
+      _dumps.removeFirst();
+    }
+    _dumpStream.add(r);
+  }
+
+  static void recordQuery(QueryRecord r) {
+    if (_paused) return;
+    _queries.addLast(r);
+    while (_queries.length > _capacityOf(CrumbsKind.queries)) {
+      _queries.removeFirst();
+    }
+    _queryStream.add(r);
+  }
+
+  static void recordFramePerf(FramePerfRecord r) {
+    if (_paused) return;
+    _framePerf.addLast(r);
+    while (_framePerf.length > _framePerfCap) {
+      _framePerf.removeFirst();
+    }
+    _framePerfStream.add(r);
+  }
+
+  static List<HttpRequestRecord> recentHttp({int? limit}) =>
+      _recent(_http, limit);
+  static List<LogRecordEntry> recentLogs({int? limit, String? minLevel}) {
+    final filtered = minLevel == null
+        ? _logs.toList()
+        : _logs.where((r) => _meetsLevel(r.level, minLevel)).toList();
+    return _trim(filtered, limit);
+  }
+
+  static List<ExceptionRecord> recentExceptions({int? limit}) =>
+      _recent(_exceptions, limit);
+  static List<MagicModelRecord> recentModels({int? limit}) =>
+      _recent(_models, limit);
+  static List<MagicCacheRecord> recentCaches({int? limit}) =>
+      _recent(_caches, limit);
+  static List<EventRecord> recentEvents({int? limit}) =>
+      _recent(_events, limit);
+  static List<GateRecord> recentGates({int? limit}) => _recent(_gates, limit);
+  static List<DumpRecord> recentDumps({int? limit}) => _recent(_dumps, limit);
+  static List<QueryRecord> recentQueries({int? limit}) =>
+      _recent(_queries, limit);
+  static List<FramePerfRecord> recentFramePerf({int? limit}) =>
+      _recent(_framePerf, limit);
+
+  static List<T> _recent<T>(Queue<T> q, int? limit) => _trim(q.toList(), limit);
+
+  static List<T> _trim<T>(List<T> list, int? limit) {
+    if (limit == null || list.length <= limit) return list;
+    if (limit <= 0) return <T>[];
+    return list.sublist(list.length - limit);
+  }
+
+  /// False for a [min] that is not a level name: a typo must not read as
+  /// "every level", which an agent would take for a clean log.
+  static bool _meetsLevel(String actual, String min) {
+    const order = [
+      'finest',
+      'finer',
+      'fine',
+      'config',
+      'info',
+      'warning',
+      'severe',
+      'shout',
+    ];
+    final int minIndex = order.indexOf(min.toLowerCase());
+    if (minIndex < 0) return false;
+    return order.indexOf(actual.toLowerCase()) >= minIndex;
+  }
+
+  /// Total number of HTTP requests currently in flight across every
+  /// registered [CrumbsHttpAdapter].
+  ///
+  /// Sums [CrumbsHttpAdapter.pendingCount] across the live adapter
+  /// registry populated by [CrumbsPlugin.registerHttpAdapter]. Returns 0
+  /// when no adapter is registered OR when no registered adapter overrides
+  /// the default [CrumbsHttpAdapter.pendingCount] (default body returns 0).
+  ///
+  /// Read-only sync getter; safe to call from poll loops (no locks, no IO).
+  /// Consumed by `ext.tapir.wait_for_network_idle` to detect a network-idle
+  /// window before yielding the next agent action.
+  static int get pendingHttpCount {
+    var total = 0;
+    for (final adapter in httpAdapterRegistry) {
+      total += adapter.pendingCount;
+    }
+    return total;
+  }
+
+  static Stream<HttpRequestRecord> get onHttpRecord => _httpStream.stream;
+  static Stream<LogRecordEntry> get onLogRecord => _logStream.stream;
+  static Stream<ExceptionRecord> get onExceptionRecord =>
+      _exceptionStream.stream;
+  static Stream<MagicModelRecord> get onModelRecord => _modelStream.stream;
+  static Stream<MagicCacheRecord> get onCacheRecord => _cacheStream.stream;
+  static Stream<EventRecord> get onEventRecord => _eventStream.stream;
+  static Stream<GateRecord> get onGateRecord => _gateStream.stream;
+  static Stream<DumpRecord> get onDumpRecord => _dumpStream.stream;
+  static Stream<QueryRecord> get onQueryRecord => _queryStream.stream;
+  static Stream<FramePerfRecord> get onFramePerfRecord =>
+      _framePerfStream.stream;
+
+  /// Test-only reset.
+  @visibleForTesting
+  static void resetForTesting() {
+    clear();
+    _paused = false;
+    _cap = 500;
+    _kindCaps.clear();
+    CrumbsRedaction.redactor = null;
+    _framePerfCap = 3600;
+    // The HTTP-adapter registry is a singleton list owned by
+    // `internal/http_adapter_registry.dart`; clearing it here keeps test
+    // isolation aligned with the existing buffer reset.
+    httpAdapterRegistry.clear();
+    // The hidden-name lists are process-wide too; a test that extends them
+    // must not leak its additions into the next.
+    resetRedactionLists();
+  }
+}
