@@ -34,7 +34,7 @@ The recommended path is one command, `dart run crumbs crumbs:install`, which pat
 |:-----------|:--------|:------|
 | Dart | `3.13` | |
 | Flutter | `3.47` | |
-| dowel | `^0.0.21` | A dependency of crumbs. When `crumbs:install` scaffolds the harness, dowel's `install` step adds `dowel: any` to the app's `pubspec.yaml`, because the generated barrels import it. |
+| dowel | `^1.0.0` | A dependency of crumbs. When `crumbs:install` scaffolds the harness, dowel's `install` step adds `dowel` to the app's `pubspec.yaml` (keeping a constraint the app already has), because the generated barrels import it. |
 
 <a name="run-the-installer"></a>
 ## Run the installer

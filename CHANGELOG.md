@@ -17,6 +17,7 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.
 
 ### Changed
 
+- **BREAKING: crumbs requires `dowel ^1.0.0`.** The `^0.0.21` range cannot resolve next to dowel 1.0.0 or the Magic packages that depend on it. (`pubspec.yaml`)
 - **BREAKING: `CrumbsWatcher` and `CrumbsHttpAdapter` are `abstract interface class`, and `CrumbsHttpAdapter.pendingCount` has no default body.** A watcher or adapter from another package `implements` them, as `magic_devtools` does, and inherits nothing a later release could change under it; `extends` no longer compiles, so switch to `implements`. The default `pendingCount` was only reachable through `extends`; an adapter that tracks no in-flight requests writes `int get pendingCount => 0;`. (`lib/src/watchers/watcher.dart`, `lib/src/adapters/http_adapter.dart`)
 - **BREAKING: `ExceptionWatcher`, `LogWatcher`, `DumpWatcher` and `FramePerfWatcher` are `final class`.** A watcher of your own implements `CrumbsWatcher`; subclassing a shipped watcher would bind it to hook and chain-preserve internals a later release changes. Extending or implementing one no longer compiles. (`lib/src/watchers/`)
 - **BREAKING: every record class is `final class`.** They are values crumbs builds and copies field by field (redaction rebuilds them), so a subclass would lose its own fields at insert; extending or implementing one no longer compiles. (`lib/src/records/`)

@@ -34,7 +34,7 @@ crumbs is a passive inspector: it records what the app does and drives nothing. 
 | Import | `package:crumbs/crumbs.dart` (`CrumbsPlugin.install()`, behind `if (!kReleaseMode)`) |
 | Entry points | `dart run crumbs <command>`, `./bin/dowel <command>`, `CrumbsPlugin.install()`, `CrumbsPlugin.registerWatcher()`, `CrumbsPlugin.registerHttpAdapter()`, `CrumbsStore`, `CrumbsRedaction`, `CrumbsFileSink`, `CrumbsDowelProvider` (`package:crumbs/cli.dart`), `dart run crumbs mcp:serve` |
 | Platforms | Any Flutter target that exposes a VM Service in a debug or profile build: Android, iOS, macOS, Windows, Linux, and web for everything except the file sink: `CrumbsFileSink` imports `dart:io` with no conditional import, so the timeline on disk needs a native target and pub.dev shows no Web tag. On a Windows host `mcp:install` writes a `dart run` entry, never `./bin/dowel` |
-| Requires | Dart 3.13, Flutter 3.47; a plugin of [`dowel`](https://pub.dev/packages/dowel) (`^0.0.21`) |
+| Requires | Dart 3.13, Flutter 3.47; a plugin of [`dowel`](https://pub.dev/packages/dowel) (`^1.0.0`) |
 | Dependencies | `dowel`, `logging`, `meta`, the Flutter SDK |
 | License | MIT |
 

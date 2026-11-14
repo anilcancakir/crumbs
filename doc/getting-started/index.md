@@ -39,7 +39,7 @@ dart run crumbs crumbs:install
 |:-----------|:--------|:------|
 | Dart SDK | `3.13` | |
 | Flutter SDK | `3.47` | The VM Service extensions need the Flutter runtime. |
-| dowel | `^0.0.21` | Pulled in by crumbs; `crumbs:install` sets up the rest. |
+| dowel | `^1.0.0` | Pulled in by crumbs; `crumbs:install` sets up the rest. |
 | Magic stack | optional | `MagicCrumbsIntegration` from a `magic_devtools` release built on crumbs adds HTTP, model, cache, event, gate and query capture. |
 
 <a name="what-gets-captured"></a>

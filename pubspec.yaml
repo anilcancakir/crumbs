@@ -21,7 +21,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  dowel: ^0.0.21
+  dowel: ^1.0.0
   logging: ^1.2.0
   meta: ^1.16.0
 
