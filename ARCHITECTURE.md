@@ -22,7 +22,7 @@ watchers, adapters, host ──recordX──▶ CrumbsStore ──redact──�
 
 ### `CrumbsRedaction` (`lib/src/crumbs_redaction.dart`, `lib/src/internal/redaction_lists.dart`)
 
-- Owns: masking by key (HTTP headers, bodies and URL query; the structured bindings of a query and arguments of a gate check), the host `redactor` over free text, and the only way a record becomes `redacted` (a private `Expando`; only log, event, exception and HTTP records carry the flag).
+- Owns: masking by key (HTTP headers, bodies and URL query; the Map elements of a query's bindings and a gate check's arguments, since a positional binding has no key), the host `redactor` over free text (also a gate's user id; never a gate's ability or a query's connection name), the JSON-safe pass over bindings, arguments and payloads, and the only way a record becomes `redacted` (a private `Expando`; only log, event, exception and HTTP records carry the flag).
 - Must not: hold a record; it returns a record, or null when the `redactor` throws.
 - Depends on: the records.
 
@@ -46,13 +46,14 @@ watchers, adapters, host ──recordX──▶ CrumbsStore ──redact──�
 
 ### The Magic producers (in `magic_devtools`, not here)
 
-In a `magic_devtools` release built on crumbs, `MagicCrumbsIntegration`, `MagicHttpFacadeAdapter` and the model, cache, event, gate and query watchers implement this package's contracts from another repository. Crumbs depends on no Magic package. `CrumbsWatcher` and `CrumbsHttpAdapter` are `abstract interface class`es for that reason: a producer in another package implements them and inherits nothing a later release could change under it (`lib/src/watchers/watcher.dart`, `lib/src/adapters/http_adapter.dart`).
+In a `magic_devtools` release built on crumbs, `MagicCrumbsIntegration`, `MagicHttpFacadeAdapter` and the model, cache, event, gate and query watchers implement this package's contracts from another repository. Crumbs depends on no Magic package. `CrumbsWatcher` and `CrumbsHttpAdapter` are `abstract interface class`es for that reason: a producer in another package implements them and inherits nothing a later release could change under it (`lib/src/watchers/watcher.dart`, `lib/src/adapters/http_adapter.dart`). For the same reason the shipped watchers are `final class`.
 
 ## Invariants
 
 | Rule | Why | Verify |
 |------|-----|--------|
 | Every log, event, exception, HTTP, dump, query and gate record passes `CrumbsRedaction` before it enters a queue or a stream: credential keys are masked always, free text only by the host `redactor`; model and cache records are buffered as given | Buffers are served to agents and written to disk; SECURITY.md states the same two layers | `flutter test test/src/crumbs_store_test.dart --plain-name "masks every text field"`, then `--plain-name "redaction"` |
+| No binding, argument or payload value makes a read or a `recordX` call throw: `NaN`, an infinity and any object `jsonEncode` refuses are stored as text, a throwing `toString` as `<unprintable Type>` | One bad value would fail every read of its buffer until evicted, or throw into the host's code | `flutter test test/src/extensions/register_crumbs_extensions_test.dart --plain-name "non-finite numbers"`, then `test/src/crumbs_store_test.dart --plain-name "unprintable values"` |
 | A record the `redactor` throws on is dropped, never buffered unmasked | Fail closed: a broken redactor must not leak | `flutter test test/src/crumbs_store_test.dart --plain-name "a throwing redactor drops the record from queue and stream"` |
 | `CrumbsFileSink` writes only records with `redacted: true` | A record made before a redactor existed was never masked | `flutter test test/src/crumbs_file_sink_test.dart --plain-name "unredacted"` |
 | A caller's file name is only compared with the sink's listing, never joined into a path | Traversal through `ext.crumbs.file` | `flutter test test/src/crumbs_file_sink_test.dart --plain-name "refuses"` |
@@ -114,4 +115,4 @@ Timeline on disk:
 - `livenessCounter` advances from a post-frame callback, which also runs while a deferred first frame keeps frames from the engine: `lib/src/watchers/frame_perf_watcher.dart`
 - `vsyncStartUs` is not proven to share the `atUs` clock: `lib/src/records/frame_perf_record.dart`
 
-Last reviewed: 2026-11-14, after the install guard moved to `!kReleaseMode`.
+Last reviewed: 2026-11-14, after the review fixes to redaction and the shipped watchers.

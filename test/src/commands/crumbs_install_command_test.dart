@@ -971,6 +971,49 @@ void main() {
 
         expect(File(mainDartPath).readAsStringSync(), equals(legacy));
       });
+
+      test(
+        'a Magic main.dart wired by an earlier crumbs with the kDebugMode '
+        'block gets the Magic block behind the same kDebugMode guard',
+        () async {
+          final mainDartPath = _seedProject(
+            tempDir,
+            pubspecDeps: const {'magic': 'any', 'magic_devtools': 'any'},
+            magicDevtoolsLibrary: 'crumbs.dart',
+            mainDartContents: '''
+import 'package:crumbs/crumbs.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/material.dart';
+import 'package:magic/magic.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (kDebugMode) {
+    CrumbsPlugin.install();
+    CrumbsPlugin.registerWatcher(ExceptionWatcher());
+    CrumbsPlugin.registerWatcher(DumpWatcher());
+  }
+  await Magic.init(configFactories: [() => {}]);
+  runApp(const MagicApplication());
+}
+''',
+          );
+
+          await _runInstallIn(tempDir, BufferedOutput());
+
+          final result = File(mainDartPath).readAsStringSync();
+          expect(
+            result,
+            contains(
+              '  if (kDebugMode) {\n'
+              '    MagicCrumbsIntegration.install();\n'
+              '  }\n',
+            ),
+          );
+          expect(result, isNot(contains('kReleaseMode')));
+          expect('CrumbsPlugin.install('.allMatches(result).length, equals(1));
+        },
+      );
     });
   });
 }

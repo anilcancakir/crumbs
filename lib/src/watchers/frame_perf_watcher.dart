@@ -37,7 +37,7 @@ import 'watcher.dart';
 /// Attribution only flows while [FlutterTimeline.debugCollectionEnabled] is
 /// true, which a measurement session turns on. Until then the watcher records
 /// frame magnitude alone and stays silent about blocks.
-class FramePerfWatcher implements CrumbsWatcher {
+final class FramePerfWatcher implements CrumbsWatcher {
   /// How many un-joined block maps the pending map holds before the oldest is
   /// dropped.
   ///

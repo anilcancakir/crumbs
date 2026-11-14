@@ -1257,6 +1257,108 @@ void main() {
       );
     });
   });
+
+  group('non-finite numbers', () {
+    test('a query binding of NaN or Infinity reads back as text, and the '
+        'queries handler still answers', () async {
+      CrumbsStore.recordQuery(
+        QueryRecord(
+          sql: 'SELECT ?',
+          bindings: <Object?>[double.nan, double.infinity, 1.5],
+          timeMs: 1,
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+      CrumbsStore.recordQuery(
+        QueryRecord(
+          sql: 'SELECT 1',
+          bindings: const <Object?>[],
+          timeMs: 1,
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+
+      final result = await queriesHandler('ext.crumbs.queries', {});
+      final records =
+          (jsonDecode(result.result!) as Map<String, dynamic>)['queries']
+              as List<dynamic>;
+
+      expect(records, hasLength(2));
+      expect(
+        records.first['bindings'],
+        equals(<Object?>['NaN', 'Infinity', 1.5]),
+      );
+    });
+
+    test('a gate argument of NaN or -Infinity reads back as text, and the '
+        'gates handler still answers', () async {
+      CrumbsStore.recordGate(
+        GateRecord(
+          ability: 'update',
+          result: true,
+          arguments: <Object?>[
+            double.nan,
+            <String, Object?>{'limit': double.negativeInfinity},
+          ],
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+      CrumbsStore.recordGate(
+        GateRecord(
+          ability: 'view',
+          result: true,
+          arguments: const <Object?>[],
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+
+      final result = await gatesHandler('ext.crumbs.gates', {});
+      final records =
+          (jsonDecode(result.result!) as Map<String, dynamic>)['gates']
+              as List<dynamic>;
+
+      expect(records, hasLength(2));
+      expect(
+        records.first['arguments'],
+        equals(<Object?>[
+          'NaN',
+          <String, Object?>{'limit': '-Infinity'},
+        ]),
+      );
+    });
+
+    test('an event payload of NaN or Infinity reads back as text, and the '
+        'events handler still answers', () async {
+      CrumbsStore.recordEvent(
+        EventRecord(
+          eventType: 'player.tick',
+          payload: <String, dynamic>{
+            'ratio': double.nan,
+            'list': <Object?>[double.infinity],
+          },
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+      CrumbsStore.recordEvent(
+        EventRecord(
+          eventType: 'player.stop',
+          payload: <String, dynamic>{},
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+
+      final records = (await decodeEvents({}))['events'] as List<dynamic>;
+
+      expect(records, hasLength(2));
+      expect(
+        records.first['payload'],
+        equals(<String, Object?>{
+          'ratio': 'NaN',
+          'list': <Object?>['Infinity'],
+        }),
+      );
+    });
+  });
 }
 
 /// The integers from [first] to [last], both inclusive.

@@ -147,7 +147,8 @@ class CrumbsInstallCommand extends DowelCommand {
   ///       `CrumbsPlugin.install(` in any shape skips 3a and 3b.
   ///   3c. When pubspec has `magic_devtools:`, its resolved release ships
   ///       `lib/crumbs.dart` AND main.dart has `await Magic.init(`, inject
-  ///       `MagicCrumbsIntegration.install()` after that call.
+  ///       `MagicCrumbsIntegration.install()` after that call, behind the
+  ///       guard of an existing crumbs block, else `!kReleaseMode`.
   static void _injectRuntimeWiring(DowelContext ctx, String mainDartPath) {
     ctx.output.info('Wiring CrumbsPlugin into $mainDartPath...');
 
@@ -161,6 +162,14 @@ class CrumbsInstallCommand extends DowelCommand {
     // carrying the integration call needs neither the check nor the warning.
     final String original = FileHelper.readFile(mainDartPath);
     final bool wiresCrumbs = !original.contains('CrumbsPlugin.install(');
+    // The Magic producers record into buffers only CrumbsPlugin.install()
+    // makes readable, so they take the guard of an existing crumbs block: a
+    // `kDebugMode` block beside an `!kReleaseMode` one fills the buffers of a
+    // profile build that registers no extension.
+    final String? existingGuard = wiresCrumbs
+        ? null
+        : _crumbsGuard.firstMatch(original)?.group(1)?.trim();
+    final String magicGuard = existingGuard ?? '!kReleaseMode';
     final bool wantsMagic =
         original.contains('await Magic.init(') &&
         _hasMagicDevtoolsDep() &&
@@ -175,8 +184,8 @@ class CrumbsInstallCommand extends DowelCommand {
     //     MainDartEditor.addImport) skips only an exact duplicate, so a file
     //     that already imports foundation.dart in full would gain a redundant
     //     `show kReleaseMode` import, which the analyzer flags as
-    //     unnecessary_import.
-    if ((wiresCrumbs || wiresMagic) &&
+    //     unnecessary_import. An existing guard is already in scope.
+    if ((wiresCrumbs || (wiresMagic && existingGuard == null)) &&
         !_fullFoundationImport.hasMatch(original)) {
       MainDartEditor.addImport(
         mainDartPath,
@@ -255,7 +264,7 @@ class CrumbsInstallCommand extends DowelCommand {
       try {
         MainDartEditor.injectAfterMagicInit(
           mainDartPath,
-          '  if (!kReleaseMode) {\n'
+          '  if ($magicGuard) {\n'
           '    MagicCrumbsIntegration.install();\n'
           '  }\n',
         );
@@ -359,6 +368,13 @@ class CrumbsInstallCommand extends DowelCommand {
     if (!pubspec.existsSync()) return false;
     return RegExp(r'\n  magic_devtools:').hasMatch(pubspec.readAsStringSync());
   }
+
+  /// The condition of the `if` that guards the first `CrumbsPlugin.install(`
+  /// call, braced or not, in group 1; no match for an unguarded call or a
+  /// condition that holds parentheses.
+  static final RegExp _crumbsGuard = RegExp(
+    r'\bif\s*\(([^(){};]+)\)\s*(?:\{[^{}]*)?CrumbsPlugin\.install\(',
+  );
 
   /// An import of `package:flutter/foundation.dart` with no prefix and no
   /// `show` or `hide`, which already brings `kReleaseMode` into scope.

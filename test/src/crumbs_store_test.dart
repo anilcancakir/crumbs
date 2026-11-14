@@ -1480,6 +1480,24 @@ void main() {
         expect(stored.bindings, equals(<Object?>['***', 1]));
       });
 
+      test('keeps the connection name out of the redactor', () {
+        CrumbsRedaction.redactor = (String s) => s.replaceAll('main', '***');
+        CrumbsStore.recordQuery(
+          QueryRecord(
+            sql: 'select 1',
+            bindings: const <Object?>[],
+            timeMs: 1,
+            time: DateTime(2026, 1, 1),
+            connectionName: 'main',
+          ),
+        );
+
+        expect(
+          CrumbsStore.recentQueries().single.connectionName,
+          equals('main'),
+        );
+      });
+
       test(
         'a throwing redactor drops the query from queue and stream',
         () async {
@@ -1539,6 +1557,87 @@ void main() {
 
         expect(CrumbsStore.recentGates(), isEmpty);
       });
+
+      test('runs the redactor over the user id and keeps the ability', () {
+        CrumbsRedaction.redactor = (String s) => s.replaceAll('ada', '***');
+        CrumbsStore.recordGate(
+          GateRecord(
+            ability: 'ada.update',
+            result: true,
+            arguments: const <Object?>[],
+            time: DateTime(2026, 1, 1),
+            userId: 'ada@example.test',
+          ),
+        );
+
+        final GateRecord stored = CrumbsStore.recentGates().single;
+        expect(stored.userId, equals('***@example.test'));
+        expect(stored.ability, equals('ada.update'));
+      });
+    });
+
+    group('unprintable values', () {
+      const String placeholder = '<unprintable _Unprintable>';
+
+      test('a binding whose toString() throws is stored as a placeholder', () {
+        expect(
+          () => CrumbsStore.recordQuery(
+            _queryWith(bindings: <Object?>[const _Unprintable(), 1]),
+          ),
+          returnsNormally,
+        );
+
+        expect(
+          CrumbsStore.recentQueries().single.bindings,
+          equals(<Object?>[placeholder, 1]),
+        );
+      });
+
+      test('a gate argument whose toString() throws is stored as a '
+          'placeholder', () {
+        expect(
+          () => CrumbsStore.recordGate(
+            _gateWith(
+              arguments: <Object?>[
+                <String, Object?>{'model': const _Unprintable()},
+              ],
+            ),
+          ),
+          returnsNormally,
+        );
+
+        expect(
+          CrumbsStore.recentGates().single.arguments,
+          equals(<Object?>[
+            <String, Object?>{'model': placeholder},
+          ]),
+        );
+      });
+
+      test('an event payload value or key whose toString() throws is stored '
+          'as a placeholder', () {
+        expect(
+          () => CrumbsStore.recordEvent(
+            EventRecord(
+              eventType: 'e',
+              payload: <String, dynamic>{
+                'value': const _Unprintable(),
+                'nested': <Object, Object?>{const _Unprintable(): 1},
+              },
+              time: DateTime(2026, 1, 1),
+            ),
+          ),
+          returnsNormally,
+        );
+
+        expect(
+          CrumbsStore.recentEvents().single.payload,
+          equals(<String, dynamic>{
+            'value': placeholder,
+            'nested': <String, Object?>{placeholder: 1},
+          }),
+        );
+      });
     });
 
     group('recordDump() redaction', () {
@@ -1594,6 +1693,14 @@ final class _Opaque {
 
   @override
   String toString() => 'opaque';
+}
+
+/// A value whose `toString()` throws.
+final class _Unprintable {
+  const _Unprintable();
+
+  @override
+  String toString() => throw StateError('boom');
 }
 
 HttpRequestRecord _httpWith({

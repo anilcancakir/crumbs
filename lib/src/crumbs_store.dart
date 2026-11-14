@@ -190,6 +190,8 @@ class CrumbsStore {
     _exceptionStream.add(redacted);
   }
 
+  /// Buffer [r] and emit it on [onModelRecord]; its attributes are stored as
+  /// given, masked by neither key nor redactor.
   static void recordModel(ModelRecord r) {
     if (_paused) return;
     _models.addLast(r);
@@ -199,6 +201,8 @@ class CrumbsStore {
     _modelStream.add(r);
   }
 
+  /// Buffer [r] and emit it on [onCacheRecord]; its value is stored as given,
+  /// masked by neither key nor redactor.
   static void recordCache(CacheRecord r) {
     if (_paused) return;
     _caches.addLast(r);
@@ -224,9 +228,9 @@ class CrumbsStore {
   }
 
   /// Buffer [r] and emit it on [onGateRecord], with its arguments masked by
-  /// key, made JSON-safe and run through the registered
-  /// [CrumbsRedaction.redactor] (if any) first; dropped when the redactor
-  /// throws. See [CrumbsRedaction.redactGateRecord].
+  /// key and made JSON-safe, and its arguments and user id run through the
+  /// registered [CrumbsRedaction.redactor] (if any) first; dropped when the
+  /// redactor throws. See [CrumbsRedaction.redactGateRecord].
   static void recordGate(GateRecord r) {
     if (_paused) return;
     final GateRecord? redacted = CrumbsRedaction.redactGateRecord(r);
@@ -267,6 +271,8 @@ class CrumbsStore {
     _queryStream.add(redacted);
   }
 
+  /// Buffer [r] against the frame-perf capacity and emit it on
+  /// [onFramePerfRecord].
   static void recordFramePerf(FramePerfRecord r) {
     if (_paused) return;
     _framePerf.addLast(r);
@@ -276,8 +282,13 @@ class CrumbsStore {
     _framePerfStream.add(r);
   }
 
+  /// The buffered HTTP records, oldest first; [limit] keeps the newest N.
   static List<HttpRequestRecord> recentHttp({int? limit}) =>
       _recent(_http, limit);
+
+  /// The buffered log records at or above [minLevel] (a `package:logging`
+  /// level name; any other name matches nothing), oldest first; [limit]
+  /// keeps the newest N.
   static List<LogRecordEntry> recentLogs({int? limit, String? minLevel}) {
     final filtered = minLevel == null
         ? _logs.toList()
@@ -285,18 +296,33 @@ class CrumbsStore {
     return _trim(filtered, limit);
   }
 
+  /// The buffered exception records, oldest first; [limit] keeps the newest N.
   static List<ExceptionRecord> recentExceptions({int? limit}) =>
       _recent(_exceptions, limit);
+
+  /// The buffered model records, oldest first; [limit] keeps the newest N.
   static List<ModelRecord> recentModels({int? limit}) =>
       _recent(_models, limit);
+
+  /// The buffered cache records, oldest first; [limit] keeps the newest N.
   static List<CacheRecord> recentCaches({int? limit}) =>
       _recent(_caches, limit);
+
+  /// The buffered event records, oldest first; [limit] keeps the newest N.
   static List<EventRecord> recentEvents({int? limit}) =>
       _recent(_events, limit);
+
+  /// The buffered gate records, oldest first; [limit] keeps the newest N.
   static List<GateRecord> recentGates({int? limit}) => _recent(_gates, limit);
+
+  /// The buffered dump records, oldest first; [limit] keeps the newest N.
   static List<DumpRecord> recentDumps({int? limit}) => _recent(_dumps, limit);
+
+  /// The buffered query records, oldest first; [limit] keeps the newest N.
   static List<QueryRecord> recentQueries({int? limit}) =>
       _recent(_queries, limit);
+
+  /// The buffered frame records, oldest first; [limit] keeps the newest N.
   static List<FramePerfRecord> recentFramePerf({int? limit}) =>
       _recent(_framePerf, limit);
 
@@ -331,8 +357,7 @@ class CrumbsStore {
   ///
   /// Sums [CrumbsHttpAdapter.pendingCount] across the live adapter
   /// registry populated by [CrumbsPlugin.registerHttpAdapter]. Returns 0
-  /// when no adapter is registered OR when no registered adapter overrides
-  /// the default [CrumbsHttpAdapter.pendingCount] (default body returns 0).
+  /// when no adapter is registered or every registered adapter reports 0.
   ///
   /// Read-only sync getter; safe to call from poll loops (no locks, no IO).
   /// Consumed by `ext.tapir.wait_for_network_idle` to detect a network-idle
@@ -345,16 +370,38 @@ class CrumbsStore {
     return total;
   }
 
+  /// Each HTTP record as it is buffered, after redaction; a broadcast stream.
   static Stream<HttpRequestRecord> get onHttpRecord => _httpStream.stream;
+
+  /// Each log record as it is buffered, after redaction; a broadcast stream.
   static Stream<LogRecordEntry> get onLogRecord => _logStream.stream;
+
+  /// Each exception record as it is buffered, after redaction; a broadcast
+  /// stream.
   static Stream<ExceptionRecord> get onExceptionRecord =>
       _exceptionStream.stream;
+
+  /// Each model record as it is buffered; a broadcast stream.
   static Stream<ModelRecord> get onModelRecord => _modelStream.stream;
+
+  /// Each cache record as it is buffered; a broadcast stream.
   static Stream<CacheRecord> get onCacheRecord => _cacheStream.stream;
+
+  /// Each event record as it is buffered, after redaction; a broadcast
+  /// stream.
   static Stream<EventRecord> get onEventRecord => _eventStream.stream;
+
+  /// Each gate record as it is buffered, after redaction; a broadcast stream.
   static Stream<GateRecord> get onGateRecord => _gateStream.stream;
+
+  /// Each dump record as it is buffered, after redaction; a broadcast stream.
   static Stream<DumpRecord> get onDumpRecord => _dumpStream.stream;
+
+  /// Each query record as it is buffered, after redaction; a broadcast
+  /// stream.
   static Stream<QueryRecord> get onQueryRecord => _queryStream.stream;
+
+  /// Each frame record as it is buffered; a broadcast stream.
   static Stream<FramePerfRecord> get onFramePerfRecord =>
       _framePerfStream.stream;
 

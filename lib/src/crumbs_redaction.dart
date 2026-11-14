@@ -21,8 +21,10 @@ import 'records/query_record.dart';
 /// extended through the `hide*` methods (additions merge with the defaults,
 /// they never replace them), and every matching value replaced with [mask].
 /// The request parameter list covers the request body, the query of the
-/// request URL, and the structured fields of a query (`bindings`) and a gate
-/// check (`arguments`).
+/// request URL, and the Map elements of a query's `bindings` and a gate
+/// check's `arguments`; a positional binding has no key, so only a
+/// [redactor] can mask it. Model attributes and cache values are buffered as
+/// given, masked by neither layer.
 ///
 /// The store only understands JSON and form-encoded bodies. An adapter that
 /// holds a body as structured data (a Dart `Map` whose `toString()` is not
@@ -40,12 +42,15 @@ final class CrumbsRedaction {
   /// bodies, and every String and map key inside an event payload's nested
   /// Maps and Lists) before the record enters its queue or its stream, and
   /// marks the record `redacted`. It runs as well over the message of a
-  /// dump, the SQL of a query, and every String and map key inside the
-  /// `bindings` of a query and the `arguments` of a gate check; those three
-  /// records carry no `redacted` flag. It receives one String and returns the
-  /// masked one; it must be pure and total, since a throw drops the record
-  /// (neither buffered nor emitted) rather than let it through unmasked. A
-  /// record buffered while this is null stays unredacted, and a consumer
+  /// dump, the SQL of a query, the user id of a gate check, and every String
+  /// and map key inside the `bindings` of a query and the `arguments` of a
+  /// gate check; those three records carry no `redacted` flag. A query's
+  /// connection name and a gate's ability stay as given. It receives one
+  /// String and returns the masked one; a positional binding reaches it as
+  /// the bare value, with no key beside it. It must be pure and total, since
+  /// a throw drops the record (neither buffered nor emitted) rather than let
+  /// it through unmasked. A record buffered while this is null stays
+  /// unredacted, and a consumer
   /// that persists records writes only the redacted ones.
   static String Function(String)? redactor;
 
@@ -182,9 +187,10 @@ final class CrumbsRedaction {
   ///
   /// The payload is walked at any depth of Maps and Lists, and the redactor
   /// runs over every map key as well as every String value. A value
-  /// `jsonEncode` cannot write (a `DateTime`, a `Duration`, any object) is
-  /// stored as its `toString()` and a non-String map key as its
-  /// `toString()`, so one bad payload cannot fail a whole events response.
+  /// `jsonEncode` cannot write (a `DateTime`, a `Duration`, `NaN` or an
+  /// infinity, any object) is stored as its `toString()` and a non-String map
+  /// key as its `toString()`, so one bad payload cannot fail a whole events
+  /// response; a `toString()` that throws stores `<unprintable Type>`.
   /// A subtree nested past 64 levels is masked whole. Returns [record]
   /// itself when there is nothing to change, and null, the record dropped,
   /// when the [redactor] throws.
@@ -215,8 +221,9 @@ final class CrumbsRedaction {
 
   /// Return [record] with its `bindings` masked and made JSON-safe (see
   /// [_structured]), and with the SQL run through the [redactor] when one is
-  /// registered. Returns [record] itself when there is nothing to change,
-  /// and null, the record dropped, when the [redactor] throws.
+  /// registered; the connection name stays as given. Returns [record] itself
+  /// when there is nothing to change, and null, the record dropped, when the
+  /// [redactor] throws.
   static QueryRecord? redactQueryRecord(QueryRecord record) {
     final String Function(String)? redact = _guardedRedactor();
 
@@ -238,21 +245,27 @@ final class CrumbsRedaction {
   }
 
   /// Return [record] with its `arguments` masked and made JSON-safe (see
-  /// [_structured]). Returns [record] itself when there is nothing to
-  /// change, and null, the record dropped, when the [redactor] throws.
+  /// [_structured]), and with the user id (an email, often) run through the
+  /// [redactor] when one is registered; the ability is a name the app
+  /// defines and stays as given. Returns [record] itself when there is
+  /// nothing to change, and null, the record dropped, when the [redactor]
+  /// throws.
   static GateRecord? redactGateRecord(GateRecord record) {
     final String Function(String)? redact = _guardedRedactor();
 
     return _dropOnRedactorFailure(() {
       final List<Object?> arguments = _structured(record.arguments, redact);
-      if (identical(arguments, record.arguments)) return record;
+      final String? userId = _text(record.userId, redact);
+      if (identical(arguments, record.arguments) && userId == record.userId) {
+        return record;
+      }
 
       return GateRecord(
         ability: record.ability,
         result: record.result,
         arguments: arguments,
         time: record.time,
-        userId: record.userId,
+        userId: userId,
       );
     });
   }
@@ -324,16 +337,17 @@ final class CrumbsRedaction {
       text == null || redact == null ? text : redact(text);
 
   /// A String or a map key is run through [redactor] when one is given; a
-  /// scalar stays;
-  /// a Map or List is rebuilt only when something inside it changed, so an
-  /// already-safe payload keeps its identity; anything else becomes its
-  /// `toString()`.
+  /// null, a bool and a finite number stay; a Map or List is rebuilt only
+  /// when something inside it changed, so an already-safe payload keeps its
+  /// identity; anything else, `NaN` and the infinities included (`jsonEncode`
+  /// refuses them), becomes its `toString()`.
   static Object? _scrub(
     Object? value,
     String Function(String)? redact, [
     int depth = 0,
   ]) {
-    if (value == null || value is bool || value is num) return value;
+    if (value == null || value is bool) return value;
+    if (value is num && value.isFinite) return value;
     if (depth >= _maxDepth) return mask;
     if (value is String) return _text(value, redact);
 
@@ -341,7 +355,7 @@ final class CrumbsRedaction {
       bool changed = value is! Map<String, dynamic>;
       final Map<String, dynamic> scrubbed = <String, dynamic>{};
       for (final MapEntry<Object?, Object?> entry in value.entries) {
-        final String key = _text('${entry.key}', redact)!;
+        final String key = _text(_printable(entry.key), redact)!;
         final Object? item = _scrub(entry.value, redact, depth + 1);
         changed = changed || key != entry.key || !identical(item, entry.value);
         scrubbed[key] = item;
@@ -360,7 +374,18 @@ final class CrumbsRedaction {
       return changed ? scrubbed : value;
     }
 
-    return _text(value.toString(), redact);
+    return _text(_printable(value), redact);
+  }
+
+  /// [value]'s `toString()`, or `<unprintable RuntimeType>` when it throws:
+  /// the walk runs inside the host's own `recordX` call, so a broken
+  /// `toString` must not throw into the app.
+  static String _printable(Object? value) {
+    try {
+      return '$value';
+    } on Object {
+      return '<unprintable ${value.runtimeType}>';
+    }
   }
 
   static HttpRequestRecord _redactHttpKeys(HttpRequestRecord record) {

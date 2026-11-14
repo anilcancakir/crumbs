@@ -80,18 +80,18 @@ Answer key `events`. Written by an event watcher (Magic's, through `MagicCrumbsI
 | Key | Type | Notes |
 |---|---|---|
 | `eventType` | String | The `type` filter is a prefix of this |
-| `payload` | Map | Made JSON-safe at insert: a value `jsonEncode` cannot write, and a non-String key, is stored as its `toString()` |
+| `payload` | Map | Made JSON-safe at insert: a value `jsonEncode` cannot write (`NaN` and the infinities included), and a non-String key, is stored as its `toString()`; one whose `toString()` throws reads `<unprintable Type>` |
 | `time` | String | |
 | `listenerCount` | int | Optional |
 | `atUs`, `interactionId`, `linkedBy`, `redacted` | | |
 
 ## GateRecord
 
-Answer key `gates`: `ability`, `result` (true allowed, false denied), `arguments` (list), `time`, optional `userId`. A value under a credential-named key inside `arguments` reads `********`; a host `redactor` also masks its strings. No `redacted` flag.
+Answer key `gates`: `ability`, `result` (true allowed, false denied), `arguments` (list), `time`, optional `userId`. A value under a credential-named key inside `arguments` reads `********`; a host `redactor` also masks its strings and the `userId`, never the `ability`. Made JSON-safe like an event payload. No `redacted` flag.
 
 ## QueryRecord
 
-Answer key `queries`: `sql`, `bindings`, `timeMs`, `connectionName`, `time`, `atUs`, optional `interactionId`, `linkedBy`. A value under a credential-named key inside `bindings` reads `********`; a host `redactor` also masks the `sql` and the strings in `bindings`, and nothing masks a credential written as a SQL literal without one. No `redacted` flag.
+Answer key `queries`: `sql`, `bindings`, `timeMs`, `connectionName`, `time`, `atUs`, optional `interactionId`, `linkedBy`. A value under a credential-named key of a Map inside `bindings` reads `********` (a positional binding has no key); a host `redactor` also masks the `sql` and the strings in `bindings`, never the `connectionName`; `bindings` are made JSON-safe like an event payload; and nothing masks a credential written as a SQL literal without one. No `redacted` flag.
 
 ## CacheRecord
 

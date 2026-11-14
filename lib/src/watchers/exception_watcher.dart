@@ -34,7 +34,7 @@ import 'watcher.dart';
 /// On [uninstall], both handlers are restored to exactly the values they held
 /// before [install] was called. Calling [install] while already installed is
 /// a no-op (idempotent).
-class ExceptionWatcher implements CrumbsWatcher {
+final class ExceptionWatcher implements CrumbsWatcher {
   @override
   String get name => 'exception';
 

@@ -17,7 +17,9 @@ The store masks credential values by key before it buffers a record, always, wit
   `access_token`, ...); and the value of a credential-named query parameter of the URL (`access_token`,
   `api_key`, the `X-Amz-*` signature of a presigned URL, ...). The rest of the URL stays as captured.
 - `CrumbsStore.recordQuery` and `recordGate`: the same request-parameter names, matched against the keys
-  inside the structured `bindings` of a query and `arguments` of a gate check.
+  of the Map elements of a query's `bindings` and a gate check's `arguments`. A positional binding (the
+  usual SQL shape) has no key, so only a [text redactor](#the-text-redactor) can mask it, and it sees the
+  bare value.
 
 A masked value reads `********`. Names match case-insensitively and at any depth. An empty value (null,
 `false`, `''`, `[]`, `{}`) stays visible.
@@ -52,8 +54,8 @@ query and gate record, before the record enters its queue or its stream:
 | `EventRecord` | event type, interaction fields, and every String value and every map key inside the payload's nested Maps and Lists |
 | `HttpRequestRecord` | URL, method, header values, request and response body, request id, interaction fields (after the credential key masking above) |
 | `DumpRecord` | the message |
-| `QueryRecord` | the SQL, and every String inside the bindings |
-| `GateRecord` | every String inside the arguments |
+| `QueryRecord` | the SQL, and every String inside the bindings (not the connection name) |
+| `GateRecord` | the user id, and every String inside the arguments (not the ability) |
 
 A subtree nested past 64 levels is masked whole.
 
@@ -85,9 +87,11 @@ calls them; a caller outside the store rarely needs to. Each returns null for a 
 <a name="json-safe-event-payloads"></a>
 ## JSON-safe event payloads
 
-`recordEvent` stores any payload value that `jsonEncode` cannot write (a `DateTime`, a `Duration`, any
-object) as its `toString()`, and a non-String map key likewise, so one bad payload cannot fail a whole
-`ext.crumbs.events` response. A payload that is already safe keeps its identity. This runs with or
+`recordEvent` stores any payload value that `jsonEncode` cannot write (a `DateTime`, a `Duration`, `NaN`
+or an infinity, any object) as its `toString()`, and a non-String map key likewise, so one bad payload
+cannot fail a whole `ext.crumbs.events` response. A value whose `toString()` throws is stored as
+`<unprintable Type>`, so recording never throws into the app. `recordQuery` and `recordGate` treat
+bindings and arguments the same way. A payload that is already safe keeps its identity. This runs with or
 without a redactor.
 
 <a name="related-documentation"></a>

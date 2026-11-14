@@ -218,9 +218,10 @@ class CrumbsDowelProvider extends DowelServiceProvider {
           'with it.\n'
           '- Pass the returned `cursor` back as `since` to read only newer '
           'records; with `since`, `limit` keeps the oldest N after it.\n'
-          '- Only events dispatched through the Magic `Event` facade '
-          'are recorded; raw `ChangeNotifier.notifyListeners` calls '
-          'are invisible to this tool.\n'
+          '- Only events a host records into the store are returned '
+          "(magic_devtools records Magic's events); raw "
+          '`ChangeNotifier.notifyListeners` calls are invisible to this '
+          'tool.\n'
           '- For HTTP traffic use crumbs_requests; for gate '
           'checks use crumbs_gates.',
       inputSchema: {
@@ -270,8 +271,9 @@ class CrumbsDowelProvider extends DowelServiceProvider {
           '(default returns the whole buffer).\n'
           '- Returned oldest-first (last entry is newest); pair with crumbs_clear before '
           'walking a guarded flow to isolate just the relevant checks.\n'
-          '- Only checks routed through the Magic `Gate` facade are '
-          'recorded; direct policy class calls are not captured.\n'
+          '- Only checks a host records into the store are returned '
+          "(magic_devtools records checks through Magic's `Gate` "
+          'facade); direct policy class calls are not captured.\n'
           '- For event side effects use crumbs_events; for HTTP '
           'traffic use crumbs_requests.',
       inputSchema: {
@@ -380,8 +382,9 @@ class CrumbsDowelProvider extends DowelServiceProvider {
           '(default returns the whole buffer).\n'
           '- Returned oldest-first (last entry is newest); pair with crumbs_clear before '
           'a repro to isolate the cache traffic of a specific action.\n'
-          '- Only Magic.Cache facade calls dispatch these events; raw '
-          'driver-level cache calls bypass this tool.\n'
+          '- Only cache operations a host records into the store are '
+          "returned (magic_devtools records Magic's `Cache` facade "
+          'calls); raw driver-level cache calls bypass this tool.\n'
           '- For DB queries use crumbs_queries; for HTTP use '
           'crumbs_requests.',
       inputSchema: {

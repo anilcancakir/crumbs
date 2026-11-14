@@ -23,7 +23,7 @@ import 'watcher.dart';
 /// [debugPrint]. [allowInRelease] is read at runtime, so the watcher's code
 /// still ships in a release build that references it; keeping it out is the
 /// consumer's build-mode guard around the registration.
-class DumpWatcher implements CrumbsWatcher {
+final class DumpWatcher implements CrumbsWatcher {
   /// Allow capturing in release builds. Defaults to false; override before
   /// calling [install] only when you explicitly need release-build capture.
   bool allowInRelease = false;

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 
-/// An immutable database query record captured by MagicQueryWatcher
-/// (shipped in `magic` package via CrumbsPlugin.registerWatcher).
+/// An immutable database query record captured by a query watcher
+/// (e.g. MagicQueryWatcher, shipped in `magic_devtools`).
 final class QueryRecord {
   QueryRecord({
     required this.sql,

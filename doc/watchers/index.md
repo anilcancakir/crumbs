@@ -2,7 +2,7 @@
 
 Every watcher and HTTP adapter that feeds crumbs: what each captures, how it is installed, and the guard and chaining rules they share.
 
-Each unit implements one of two contracts: `CrumbsWatcher` (hook and event capture) or `CrumbsHttpAdapter` (HTTP capture). Both are `abstract interface class`es: a collector from another package implements them, and extending them is not possible. Both feed a ring buffer in `CrumbsStore`, which a VM Service extension serves to the CLI and the MCP tools. An app that records HTTP from its own interceptor needs no adapter: it calls `CrumbsStore.recordHttp` (see [HTTP adapters](#http-adapters)).
+Each unit implements one of two contracts: `CrumbsWatcher` (hook and event capture) or `CrumbsHttpAdapter` (HTTP capture). Both are `abstract interface class`es: a collector from another package implements them, and extending them is not possible. The shipped watchers (`ExceptionWatcher`, `LogWatcher`, `DumpWatcher`, `FramePerfWatcher`) are `final class`: write your own `CrumbsWatcher` rather than subclass one. Both feed a ring buffer in `CrumbsStore`, which a VM Service extension serves to the CLI and the MCP tools. An app that records HTTP from its own interceptor needs no adapter: it calls `CrumbsStore.recordHttp` (see [HTTP adapters](#http-adapters)).
 
 - [Quick Reference](#quick-reference)
 - [Call-site guard](#call-site-guard)
@@ -172,7 +172,7 @@ The HTTP buffer is served to AI agents, so `CrumbsStore.recordHttp` masks creden
 | List | Applies to | Defaults |
 |---|---|---|
 | Request headers | `requestHeaders` | `authorization`, `proxy-authorization`, `cookie`, `set-cookie`, `x-api-key` |
-| Request parameters | keys of a JSON or form `requestBody`, at any depth; the query parameters of the `url`; the keys inside the structured `bindings` of a query and `arguments` of a gate check | `password`, `password_confirmation`, `current_password`, `new_password`, `token`, `access_token`, `refresh_token`, `secret`, `client_secret`, `authorization_code`, `id_token`, `two_factor_token`, `recovery_code`, `api_key`, `apikey`, `signature`, `sig`, `x-amz-signature`, `x-amz-credential`, `x-amz-security-token` |
+| Request parameters | keys of a JSON or form `requestBody`, at any depth; the query parameters of the `url`; the keys of the Map elements of a query's `bindings` and a gate check's `arguments` (a positional binding has no key) | `password`, `password_confirmation`, `current_password`, `new_password`, `token`, `access_token`, `refresh_token`, `secret`, `client_secret`, `authorization_code`, `id_token`, `two_factor_token`, `recovery_code`, `api_key`, `apikey`, `signature`, `sig`, `x-amz-signature`, `x-amz-credential`, `x-amz-security-token` |
 | Response parameters | keys of a JSON or form `responseBody`, at any depth | `token`, `access_token`, `refresh_token`, `plain_text_token`, `secret`, `client_secret`, `id_token`, `two_factor_token`, `recovery_codes`, `qr_url`, `qr_svg` |
 
 Extend a list at install time; an addition merges with the defaults and never replaces them:
@@ -201,7 +201,7 @@ final String? safeText = CrumbsRedaction.redactBody(
 );
 ```
 
-Both return a masked copy and never mutate their input. In a URL only the value of a matching query parameter changes; the scheme, host, path and every other pair stay as captured. Free text (a log message, a dump, the SQL of a query) has no keys to match, so only a `CrumbsRedaction.redactor` the host sets masks it, after the key masking, over the text of the log, event, exception, HTTP, dump, query and gate records; a redactor that throws drops the record. Model and cache records are buffered as given. See [Redaction](../getting-started/redaction.md).
+Both return a masked copy and never mutate their input. In a URL only the value of a matching query parameter changes; the scheme, host, path and every other pair stay as captured. Free text (a log message, a dump, the SQL of a query) has no keys to match, so only a `CrumbsRedaction.redactor` the host sets masks it, after the key masking, over the text of the log, event, exception and HTTP records, a dump's message, a query's SQL and bindings, and a gate's arguments and user id; a redactor that throws drops the record. Model and cache records are buffered as given. See [Redaction](../getting-started/redaction.md).
 
 ### Recording from your own interceptor
 

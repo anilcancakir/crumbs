@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show FlutterTimeline;
 import '../crumbs_redaction.dart';
 
 /// An immutable app event record captured by an event watcher
-/// (e.g. MagicEventWatcher shipped in the `magic` package).
+/// (e.g. MagicEventWatcher, shipped in `magic_devtools`).
 final class EventRecord {
   EventRecord({
     required this.eventType,

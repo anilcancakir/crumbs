@@ -16,7 +16,7 @@ import 'watcher.dart';
 /// [install] sets the root level to [Level.ALL] and enables hierarchical
 /// logging so every logger reaches root; [uninstall] puts both back to the
 /// values they held before.
-class LogWatcher implements CrumbsWatcher {
+final class LogWatcher implements CrumbsWatcher {
   @override
   String get name => 'log';
 

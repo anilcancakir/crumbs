@@ -52,7 +52,7 @@ dart run crumbs crumbs:install
 
 On a Magic app whose `pubspec.yaml` lists `magic_devtools`, step 3 also adds `import 'package:magic_devtools/crumbs.dart';` and an `!kReleaseMode` block with `MagicCrumbsIntegration.install()` after `Magic.init()`. That library exists only in a `magic_devtools` release built on crumbs, so the installer writes these lines only when the resolved `magic_devtools` ships it; with an older release it warns and leaves the Magic lines out. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
 
-Every step is idempotent: re-running `crumbs:install` changes nothing. A `main.dart` wired by an earlier crumbs with a `kDebugMode` guard keeps that block and keeps working; switch it to `!kReleaseMode` to get frame-performance data in profile builds.
+Every step is idempotent: re-running `crumbs:install` changes nothing. A `main.dart` wired by an earlier crumbs with a `kDebugMode` guard keeps that block and keeps working, and a Magic block a rerun adds takes the same guard; switch both to `!kReleaseMode` to get frame-performance data in profile builds.
 
 <a name="manual-wiring"></a>
 ## Manual wiring

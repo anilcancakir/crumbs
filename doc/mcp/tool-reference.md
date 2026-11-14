@@ -400,8 +400,8 @@ crumbs_gates {}
 
 ### Notes
 
-- Only checks routed through the Magic `Gate` facade are captured. Direct policy class calls
-  are not recorded.
+- Only checks a host records into the store are returned (`magic_devtools` records checks
+  through Magic's `Gate` facade). Direct policy class calls are not recorded.
 - Pair with `crumbs_clear` before walking a guarded flow to isolate just the relevant checks.
 
 ---
@@ -501,7 +501,7 @@ a separate SQL profiler.
 | Field | Type | Always present | Description |
 |---|---|---|---|
 | `sql` | string | yes | SQL string the query builder dispatched to the driver |
-| `bindings` | array | yes | Positional or named query bindings; a value under a credential-named key reads `********` |
+| `bindings` | array | yes | Positional or named query bindings; a value under a credential-named key of a Map element reads `********`, a positional value only a host `redactor` masks |
 | `timeMs` | integer | yes | Execution time in milliseconds reported by the query builder |
 | `connectionName` | string | yes | Connection name; `"default"` when the app did not name it |
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
@@ -584,8 +584,8 @@ crumbs_caches {}
 
 ### Notes
 
-- Only Magic `Cache` facade calls dispatch the watcher events. Raw driver-level cache calls
-  bypass this tool.
+- Only cache operations a host records into the store are returned (`magic_devtools` records
+  Magic's `Cache` facade calls). Raw driver-level cache calls bypass this tool.
 - For DB queries use `crumbs_queries`; for HTTP use `crumbs_requests`.
 
 ---
