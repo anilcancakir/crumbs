@@ -57,17 +57,18 @@ void main() {
       });
 
       test(
-          'restores PlatformDispatcher.instance.onError to the previous handler',
-          () {
-        bool spy(Object error, StackTrace stack) => true;
+        'restores PlatformDispatcher.instance.onError to the previous handler',
+        () {
+          bool spy(Object error, StackTrace stack) => true;
 
-        PlatformDispatcher.instance.onError = spy;
+          PlatformDispatcher.instance.onError = spy;
 
-        watcher.install();
-        watcher.uninstall();
+          watcher.install();
+          watcher.uninstall();
 
-        expect(PlatformDispatcher.instance.onError, same(spy));
-      });
+          expect(PlatformDispatcher.instance.onError, same(spy));
+        },
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -92,26 +93,28 @@ void main() {
         expect(recorded.first.message, contains('flutter-error-path'));
       });
 
-      test('PlatformDispatcher.onError path records into CrumbsStore',
-          () async {
-        watcher.install();
+      test(
+        'PlatformDispatcher.onError path records into CrumbsStore',
+        () async {
+          watcher.install();
 
-        final recorded = <ExceptionRecord>[];
-        final sub = CrumbsStore.onExceptionRecord.listen(recorded.add);
+          final recorded = <ExceptionRecord>[];
+          final sub = CrumbsStore.onExceptionRecord.listen(recorded.add);
 
-        // Simulate a PlatformDispatcher.onError invocation.
-        final handled = PlatformDispatcher.instance.onError!(
-          ArgumentError('platform-dispatcher-path'),
-          StackTrace.current,
-        );
+          // Simulate a PlatformDispatcher.onError invocation.
+          final handled = PlatformDispatcher.instance.onError!(
+            ArgumentError('platform-dispatcher-path'),
+            StackTrace.current,
+          );
 
-        await Future<void>.delayed(Duration.zero);
-        await sub.cancel();
+          await Future<void>.delayed(Duration.zero);
+          await sub.cancel();
 
-        expect(handled, isTrue);
-        expect(recorded, hasLength(1));
-        expect(recorded.first.message, contains('platform-dispatcher-path'));
-      });
+          expect(handled, isTrue);
+          expect(recorded, hasLength(1));
+          expect(recorded.first.message, contains('platform-dispatcher-path'));
+        },
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -134,23 +137,25 @@ void main() {
         expect(previousCalled, isTrue);
       });
 
-      test('calls previous PlatformDispatcher.onError handler when present',
-          () {
-        var previousCalled = false;
-        PlatformDispatcher.instance.onError = (Object _, StackTrace __) {
-          previousCalled = true;
-          return true;
-        };
+      test(
+        'calls previous PlatformDispatcher.onError handler when present',
+        () {
+          var previousCalled = false;
+          PlatformDispatcher.instance.onError = (Object _, StackTrace _) {
+            previousCalled = true;
+            return true;
+          };
 
-        watcher.install();
+          watcher.install();
 
-        PlatformDispatcher.instance.onError!(
-          Exception('chain-test-platform'),
-          StackTrace.current,
-        );
+          PlatformDispatcher.instance.onError!(
+            Exception('chain-test-platform'),
+            StackTrace.current,
+          );
 
-        expect(previousCalled, isTrue);
-      });
+          expect(previousCalled, isTrue);
+        },
+      );
     });
 
     // -------------------------------------------------------------------------
@@ -158,35 +163,39 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('idempotency', () {
-      test('calling install() twice does not double-wrap FlutterError.onError',
-          () {
-        watcher.install();
-        final handlerAfterFirst = FlutterError.onError;
+      test(
+        'calling install() twice does not double-wrap FlutterError.onError',
+        () {
+          watcher.install();
+          final handlerAfterFirst = FlutterError.onError;
 
-        watcher.install();
-        final handlerAfterSecond = FlutterError.onError;
+          watcher.install();
+          final handlerAfterSecond = FlutterError.onError;
 
-        // The handler must be the exact same object; no second wrapper.
-        expect(handlerAfterSecond, same(handlerAfterFirst));
-      });
+          // The handler must be the exact same object; no second wrapper.
+          expect(handlerAfterSecond, same(handlerAfterFirst));
+        },
+      );
 
-      test('calling install() twice only records each exception once',
-          () async {
-        watcher.install();
-        watcher.install(); // second call must be a no-op
+      test(
+        'calling install() twice only records each exception once',
+        () async {
+          watcher.install();
+          watcher.install(); // second call must be a no-op
 
-        final recorded = <ExceptionRecord>[];
-        final sub = CrumbsStore.onExceptionRecord.listen(recorded.add);
+          final recorded = <ExceptionRecord>[];
+          final sub = CrumbsStore.onExceptionRecord.listen(recorded.add);
 
-        FlutterError.reportError(
-          FlutterErrorDetails(exception: Exception('idempotency-check')),
-        );
+          FlutterError.reportError(
+            FlutterErrorDetails(exception: Exception('idempotency-check')),
+          );
 
-        await Future<void>.delayed(Duration.zero);
-        await sub.cancel();
+          await Future<void>.delayed(Duration.zero);
+          await sub.cancel();
 
-        expect(recorded, hasLength(1));
-      });
+          expect(recorded, hasLength(1));
+        },
+      );
     });
   });
 }

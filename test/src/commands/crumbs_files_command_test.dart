@@ -8,9 +8,8 @@ class _StubContext extends DowelContext {
   _StubContext({
     required DowelInput input,
     required DowelOutput output,
-    required Map<String, dynamic> response,
-  })  : _response = response,
-        super.bare(input, output);
+    required this._response,
+  }) : super.bare(input, output);
 
   final Map<String, dynamic> _response;
   String? lastMethod;
@@ -142,20 +141,22 @@ void main() {
         expect(ctx.lastParams, isNot(contains('offset')));
       });
 
-      test('prints the refusal and fails for a name the sink rejects',
-          () async {
-        final output = BufferedOutput();
-        final ctx = _StubContext(
-          input: MapInput(const {'name': '../etc/passwd'}),
-          output: output,
-          response: const {'error': 'Unknown timeline file.'},
-        );
+      test(
+        'prints the refusal and fails for a name the sink rejects',
+        () async {
+          final output = BufferedOutput();
+          final ctx = _StubContext(
+            input: MapInput(const {'name': '../etc/passwd'}),
+            output: output,
+            response: const {'error': 'Unknown timeline file.'},
+          );
 
-        final code = await CrumbsFilesCommand().handle(ctx);
+          final code = await CrumbsFilesCommand().handle(ctx);
 
-        expect(code, equals(1));
-        expect(output.content, contains('Unknown timeline file.'));
-      });
+          expect(code, equals(1));
+          expect(output.content, contains('Unknown timeline file.'));
+        },
+      );
     });
   });
 }

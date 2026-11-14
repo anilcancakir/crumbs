@@ -44,14 +44,14 @@ class CrumbsPlugin {
     final disable = crumbsDisableEnvValue.toLowerCase().trim();
     if (disable == '1' || disable == 'true' || disable == 'yes') {
       developer.log(
-        '[crumbs] install() skipped — CRUMBS_DISABLE set.',
+        '[crumbs] install() skipped: CRUMBS_DISABLE set.',
         name: 'crumbs',
       );
       return;
     }
     if (_installCount > 0) {
       developer.log(
-        '[crumbs] install() called ${_installCount + 1} times — '
+        '[crumbs] install() called ${_installCount + 1} times; '
         'skipping duplicate.',
         name: 'crumbs',
       );

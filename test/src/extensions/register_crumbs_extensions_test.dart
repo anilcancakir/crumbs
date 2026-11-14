@@ -219,10 +219,7 @@ void main() {
 
     test('returns records seeded via CrumbsStore.recordDump', () async {
       CrumbsStore.recordDump(
-        DumpRecord(
-          message: 'hello crumbs',
-          time: DateTime(2026, 1, 1),
-        ),
+        DumpRecord(message: 'hello crumbs', time: DateTime(2026, 1, 1)),
       );
 
       final result = await dumpsHandler('ext.crumbs.dumps', {});
@@ -236,10 +233,7 @@ void main() {
     test('honors limit param when present', () async {
       for (var i = 0; i < 6; i++) {
         CrumbsStore.recordDump(
-          DumpRecord(
-            message: 'dump $i',
-            time: DateTime(2026, 1, 1, i),
-          ),
+          DumpRecord(message: 'dump $i', time: DateTime(2026, 1, 1, i)),
         );
       }
 
@@ -253,10 +247,7 @@ void main() {
     test('returns all records when limit param is absent', () async {
       for (var i = 0; i < 5; i++) {
         CrumbsStore.recordDump(
-          DumpRecord(
-            message: 'dump $i',
-            time: DateTime(2026, 1, 1, i),
-          ),
+          DumpRecord(message: 'dump $i', time: DateTime(2026, 1, 1, i)),
         );
       }
 
@@ -321,8 +312,9 @@ void main() {
         );
       }
 
-      final result =
-          await requestsHandler('ext.crumbs.requests', {'limit': '2'});
+      final result = await requestsHandler('ext.crumbs.requests', {
+        'limit': '2',
+      });
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       final records = decoded['records'] as List<dynamic>;
 
@@ -408,10 +400,9 @@ void main() {
         ),
       );
 
-      final result = await consoleHandler(
-        'ext.crumbs.console',
-        {'level': 'warning'},
-      );
+      final result = await consoleHandler('ext.crumbs.console', {
+        'level': 'warning',
+      });
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       final messages = decoded['messages'] as List<dynamic>;
 
@@ -467,8 +458,9 @@ void main() {
         );
       }
 
-      final result =
-          await exceptionsHandler('ext.crumbs.exceptions', {'limit': '2'});
+      final result = await exceptionsHandler('ext.crumbs.exceptions', {
+        'limit': '2',
+      });
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       final exceptions = decoded['exceptions'] as List<dynamic>;
 
@@ -525,11 +517,7 @@ void main() {
       );
       // Seed one record into each of the 3 new buffers.
       CrumbsStore.recordEvent(
-        EventRecord(
-          eventType: 'Ev',
-          payload: {},
-          time: DateTime(2026, 1, 1),
-        ),
+        EventRecord(eventType: 'Ev', payload: {}, time: DateTime(2026, 1, 1)),
       );
       CrumbsStore.recordGate(
         GateRecord(
@@ -576,8 +564,7 @@ void main() {
   });
 
   group('pause then resume recording lifecycle', () {
-    test(
-        'record before pause is absent after clear; '
+    test('record before pause is absent after clear; '
         'record after resume is present in recentHttp', () async {
       // 1. Record a request before pausing; then clear so the buffer is empty.
       CrumbsStore.recordHttp(
@@ -652,7 +639,9 @@ void main() {
 
       expect(records, hasLength(1));
       expect(
-          records.first['sql'], equals('SELECT * FROM monitors WHERE id = ?'));
+        records.first['sql'],
+        equals('SELECT * FROM monitors WHERE id = ?'),
+      );
       expect(records.first['timeMs'], equals(12));
       expect(records.first['connectionName'], equals('default'));
     });
@@ -764,8 +753,9 @@ void main() {
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       final frames = decoded['frames'] as List<dynamic>;
 
-      final expected =
-          CrumbsStore.recentFramePerf().map((r) => r.toJson()).toList();
+      final expected = CrumbsStore.recentFramePerf()
+          .map((r) => r.toJson())
+          .toList();
       expect(frames, hasLength(1));
       expect(jsonEncode(frames), equals(jsonEncode(expected)));
     });
@@ -796,16 +786,18 @@ void main() {
       expect(frames.last['frameNumber'], equals(4));
     });
 
-    test('carries the liveness counter even when the record list is empty',
-        () async {
-      final result = await framesHandler('ext.crumbs.frames', {});
-      final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
-      final frames = decoded['frames'] as List<dynamic>;
+    test(
+      'carries the liveness counter even when the record list is empty',
+      () async {
+        final result = await framesHandler('ext.crumbs.frames', {});
+        final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
+        final frames = decoded['frames'] as List<dynamic>;
 
-      expect(frames, isEmpty);
-      expect(decoded['livenessCounter'], isA<int>());
-      expect(decoded.containsKey('livenessCounter'), isTrue);
-    });
+        expect(frames, isEmpty);
+        expect(decoded['livenessCounter'], isA<int>());
+        expect(decoded.containsKey('livenessCounter'), isTrue);
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -813,56 +805,58 @@ void main() {
   // ---------------------------------------------------------------------------
 
   EventRecord eventAt(int atUs, {String type = 'player.tick'}) => EventRecord(
-        eventType: type,
-        payload: const <String, dynamic>{},
-        time: DateTime.utc(2026),
-        atUs: atUs,
-      );
+    eventType: type,
+    payload: const <String, dynamic>{},
+    time: DateTime.utc(2026),
+    atUs: atUs,
+  );
 
   LogRecordEntry logAt(int atUs, {String logger = 'mpv'}) => LogRecordEntry(
-        level: 'INFO',
-        levelValue: 800,
-        message: 'line $atUs',
-        loggerName: logger,
-        time: DateTime.utc(2026),
-        atUs: atUs,
-      );
+    level: 'INFO',
+    levelValue: 800,
+    message: 'line $atUs',
+    loggerName: logger,
+    time: DateTime.utc(2026),
+    atUs: atUs,
+  );
 
   Future<Map<String, dynamic>> decodeEvents(Map<String, String> params) async {
     final result = await eventsHandler('ext.crumbs.events', params);
     return jsonDecode(result.result!) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> decodeConsole(
-    Map<String, String> params,
-  ) async {
+  Future<Map<String, dynamic>> decodeConsole(Map<String, String> params) async {
     final result = await consoleHandler('ext.crumbs.console', params);
     return jsonDecode(result.result!) as Map<String, dynamic>;
   }
 
   group('ext.crumbs.events cursor and filters', () {
-    test('since is exclusive and the cursor is the last atUs returned',
-        () async {
-      for (final atUs in <int>[100, 200, 300]) {
-        CrumbsStore.recordEvent(eventAt(atUs));
-      }
+    test(
+      'since is exclusive and the cursor is the last atUs returned',
+      () async {
+        for (final atUs in <int>[100, 200, 300]) {
+          CrumbsStore.recordEvent(eventAt(atUs));
+        }
 
-      final decoded = await decodeEvents({'since': '100'});
-      final events = decoded['events'] as List<dynamic>;
+        final decoded = await decodeEvents({'since': '100'});
+        final events = decoded['events'] as List<dynamic>;
 
-      expect(events.map((e) => e['atUs']), equals(<int>[200, 300]));
-      expect(decoded['cursor'], equals(300));
-    });
+        expect(events.map((e) => e['atUs']), equals(<int>[200, 300]));
+        expect(decoded['cursor'], equals(300));
+      },
+    );
 
-    test('the cursor is the largest atUs even when records arrive unordered',
-        () async {
-      CrumbsStore.recordEvent(eventAt(300));
-      CrumbsStore.recordEvent(eventAt(200));
+    test(
+      'the cursor is the largest atUs even when records arrive unordered',
+      () async {
+        CrumbsStore.recordEvent(eventAt(300));
+        CrumbsStore.recordEvent(eventAt(200));
 
-      final decoded = await decodeEvents({});
+        final decoded = await decodeEvents({});
 
-      expect(decoded['cursor'], equals(300));
-    });
+        expect(decoded['cursor'], equals(300));
+      },
+    );
 
     test('the cursor echoes since when nothing newer exists', () async {
       CrumbsStore.recordEvent(eventAt(100));
@@ -873,13 +867,15 @@ void main() {
       expect(decoded['cursor'], equals(100));
     });
 
-    test('the cursor is null when nothing was returned and no since was given',
-        () async {
-      final decoded = await decodeEvents({});
+    test(
+      'the cursor is null when nothing was returned and no since was given',
+      () async {
+        final decoded = await decodeEvents({});
 
-      expect(decoded.containsKey('cursor'), isTrue);
-      expect(decoded['cursor'], isNull);
-    });
+        expect(decoded.containsKey('cursor'), isTrue);
+        expect(decoded['cursor'], isNull);
+      },
+    );
 
     test('type keeps only event types starting with the prefix', () async {
       CrumbsStore.recordEvent(eventAt(100, type: 'player.open'));
@@ -989,10 +985,9 @@ void main() {
     test('a since that is not an integer is refused, not ignored', () async {
       CrumbsStore.recordEvent(eventAt(100));
 
-      final result = await eventsHandler(
-        'ext.crumbs.events',
-        {'since': 'yesterday'},
-      );
+      final result = await eventsHandler('ext.crumbs.events', {
+        'since': 'yesterday',
+      });
 
       expect(result.errorCode, equals(ServiceExtensionResponse.invalidParams));
       expect(result.errorDetail, isNot(contains('yesterday')));
@@ -1000,18 +995,20 @@ void main() {
   });
 
   group('ext.crumbs.console cursor and filters', () {
-    test('since is exclusive and the cursor is the last atUs returned',
-        () async {
-      for (final atUs in <int>[100, 200, 300]) {
-        CrumbsStore.recordLog(logAt(atUs));
-      }
+    test(
+      'since is exclusive and the cursor is the last atUs returned',
+      () async {
+        for (final atUs in <int>[100, 200, 300]) {
+          CrumbsStore.recordLog(logAt(atUs));
+        }
 
-      final decoded = await decodeConsole({'since': '100'});
-      final messages = decoded['messages'] as List<dynamic>;
+        final decoded = await decodeConsole({'since': '100'});
+        final messages = decoded['messages'] as List<dynamic>;
 
-      expect(messages.map((m) => m['atUs']), equals(<int>[200, 300]));
-      expect(decoded['cursor'], equals(300));
-    });
+        expect(messages.map((m) => m['atUs']), equals(<int>[200, 300]));
+        expect(decoded['cursor'], equals(300));
+      },
+    );
 
     test('logger matches the logger name exactly', () async {
       CrumbsStore.recordLog(logAt(100, logger: 'mpv'));
@@ -1122,10 +1119,9 @@ void main() {
     });
 
     test('a since that is not an integer is refused, not ignored', () async {
-      final result = await consoleHandler(
-        'ext.crumbs.console',
-        {'since': 'yesterday'},
-      );
+      final result = await consoleHandler('ext.crumbs.console', {
+        'since': 'yesterday',
+      });
 
       expect(result.errorCode, equals(ServiceExtensionResponse.invalidParams));
     });
@@ -1178,30 +1174,32 @@ void main() {
       expect(files.single['bytes'], equals(0));
     });
 
-    test('file returns the lines and the next offset of a listed file',
-        () async {
-      CrumbsRedaction.redactor = (String text) => text;
-      final sink = await CrumbsFileSink.start(directory: root.path);
-      CrumbsStore.recordEvent(eventAt(100));
-      await Future<void>.delayed(Duration.zero);
-      final name = (await sink.files()).single['name']! as String;
+    test(
+      'file returns the lines and the next offset of a listed file',
+      () async {
+        CrumbsRedaction.redactor = (String text) => text;
+        final sink = await CrumbsFileSink.start(directory: root.path);
+        CrumbsStore.recordEvent(eventAt(100));
+        await Future<void>.delayed(Duration.zero);
+        final name = (await sink.files()).single['name']! as String;
 
-      final decoded = await decodeFile({'name': name});
-      final lines = decoded['lines'] as List<dynamic>;
+        final decoded = await decodeFile({'name': name});
+        final lines = decoded['lines'] as List<dynamic>;
 
-      expect(lines, hasLength(1));
-      expect(
-        (jsonDecode(lines.single as String) as Map<String, dynamic>)['kind'],
-        equals('event'),
-      );
+        expect(lines, hasLength(1));
+        expect(
+          (jsonDecode(lines.single as String) as Map<String, dynamic>)['kind'],
+          equals('event'),
+        );
 
-      final tail = await decodeFile({
-        'name': name,
-        'offset': '${decoded['next']}',
-      });
-      expect(tail['lines'], isEmpty);
-      expect(tail['next'], equals(decoded['next']));
-    });
+        final tail = await decodeFile({
+          'name': name,
+          'offset': '${decoded['next']}',
+        });
+        expect(tail['lines'], isEmpty);
+        expect(tail['next'], equals(decoded['next']));
+      },
+    );
 
     test('file refuses a name the sink does not list', () async {
       await CrumbsFileSink.start(directory: root.path);
@@ -1244,5 +1242,6 @@ void main() {
 }
 
 /// The integers from [first] to [last], both inclusive.
-List<int> _range(int first, int last) =>
-    <int>[for (var n = first; n <= last; n++) n];
+List<int> _range(int first, int last) => <int>[
+  for (var n = first; n <= last; n++) n,
+];

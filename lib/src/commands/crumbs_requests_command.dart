@@ -1,6 +1,6 @@
 import 'package:dowel/dowel.dart';
 
-/// `dowel crumbs:requests` — print recent HTTP request records.
+/// `dowel crumbs:requests`: print recent HTTP request records.
 class CrumbsRequestsCommand extends DowelCommand {
   @override
   String get name => 'crumbs:requests';
@@ -33,8 +33,9 @@ class CrumbsRequestsCommand extends DowelCommand {
     }
     for (final m in records) {
       final r = m as Map<String, dynamic>;
-      final requestIdSuffix =
-          r['requestId'] != null ? ' requestId=${r['requestId']}' : '';
+      final requestIdSuffix = r['requestId'] != null
+          ? ' requestId=${r['requestId']}'
+          : '';
       // Each half on its own: `linkedBy=window` is the case with no
       // interactionId, so gating both on the id hid it.
       final linkSuffix = [

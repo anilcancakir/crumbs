@@ -84,22 +84,24 @@ void main() {
       expect(record.atUs, equals(555));
     });
 
-    test('interactionId and linkedBy default to null and toJson omits them',
-        () {
-      final record = QueryRecord(
-        sql: 'SELECT 1',
-        bindings: const <Object?>[],
-        timeMs: 1,
-        time: fixedTime,
-      );
+    test(
+      'interactionId and linkedBy default to null and toJson omits them',
+      () {
+        final record = QueryRecord(
+          sql: 'SELECT 1',
+          bindings: const <Object?>[],
+          timeMs: 1,
+          time: fixedTime,
+        );
 
-      expect(record.interactionId, isNull);
-      expect(record.linkedBy, isNull);
+        expect(record.interactionId, isNull);
+        expect(record.linkedBy, isNull);
 
-      final json = record.toJson();
-      expect(json.containsKey('interactionId'), isFalse);
-      expect(json.containsKey('linkedBy'), isFalse);
-    });
+        final json = record.toJson();
+        expect(json.containsKey('interactionId'), isFalse);
+        expect(json.containsKey('linkedBy'), isFalse);
+      },
+    );
 
     test('interactionId and linkedBy are set and serialized when provided', () {
       final record = QueryRecord(
@@ -135,22 +137,24 @@ void main() {
       expect(decoded['time'], equals('2026-05-19T03:00:00.000Z'));
     });
 
-    test('two records with same fields are not identical (default identity eq)',
-        () {
-      final a = QueryRecord(
-        sql: 'SELECT 1',
-        bindings: const <Object?>[],
-        timeMs: 1,
-        time: fixedTime,
-      );
-      final b = QueryRecord(
-        sql: 'SELECT 1',
-        bindings: const <Object?>[],
-        timeMs: 1,
-        time: fixedTime,
-      );
+    test(
+      'two records with same fields are not identical (default identity eq)',
+      () {
+        final a = QueryRecord(
+          sql: 'SELECT 1',
+          bindings: const <Object?>[],
+          timeMs: 1,
+          time: fixedTime,
+        );
+        final b = QueryRecord(
+          sql: 'SELECT 1',
+          bindings: const <Object?>[],
+          timeMs: 1,
+          time: fixedTime,
+        );
 
-      expect(identical(a, b), isFalse);
-    });
+        expect(identical(a, b), isFalse);
+      },
+    );
   });
 }

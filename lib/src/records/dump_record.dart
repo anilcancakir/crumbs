@@ -1,10 +1,6 @@
 /// An immutable debugPrint output record captured by [DumpWatcher].
 class DumpRecord {
-  DumpRecord({
-    required this.message,
-    required this.time,
-    this.wrapWidth,
-  });
+  DumpRecord({required this.message, required this.time, this.wrapWidth});
 
   final String message;
   final DateTime time;
@@ -13,8 +9,8 @@ class DumpRecord {
   final int? wrapWidth;
 
   Map<String, dynamic> toJson() => {
-        'message': message,
-        'time': time.toIso8601String(),
-        if (wrapWidth != null) 'wrapWidth': wrapWidth,
-      };
+    'message': message,
+    'time': time.toIso8601String(),
+    if (wrapWidth != null) 'wrapWidth': wrapWidth,
+  };
 }

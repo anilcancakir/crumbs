@@ -17,8 +17,8 @@ class _StubContext extends DowelContext {
     Map<String, dynamic>? response,
     List<Map<String, dynamic>>? responses,
     this.failOnCall,
-  })  : _responses = responses ?? <Map<String, dynamic>>[response!],
-        super.bare(input, output);
+  }) : _responses = responses ?? <Map<String, dynamic>>[response!],
+       super.bare(input, output);
 
   final List<Map<String, dynamic>> _responses;
 
@@ -43,8 +43,9 @@ class _StubContext extends DowelContext {
     lastParams = params;
     calls.add(Map<String, dynamic>.of(params ?? <String, dynamic>{}));
     if (calls.length == failOnCall) throw StateError('The app is gone.');
-    final index =
-        calls.length <= _responses.length ? calls.length : _responses.length;
+    final index = calls.length <= _responses.length
+        ? calls.length
+        : _responses.length;
     return _responses[index - 1] as T;
   }
 }
@@ -162,32 +163,34 @@ void main() {
       expect(output.content, contains('No log records'));
     });
 
-    test('handle formats timestamp, level, loggerName, message per entry',
-        () async {
-      final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-        response: {
-          'messages': [
-            {
-              'time': '2026-05-18T12:00:00.000Z',
-              'level': 'INFO',
-              'loggerName': 'MyApp',
-              'message': 'App started',
-            },
-          ],
-        },
-      );
+    test(
+      'handle formats timestamp, level, loggerName, message per entry',
+      () async {
+        final output = BufferedOutput();
+        final ctx = _StubContext(
+          input: MapInput(const {}),
+          output: output,
+          response: {
+            'messages': [
+              {
+                'time': '2026-05-18T12:00:00.000Z',
+                'level': 'INFO',
+                'loggerName': 'MyApp',
+                'message': 'App started',
+              },
+            ],
+          },
+        );
 
-      final code = await CrumbsTailCommand().handle(ctx);
+        final code = await CrumbsTailCommand().handle(ctx);
 
-      expect(code, equals(0));
-      expect(output.content, contains('2026-05-18T12:00:00.000Z'));
-      expect(output.content, contains('[INFO]'));
-      expect(output.content, contains('MyApp'));
-      expect(output.content, contains('App started'));
-    });
+        expect(code, equals(0));
+        expect(output.content, contains('2026-05-18T12:00:00.000Z'));
+        expect(output.content, contains('[INFO]'));
+        expect(output.content, contains('MyApp'));
+        expect(output.content, contains('App started'));
+      },
+    );
 
     test('handle returns 0 on success', () async {
       final output = BufferedOutput();
@@ -269,8 +272,9 @@ void main() {
       final lines = const LineSplitter().convert(output.content);
       expect(code, equals(0));
       expect(lines, hasLength(2));
-      final decoded =
-          lines.map((l) => jsonDecode(l) as Map<String, dynamic>).toList();
+      final decoded = lines
+          .map((l) => jsonDecode(l) as Map<String, dynamic>)
+          .toList();
       expect(decoded.first['message'], equals('first'));
       expect(decoded.last['message'], equals('second "quoted"'));
     });
@@ -373,28 +377,24 @@ void main() {
         expect(output.content, isEmpty);
       });
 
-      test('on the real clock polls again after a second until a read fails',
-          () async {
-        final ctx = _StubContext(
-          input: MapInput(const {'follow': true}),
-          output: BufferedOutput(),
-          responses: const [
-            {
-              'messages': <dynamic>[],
-              'cursor': 300,
-            },
-          ],
-          failOnCall: 2,
-        );
+      test(
+        'on the real clock polls again after a second until a read fails',
+        () async {
+          final ctx = _StubContext(
+            input: MapInput(const {'follow': true}),
+            output: BufferedOutput(),
+            responses: const [
+              {'messages': <dynamic>[], 'cursor': 300},
+            ],
+            failOnCall: 2,
+          );
 
-        await expectLater(
-          CrumbsTailCommand().handle(ctx),
-          throwsStateError,
-        );
+          await expectLater(CrumbsTailCommand().handle(ctx), throwsStateError);
 
-        expect(ctx.calls, hasLength(2));
-        expect(ctx.calls.last, containsPair('since', '300'));
-      });
+          expect(ctx.calls, hasLength(2));
+          expect(ctx.calls.last, containsPair('since', '300'));
+        },
+      );
 
       test('without --follow polls exactly once', () async {
         final ctx = _StubContext(

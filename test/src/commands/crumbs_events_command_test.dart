@@ -16,8 +16,8 @@ class _StubContext extends DowelContext {
     Map<String, dynamic>? response,
     List<Map<String, dynamic>>? responses,
     this.failOnCall,
-  })  : _responses = responses ?? <Map<String, dynamic>>[response!],
-        super.bare(input, output);
+  }) : _responses = responses ?? <Map<String, dynamic>>[response!],
+       super.bare(input, output);
 
   final List<Map<String, dynamic>> _responses;
 
@@ -28,14 +28,17 @@ class _StubContext extends DowelContext {
   final List<Map<String, dynamic>> calls = <Map<String, dynamic>>[];
 
   @override
-  Future<T> callExtension<T>(String method,
-      [Map<String, dynamic>? params]) async {
+  Future<T> callExtension<T>(
+    String method, [
+    Map<String, dynamic>? params,
+  ]) async {
     lastMethod = method;
     lastParams = params;
     calls.add(Map<String, dynamic>.of(params ?? <String, dynamic>{}));
     if (calls.length == failOnCall) throw StateError('The app is gone.');
-    final index =
-        calls.length <= _responses.length ? calls.length : _responses.length;
+    final index = calls.length <= _responses.length
+        ? calls.length
+        : _responses.length;
     return _responses[index - 1] as T;
   }
 }
@@ -85,31 +88,33 @@ void main() {
       expect(output.content, contains('No event records'));
     });
 
-    test('handle formats event type, payload, listener count per entry',
-        () async {
-      final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-        response: const {
-          'events': [
-            {
-              'time': '2026-09-28T10:00:00.000Z',
-              'eventType': 'MonitorCreated',
-              'payload': {'id': 7},
-              'listenerCount': 2,
-            },
-          ],
-        },
-      );
+    test(
+      'handle formats event type, payload, listener count per entry',
+      () async {
+        final output = BufferedOutput();
+        final ctx = _StubContext(
+          input: MapInput(const {}),
+          output: output,
+          response: const {
+            'events': [
+              {
+                'time': '2026-09-28T10:00:00.000Z',
+                'eventType': 'MonitorCreated',
+                'payload': {'id': 7},
+                'listenerCount': 2,
+              },
+            ],
+          },
+        );
 
-      final code = await CrumbsEventsCommand().handle(ctx);
+        final code = await CrumbsEventsCommand().handle(ctx);
 
-      expect(code, equals(0));
-      expect(output.content, contains('MonitorCreated'));
-      expect(output.content, contains('{id: 7}'));
-      expect(output.content, contains('listeners=2'));
-    });
+        expect(code, equals(0));
+        expect(output.content, contains('MonitorCreated'));
+        expect(output.content, contains('{id: 7}'));
+        expect(output.content, contains('listeners=2'));
+      },
+    );
 
     test('handle omits listeners when the count was not recorded', () async {
       final output = BufferedOutput();
@@ -168,48 +173,52 @@ void main() {
       expect(ctx.lastParams, isNot(contains('type')));
     });
 
-    test('--json prints one decodable JSON object per line with the payload',
-        () async {
-      final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {'json': true}),
-        output: output,
-        response: const {
-          'events': [
-            {
-              'time': '2026-09-28T10:00:00.000Z',
-              'eventType': 'player.open',
-              'payload': {
-                'id': 7,
-                'nested': {'ok': true}
+    test(
+      '--json prints one decodable JSON object per line with the payload',
+      () async {
+        final output = BufferedOutput();
+        final ctx = _StubContext(
+          input: MapInput(const {'json': true}),
+          output: output,
+          response: const {
+            'events': [
+              {
+                'time': '2026-09-28T10:00:00.000Z',
+                'eventType': 'player.open',
+                'payload': {
+                  'id': 7,
+                  'nested': {'ok': true},
+                },
+                'atUs': 100,
               },
-              'atUs': 100,
-            },
-            {
-              'time': '2026-09-28T10:00:01.000Z',
-              'eventType': 'player.stall',
-              'payload': <String, dynamic>{},
-              'atUs': 200,
-            },
-          ],
-        },
-      );
+              {
+                'time': '2026-09-28T10:00:01.000Z',
+                'eventType': 'player.stall',
+                'payload': <String, dynamic>{},
+                'atUs': 200,
+              },
+            ],
+          },
+        );
 
-      final code = await CrumbsEventsCommand().handle(ctx);
+        final code = await CrumbsEventsCommand().handle(ctx);
 
-      final lines = const LineSplitter().convert(output.content);
-      expect(code, equals(0));
-      expect(lines, hasLength(2));
-      final decoded =
-          lines.map((l) => jsonDecode(l) as Map<String, dynamic>).toList();
-      expect(
+        final lines = const LineSplitter().convert(output.content);
+        expect(code, equals(0));
+        expect(lines, hasLength(2));
+        final decoded = lines
+            .map((l) => jsonDecode(l) as Map<String, dynamic>)
+            .toList();
+        expect(
           decoded.first['payload'],
           equals({
             'id': 7,
-            'nested': {'ok': true}
-          }));
-      expect(decoded.last['eventType'], equals('player.stall'));
-    });
+            'nested': {'ok': true},
+          }),
+        );
+        expect(decoded.last['eventType'], equals('player.stall'));
+      },
+    );
 
     test('--json prints nothing when there are no records', () async {
       final output = BufferedOutput();
@@ -294,28 +303,27 @@ void main() {
         expect(output.content, isEmpty);
       });
 
-      test('on the real clock polls again after a second until a read fails',
-          () async {
-        final ctx = _StubContext(
-          input: MapInput(const {'follow': true}),
-          output: BufferedOutput(),
-          responses: const [
-            {
-              'events': <dynamic>[],
-              'cursor': 300,
-            },
-          ],
-          failOnCall: 2,
-        );
+      test(
+        'on the real clock polls again after a second until a read fails',
+        () async {
+          final ctx = _StubContext(
+            input: MapInput(const {'follow': true}),
+            output: BufferedOutput(),
+            responses: const [
+              {'events': <dynamic>[], 'cursor': 300},
+            ],
+            failOnCall: 2,
+          );
 
-        await expectLater(
-          CrumbsEventsCommand().handle(ctx),
-          throwsStateError,
-        );
+          await expectLater(
+            CrumbsEventsCommand().handle(ctx),
+            throwsStateError,
+          );
 
-        expect(ctx.calls, hasLength(2));
-        expect(ctx.calls.last, containsPair('since', '300'));
-      });
+          expect(ctx.calls, hasLength(2));
+          expect(ctx.calls.last, containsPair('since', '300'));
+        },
+      );
 
       test('without --follow polls exactly once', () async {
         final ctx = _StubContext(

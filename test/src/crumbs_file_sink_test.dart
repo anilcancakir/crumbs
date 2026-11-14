@@ -16,48 +16,43 @@ final RegExp _timelineName = RegExp(r'^timeline-\d{8}T\d{6}Z-\d+\.jsonl$');
 Future<void> _delivered() => Future<void>.delayed(Duration.zero);
 
 void _event(int i) => CrumbsStore.recordEvent(
-      EventRecord(
-        eventType: 'player.tick',
-        payload: <String, dynamic>{
-          'i': i,
-        },
-        time: DateTime.utc(2026),
-      ),
-    );
+  EventRecord(
+    eventType: 'player.tick',
+    payload: <String, dynamic>{'i': i},
+    time: DateTime.utc(2026),
+  ),
+);
 
 void _log(String message) => CrumbsStore.recordLog(
-      LogRecordEntry(
-        level: 'INFO',
-        levelValue: 800,
-        message: message,
-        loggerName: 'mpv',
-        time: DateTime.utc(2026),
-      ),
-    );
+  LogRecordEntry(
+    level: 'INFO',
+    levelValue: 800,
+    message: message,
+    loggerName: 'mpv',
+    time: DateTime.utc(2026),
+  ),
+);
 
 void _exception(String message) => CrumbsStore.recordException(
-      ExceptionRecord(
-        exceptionType: 'StateError',
-        message: message,
-        time: DateTime.utc(2026),
-      ),
-    );
+  ExceptionRecord(
+    exceptionType: 'StateError',
+    message: message,
+    time: DateTime.utc(2026),
+  ),
+);
 
 String _identity(String text) => text;
 
 /// An event whose line is the same length whatever its [i], padded to
 /// [width] characters of payload, so a test can size a file to whole lines.
 void _paddedEvent(int i, {int width = 0}) => CrumbsStore.recordEvent(
-      EventRecord(
-        eventType: 'player.tick',
-        payload: <String, dynamic>{
-          'i': i,
-          'pad': 'x' * width,
-        },
-        time: DateTime.utc(2026),
-        atUs: 1000,
-      ),
-    );
+  EventRecord(
+    eventType: 'player.tick',
+    payload: <String, dynamic>{'i': i, 'pad': 'x' * width},
+    time: DateTime.utc(2026),
+    atUs: 1000,
+  ),
+);
 
 /// Waits out the tail of the current second, so two sinks started one after
 /// the other share one launch stamp.
@@ -87,9 +82,7 @@ void main() {
   List<File> timelineFiles() => Directory(directory)
       .listSync()
       .whereType<File>()
-      .where(
-        (File file) => _timelineName.hasMatch(file.uri.pathSegments.last),
-      )
+      .where((File file) => _timelineName.hasMatch(file.uri.pathSegments.last))
       .toList();
 
   Future<List<String>> allLines(CrumbsFileSink sink) async {
@@ -139,108 +132,116 @@ void main() {
         expect(second.pendingLines, 1);
       });
 
-      test('a sink started again in the same second keeps the first lines',
-          () async {
-        CrumbsRedaction.redactor = _identity;
-        await _earlyInSecond();
-        final CrumbsFileSink first = await CrumbsFileSink.start(
-          directory: directory,
-        );
-        _event(1);
-        await _delivered();
-        await first.flush();
+      test(
+        'a sink started again in the same second keeps the first lines',
+        () async {
+          CrumbsRedaction.redactor = _identity;
+          await _earlyInSecond();
+          final CrumbsFileSink first = await CrumbsFileSink.start(
+            directory: directory,
+          );
+          _event(1);
+          await _delivered();
+          await first.flush();
 
-        // Started while the first still runs: start() stops it first.
-        final CrumbsFileSink second = await CrumbsFileSink.start(
-          directory: directory,
-        );
-        _event(2);
-        await _delivered();
-        await second.flush();
+          // Started while the first still runs: start() stops it first.
+          final CrumbsFileSink second = await CrumbsFileSink.start(
+            directory: directory,
+          );
+          _event(2);
+          await _delivered();
+          await second.flush();
 
-        final File file = timelineFiles().single;
-        final List<Map<String, dynamic>> lines = file
-            .readAsLinesSync()
-            .map((String line) => jsonDecode(line) as Map<String, dynamic>)
-            .toList();
-        expect(
-          lines.map((Map<String, dynamic> line) => line['payload']['i']),
-          orderedEquals(<int>[1, 2]),
-        );
-      });
+          final File file = timelineFiles().single;
+          final List<Map<String, dynamic>> lines = file
+              .readAsLinesSync()
+              .map((String line) => jsonDecode(line) as Map<String, dynamic>)
+              .toList();
+          expect(
+            lines.map((Map<String, dynamic> line) => line['payload']['i']),
+            orderedEquals(<int>[1, 2]),
+          );
+        },
+      );
 
-      test('a sink started after a stop in the same second appends too',
-          () async {
-        CrumbsRedaction.redactor = _identity;
-        await _earlyInSecond();
-        final CrumbsFileSink first = await CrumbsFileSink.start(
-          directory: directory,
-        );
-        _event(1);
-        await _delivered();
-        await first.flush();
-        await first.stop();
+      test(
+        'a sink started after a stop in the same second appends too',
+        () async {
+          CrumbsRedaction.redactor = _identity;
+          await _earlyInSecond();
+          final CrumbsFileSink first = await CrumbsFileSink.start(
+            directory: directory,
+          );
+          _event(1);
+          await _delivered();
+          await first.flush();
+          await first.stop();
 
-        final CrumbsFileSink second = await CrumbsFileSink.start(
-          directory: directory,
-        );
-        _event(2);
-        await _delivered();
-        await second.flush();
+          final CrumbsFileSink second = await CrumbsFileSink.start(
+            directory: directory,
+          );
+          _event(2);
+          await _delivered();
+          await second.flush();
 
-        expect(timelineFiles().single.readAsLinesSync(), hasLength(2));
-      });
+          expect(timelineFiles().single.readAsLinesSync(), hasLength(2));
+        },
+      );
 
-      test('rotation counts the bytes a same-second file already holds',
-          () async {
-        CrumbsRedaction.redactor = _identity;
-        await _earlyInSecond();
-        final CrumbsFileSink first = await CrumbsFileSink.start(
-          directory: directory,
-        );
-        _paddedEvent(1);
-        await _delivered();
-        await first.flush();
-        await first.stop();
-        final int lineBytes = timelineFiles().single.lengthSync();
+      test(
+        'rotation counts the bytes a same-second file already holds',
+        () async {
+          CrumbsRedaction.redactor = _identity;
+          await _earlyInSecond();
+          final CrumbsFileSink first = await CrumbsFileSink.start(
+            directory: directory,
+          );
+          _paddedEvent(1);
+          await _delivered();
+          await first.flush();
+          await first.stop();
+          final int lineBytes = timelineFiles().single.lengthSync();
 
-        // Room for one and a half lines: the second sink's line must not be
-        // appended to a file that already holds one.
-        final CrumbsFileSink second = await CrumbsFileSink.start(
-          directory: directory,
-          maxFileBytes: lineBytes + lineBytes ~/ 2,
-        );
-        _paddedEvent(2);
-        await _delivered();
-        await second.flush();
+          // Room for one and a half lines: the second sink's line must not be
+          // appended to a file that already holds one.
+          final CrumbsFileSink second = await CrumbsFileSink.start(
+            directory: directory,
+            maxFileBytes: lineBytes + lineBytes ~/ 2,
+          );
+          _paddedEvent(2);
+          await _delivered();
+          await second.flush();
 
-        final List<Map<String, Object>> files = await second.files();
-        expect(files, hasLength(2));
-        for (final Map<String, Object> file in files) {
-          expect(file['bytes']! as int, lessThanOrEqualTo(lineBytes));
-        }
-      });
+          final List<Map<String, Object>> files = await second.files();
+          expect(files, hasLength(2));
+          for (final Map<String, Object> file in files) {
+            expect(file['bytes']! as int, lessThanOrEqualTo(lineBytes));
+          }
+        },
+      );
 
-      test('a failed start leaves no current sink and no subscription',
-          () async {
-        CrumbsRedaction.redactor = _identity;
-        // A file where the directory should be: creating it throws.
-        File(directory).writeAsStringSync('');
+      test(
+        'a failed start leaves no current sink and no subscription',
+        () async {
+          CrumbsRedaction.redactor = _identity;
+          // A file where the directory should be: creating it throws.
+          File(directory).writeAsStringSync('');
 
-        await expectLater(
-          CrumbsFileSink.start(directory: directory),
-          throwsA(isA<FileSystemException>()),
-        );
-        expect(CrumbsFileSink.current, isNull);
+          await expectLater(
+            CrumbsFileSink.start(directory: directory),
+            throwsA(isA<FileSystemException>()),
+          );
+          expect(CrumbsFileSink.current, isNull);
 
-        // A sink still listening would batch these and fail its flush with
-        // an uncaught error, which fails this test.
-        for (int i = 0; i < 64; i++) {
-          _event(i);
-        }
-        await _delivered();
-        await Future<void>.delayed(const Duration(milliseconds: 600));
-      });
+          // A sink still listening would batch these and fail its flush with
+          // an uncaught error, which fails this test.
+          for (int i = 0; i < 64; i++) {
+            _event(i);
+          }
+          await _delivered();
+          await Future<void>.delayed(const Duration(milliseconds: 600));
+        },
+      );
     });
 
     group('fail closed', () {
@@ -314,13 +315,7 @@ void main() {
                   (jsonDecode(line) as Map<String, dynamic>)['kind'] as String,
             )
             .toList();
-        expect(
-          kinds,
-          unorderedEquals(<String>[
-            'log',
-            'exception',
-          ]),
-        );
+        expect(kinds, unorderedEquals(<String>['log', 'exception']));
       });
 
       test('hands the batch to disk at 64 lines without a flush', () async {
@@ -352,65 +347,68 @@ void main() {
         expect(timelineFiles().single.readAsLinesSync(), hasLength(1));
       });
 
-      test('a failed batch write stops the sink without an uncaught error',
-          () async {
-        CrumbsRedaction.redactor = _identity;
-        final CrumbsFileSink sink = await CrumbsFileSink.start(
-          directory: directory,
-          maxFileBytes: 64,
-        );
-        // The next rotation opens a file in a directory that is gone.
-        Directory(directory).deleteSync(recursive: true);
+      test(
+        'a failed batch write stops the sink without an uncaught error',
+        () async {
+          CrumbsRedaction.redactor = _identity;
+          final CrumbsFileSink sink = await CrumbsFileSink.start(
+            directory: directory,
+            maxFileBytes: 64,
+          );
+          // The next rotation opens a file in a directory that is gone.
+          Directory(directory).deleteSync(recursive: true);
 
-        for (int i = 0; i < 64; i++) {
-          _event(i);
-        }
-        await _delivered();
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+          for (int i = 0; i < 64; i++) {
+            _event(i);
+          }
+          await _delivered();
+          await Future<void>.delayed(const Duration(milliseconds: 100));
 
-        expect(sink.writeFailures, 1);
-        expect(CrumbsFileSink.current, isNull);
+          expect(sink.writeFailures, 1);
+          expect(CrumbsFileSink.current, isNull);
 
-        _event(64);
-        await _delivered();
-        expect(sink.pendingLines, 0);
-        await Future<void>.delayed(const Duration(milliseconds: 600));
-        expect(sink.writeFailures, 1);
-      });
+          _event(64);
+          await _delivered();
+          expect(sink.pendingLines, 0);
+          await Future<void>.delayed(const Duration(milliseconds: 600));
+          expect(sink.writeFailures, 1);
+        },
+      );
 
       test(
-          'a flush after a failed rotation fails loudly rather than drop lines',
-          () async {
-        CrumbsRedaction.redactor = _identity;
-        final CrumbsFileSink sink = await CrumbsFileSink.start(
-          directory: directory,
-          maxFileBytes: 400,
-        );
-        _paddedEvent(1);
-        await _delivered();
-        await sink.flush();
-        // The next rotation opens a file in a directory that is gone.
-        Directory(directory).deleteSync(recursive: true);
+        'a flush after a failed rotation fails loudly rather than drop lines',
+        () async {
+          CrumbsRedaction.redactor = _identity;
+          final CrumbsFileSink sink = await CrumbsFileSink.start(
+            directory: directory,
+            maxFileBytes: 400,
+          );
+          _paddedEvent(1);
+          await _delivered();
+          await sink.flush();
+          // The next rotation opens a file in a directory that is gone.
+          Directory(directory).deleteSync(recursive: true);
 
-        // Too long for the room left: rotation fails and closes the file.
-        _paddedEvent(2, width: 400);
-        await _delivered();
-        await expectLater(sink.flush(), throwsA(isA<FileSystemException>()));
+          // Too long for the room left: rotation fails and closes the file.
+          _paddedEvent(2, width: 400);
+          await _delivered();
+          await expectLater(sink.flush(), throwsA(isA<FileSystemException>()));
 
-        // Short enough for the old file, but no file is open any more.
-        _paddedEvent(3);
-        await _delivered();
-        await expectLater(
-          sink.flush(),
-          throwsA(
-            isA<FileSystemException>().having(
-              (FileSystemException e) => e.message,
-              'message',
-              contains('No timeline file is open'),
+          // Short enough for the old file, but no file is open any more.
+          _paddedEvent(3);
+          await _delivered();
+          await expectLater(
+            sink.flush(),
+            throwsA(
+              isA<FileSystemException>().having(
+                (FileSystemException e) => e.message,
+                'message',
+                contains('No timeline file is open'),
+              ),
             ),
-          ),
-        );
-      });
+          );
+        },
+      );
 
       test('stop flushes buffered lines and ends the subscription', () async {
         CrumbsRedaction.redactor = _identity;
@@ -565,13 +563,10 @@ void main() {
             .writeAsStringSync('{"kind":"event"}\n');
 
         final List<Map<String, Object>> files = await sink.files();
-        expect(
-          files.map((Map<String, Object> f) => f['name']),
-          <String>[
-            name,
-            earlier,
-          ],
-        );
+        expect(files.map((Map<String, Object> f) => f['name']), <String>[
+          name,
+          earlier,
+        ]);
         expect(files.last['bytes'], 17);
 
         final Map<String, Object> page = (await sink.read(earlier))!;
@@ -583,9 +578,7 @@ void main() {
         CrumbsStore.recordEvent(
           EventRecord(
             eventType: 'player.title',
-            payload: <String, dynamic>{
-              'title': 'Caf\u00e9',
-            },
+            payload: <String, dynamic>{'title': 'Caf\u00e9'},
             time: DateTime.utc(2026),
           ),
         );
@@ -595,8 +588,10 @@ void main() {
         final List<int> bytes = timelineFiles().single.readAsBytesSync();
         final int inside = bytes.indexOf(0xC3) + 1;
 
-        final Map<String, Object> page =
-            (await sink.read(name, offset: inside))!;
+        final Map<String, Object> page = (await sink.read(
+          name,
+          offset: inside,
+        ))!;
 
         expect(page['lines'], hasLength(1));
         expect(page['next'], bytes.length);
@@ -611,13 +606,17 @@ void main() {
         final List<String> all = timelineFiles().single.readAsLinesSync();
         final int firstBytes = utf8.encode('${all.first}\n').length;
 
-        final Map<String, Object> first =
-            (await sink.read(name, maxBytes: firstBytes + 5))!;
+        final Map<String, Object> first = (await sink.read(
+          name,
+          maxBytes: firstBytes + 5,
+        ))!;
         expect(first['lines'], <String>[all.first]);
         expect(first['next'], firstBytes);
 
-        final Map<String, Object> rest =
-            (await sink.read(name, offset: first['next']! as int))!;
+        final Map<String, Object> rest = (await sink.read(
+          name,
+          offset: first['next']! as int,
+        ))!;
         expect(rest['lines'], all.sublist(1));
 
         final int end = rest['next']! as int;

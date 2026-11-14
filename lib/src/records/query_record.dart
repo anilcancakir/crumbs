@@ -46,13 +46,13 @@ class QueryRecord {
   final String? linkedBy;
 
   Map<String, dynamic> toJson() => {
-        'sql': sql,
-        'bindings': bindings,
-        'timeMs': timeMs,
-        'connectionName': connectionName,
-        'time': time.toIso8601String(),
-        'atUs': atUs,
-        if (interactionId != null) 'interactionId': interactionId,
-        if (linkedBy != null) 'linkedBy': linkedBy,
-      };
+    'sql': sql,
+    'bindings': bindings,
+    'timeMs': timeMs,
+    'connectionName': connectionName,
+    'time': time.toIso8601String(),
+    'atUs': atUs,
+    if (interactionId != null) 'interactionId': interactionId,
+    if (linkedBy != null) 'linkedBy': linkedBy,
+  };
 }

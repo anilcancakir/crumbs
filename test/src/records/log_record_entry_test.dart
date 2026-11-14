@@ -205,24 +205,26 @@ void main() {
     // Identity equality (matches existing records ; no Equatable)
     // -------------------------------------------------------------------------
 
-    test('two records with same fields are not identical (default identity eq)',
-        () {
-      final a = LogRecordEntry(
-        level: 'INFO',
-        levelValue: 800,
-        message: 'Monitor checked successfully',
-        loggerName: 'crumbs',
-        time: time,
-      );
-      final b = LogRecordEntry(
-        level: 'INFO',
-        levelValue: 800,
-        message: 'Monitor checked successfully',
-        loggerName: 'crumbs',
-        time: time,
-      );
+    test(
+      'two records with same fields are not identical (default identity eq)',
+      () {
+        final a = LogRecordEntry(
+          level: 'INFO',
+          levelValue: 800,
+          message: 'Monitor checked successfully',
+          loggerName: 'crumbs',
+          time: time,
+        );
+        final b = LogRecordEntry(
+          level: 'INFO',
+          levelValue: 800,
+          message: 'Monitor checked successfully',
+          loggerName: 'crumbs',
+          time: time,
+        );
 
-      expect(identical(a, b), isFalse);
-    });
+        expect(identical(a, b), isFalse);
+      },
+    );
   });
 }

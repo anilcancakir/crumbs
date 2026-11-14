@@ -8,17 +8,18 @@ class _StubContext extends DowelContext {
   _StubContext({
     required DowelInput input,
     required DowelOutput output,
-    required Map<String, dynamic> response,
-  })  : _response = response,
-        super.bare(input, output);
+    required this._response,
+  }) : super.bare(input, output);
 
   final Map<String, dynamic> _response;
   String? lastMethod;
   Map<String, dynamic>? lastParams;
 
   @override
-  Future<T> callExtension<T>(String method,
-      [Map<String, dynamic>? params]) async {
+  Future<T> callExtension<T>(
+    String method, [
+    Map<String, dynamic>? params,
+  ]) async {
     lastMethod = method;
     lastParams = params;
     return _response as T;
@@ -70,56 +71,60 @@ void main() {
       expect(output.content, contains('No gate records'));
     });
 
-    test('handle formats ability, verdict, user, arguments per entry',
-        () async {
-      final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-        response: const {
-          'gates': [
-            {
-              'time': '2026-09-28T10:00:00.000Z',
-              'ability': 'monitors.update',
-              'result': false,
-              'arguments': ['Monitor'],
-              'userId': '3',
-            },
-          ],
-        },
-      );
+    test(
+      'handle formats ability, verdict, user, arguments per entry',
+      () async {
+        final output = BufferedOutput();
+        final ctx = _StubContext(
+          input: MapInput(const {}),
+          output: output,
+          response: const {
+            'gates': [
+              {
+                'time': '2026-09-28T10:00:00.000Z',
+                'ability': 'monitors.update',
+                'result': false,
+                'arguments': ['Monitor'],
+                'userId': '3',
+              },
+            ],
+          },
+        );
 
-      final code = await CrumbsGatesCommand().handle(ctx);
+        final code = await CrumbsGatesCommand().handle(ctx);
 
-      expect(code, equals(0));
-      expect(output.content, contains('monitors.update'));
-      expect(output.content, contains('denied'));
-      expect(output.content, contains('user=3'));
-      expect(output.content, contains('[Monitor]'));
-    });
+        expect(code, equals(0));
+        expect(output.content, contains('monitors.update'));
+        expect(output.content, contains('denied'));
+        expect(output.content, contains('user=3'));
+        expect(output.content, contains('[Monitor]'));
+      },
+    );
 
-    test('handle prints allowed and omits user when none was authenticated',
-        () async {
-      final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-        response: const {
-          'gates': [
-            {
-              'time': '2026-09-28T10:00:00.000Z',
-              'ability': 'monitors.view',
-              'result': true,
-              'arguments': <dynamic>[],
-            },
-          ],
-        },
-      );
+    test(
+      'handle prints allowed and omits user when none was authenticated',
+      () async {
+        final output = BufferedOutput();
+        final ctx = _StubContext(
+          input: MapInput(const {}),
+          output: output,
+          response: const {
+            'gates': [
+              {
+                'time': '2026-09-28T10:00:00.000Z',
+                'ability': 'monitors.view',
+                'result': true,
+                'arguments': <dynamic>[],
+              },
+            ],
+          },
+        );
 
-      await CrumbsGatesCommand().handle(ctx);
+        await CrumbsGatesCommand().handle(ctx);
 
-      expect(output.content, contains('monitors.view allowed arguments=[]'));
-      expect(output.content, isNot(contains('user=')));
-    });
+        expect(output.content, contains('monitors.view allowed arguments=[]'));
+        expect(output.content, isNot(contains('user=')));
+      },
+    );
   });
 }

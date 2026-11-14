@@ -15,7 +15,8 @@ class CrumbsGatesCommand extends DowelCommand {
   CommandBoot get boot => CommandBoot.connected;
 
   @override
-  String get signature => 'crumbs:gates '
+  String get signature =>
+      'crumbs:gates '
       '{--limit=50 : Maximum number of records to print.}';
 
   @override

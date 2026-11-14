@@ -8,17 +8,18 @@ class _StubContext extends DowelContext {
   _StubContext({
     required DowelInput input,
     required DowelOutput output,
-    required Map<String, dynamic> response,
-  })  : _response = response,
-        super.bare(input, output);
+    required this._response,
+  }) : super.bare(input, output);
 
   final Map<String, dynamic> _response;
   String? lastMethod;
   Map<String, dynamic>? lastParams;
 
   @override
-  Future<T> callExtension<T>(String method,
-      [Map<String, dynamic>? params]) async {
+  Future<T> callExtension<T>(
+    String method, [
+    Map<String, dynamic>? params,
+  ]) async {
     lastMethod = method;
     lastParams = params;
     return _response as T;
@@ -77,10 +78,7 @@ void main() {
         output: output,
         response: const {
           'dumps': [
-            {
-              'time': '2026-09-28T10:00:00.000Z',
-              'message': 'poller tick 3',
-            },
+            {'time': '2026-09-28T10:00:00.000Z', 'message': 'poller tick 3'},
           ],
         },
       );

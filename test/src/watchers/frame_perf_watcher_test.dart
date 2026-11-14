@@ -46,7 +46,8 @@ void fireTimings(List<FrameTiming> timings) {
   expect(
     report,
     isNotNull,
-    reason: 'the platform dispatcher must be armed for an injected batch '
+    reason:
+        'the platform dispatcher must be armed for an injected batch '
         'to reach any timings callback at all',
   );
   report!(timings);
@@ -78,24 +79,25 @@ void main() {
     });
 
     group('install()', () {
-      test('installing twice then firing one batch records exactly one frame',
-          () {
-        watcher.install();
-        watcher.install();
+      test(
+        'installing twice then firing one batch records exactly one frame',
+        () {
+          watcher.install();
+          watcher.install();
 
-        fireTimings(<FrameTiming>[buildTiming(frameNumber: 7)]);
+          fireTimings(<FrameTiming>[buildTiming(frameNumber: 7)]);
 
-        final List<FramePerfRecord> records = CrumbsStore.recentFramePerf();
-        expect(records, hasLength(1));
-        expect(records.single.frameNumber, 7);
-        expect(records.single.buildMicros, 5000);
-        expect(records.single.rasterMicros, 2000);
-        expect(records.single.vsyncOverheadMicros, 1000);
-        expect(records.single.totalSpanMicros, 8000);
-      });
+          final List<FramePerfRecord> records = CrumbsStore.recentFramePerf();
+          expect(records, hasLength(1));
+          expect(records.single.frameNumber, 7);
+          expect(records.single.buildMicros, 5000);
+          expect(records.single.rasterMicros, 2000);
+          expect(records.single.vsyncOverheadMicros, 1000);
+          expect(records.single.totalSpanMicros, 8000);
+        },
+      );
 
-      testWidgets(
-          'a SECOND watcher instance does not double the liveness '
+      testWidgets('a SECOND watcher instance does not double the liveness '
           'counter', (WidgetTester tester) async {
         // Two registrations is the expected case, not a mistake:
         // MagicPerfIntegration registers one and this class's own docs tell a
@@ -124,9 +126,9 @@ void main() {
         void sentinel(List<FrameTiming> _) => sentinelCalls += 1;
 
         SchedulerBinding.instance.addTimingsCallback(sentinel);
-        addTearDown(() => SchedulerBinding.instance.removeTimingsCallback(
-              sentinel,
-            ));
+        addTearDown(
+          () => SchedulerBinding.instance.removeTimingsCallback(sentinel),
+        );
 
         watcher.install();
         fireTimings(<FrameTiming>[buildTiming()]);
@@ -135,8 +137,9 @@ void main() {
         expect(CrumbsStore.recentFramePerf(), hasLength(1));
       });
 
-      testWidgets('a frame does not throw while collection is disabled',
-          (WidgetTester tester) async {
+      testWidgets('a frame does not throw while collection is disabled', (
+        WidgetTester tester,
+      ) async {
         expect(FlutterTimeline.debugCollectionEnabled, isFalse);
 
         watcher.install();
@@ -169,8 +172,9 @@ void main() {
     });
 
     group('livenessCounter', () {
-      testWidgets('equals exactly N after N successive pumps',
-          (WidgetTester tester) async {
+      testWidgets('equals exactly N after N successive pumps', (
+        WidgetTester tester,
+      ) async {
         await tester.pumpWidget(const SizedBox.shrink());
 
         watcher.install();
@@ -196,8 +200,9 @@ void main() {
     });
 
     group('the frame join', () {
-      testWidgets('a record carries both the frame timing and its block map',
-          (WidgetTester tester) async {
+      testWidgets('a record carries both the frame timing and its block map', (
+        WidgetTester tester,
+      ) async {
         FlutterTimeline.debugCollectionEnabled = true;
 
         watcher.install();
@@ -221,20 +226,21 @@ void main() {
         expect(record.blocks['JoinProbe']?.count, 1);
       });
 
-      test('a record carries vsyncStartUs from the FrameTiming vsync phase',
-          () {
-        watcher.install();
-
-        fireTimings(
-          <FrameTiming>[buildTiming(frameNumber: 42, vsyncStart: 123456)],
-        );
-
-        final FramePerfRecord record = CrumbsStore.recentFramePerf().single;
-        expect(record.vsyncStartUs, equals(123456));
-      });
-
       test(
-          'a record carries atUs, captured within FlutterTimeline.now '
+        'a record carries vsyncStartUs from the FrameTiming vsync phase',
+        () {
+          watcher.install();
+
+          fireTimings(<FrameTiming>[
+            buildTiming(frameNumber: 42, vsyncStart: 123456),
+          ]);
+
+          final FramePerfRecord record = CrumbsStore.recentFramePerf().single;
+          expect(record.vsyncStartUs, equals(123456));
+        },
+      );
+
+      test('a record carries atUs, captured within FlutterTimeline.now '
           'bounds around construction', () {
         final int before = FlutterTimeline.now;
         watcher.install();
@@ -246,22 +252,24 @@ void main() {
         expect(record.atUs, inInclusiveRange(before, after));
       });
 
-      testWidgets('a timing with no block map still records, with an empty map',
-          (WidgetTester tester) async {
-        watcher.install();
-
-        await tester.pumpWidget(const SizedBox.shrink());
-        fireTimings(<FrameTiming>[buildTiming(frameNumber: 3)]);
-
-        final FramePerfRecord record = CrumbsStore.recentFramePerf().single;
-        expect(record.frameNumber, 3);
-        expect(record.blocks, isEmpty);
-      });
-
       testWidgets(
-          'a block nested inside another has its inclusive duration '
-          'subtracted from the parent (A.selfMicros == A.micros - B.micros)',
-          (WidgetTester tester) async {
+        'a timing with no block map still records, with an empty map',
+        (WidgetTester tester) async {
+          watcher.install();
+
+          await tester.pumpWidget(const SizedBox.shrink());
+          fireTimings(<FrameTiming>[buildTiming(frameNumber: 3)]);
+
+          final FramePerfRecord record = CrumbsStore.recentFramePerf().single;
+          expect(record.frameNumber, 3);
+          expect(record.blocks, isEmpty);
+        },
+      );
+
+      testWidgets('a block nested inside another has its inclusive duration '
+          'subtracted from the parent (A.selfMicros == A.micros - B.micros)', (
+        WidgetTester tester,
+      ) async {
         FlutterTimeline.debugCollectionEnabled = true;
 
         watcher.install();

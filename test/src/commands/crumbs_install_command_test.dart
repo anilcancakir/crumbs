@@ -53,8 +53,9 @@ String _seedProject(
   final mainDartPath = '${tempDir.path}/lib/main.dart';
   Directory('${tempDir.path}/lib').createSync(recursive: true);
   File(mainDartPath).writeAsStringSync(mainDartContents);
-  final depsBlock =
-      pubspecDeps.entries.map((e) => '  ${e.key}: ${e.value}').join('\n');
+  final depsBlock = pubspecDeps.entries
+      .map((e) => '  ${e.key}: ${e.value}')
+      .join('\n');
   final pubspec = <String>[
     'name: stub_app',
     'environment:',
@@ -153,8 +154,7 @@ void main() {
     // Wrapper-presence branch: skip install when wrapper exists
     // -------------------------------------------------------------------------
 
-    test(
-        'skips install when bin/dispatcher.dart already exists; '
+    test('skips install when bin/dispatcher.dart already exists; '
         'plugin:install still runs via dart run crumbs', () async {
       final runner = _RecordingRunner();
       CrumbsInstallCommand.processRunner = runner.run;
@@ -165,25 +165,22 @@ void main() {
       );
 
       expect(exit, equals(0));
-      expect(runner.calls, hasLength(1),
-          reason: 'only plugin:install should run when wrapper present');
       expect(
-          runner.calls.single,
-          equals([
-            'dart',
-            'run',
-            'crumbs',
-            'plugin:install',
-            'crumbs',
-          ]));
+        runner.calls,
+        hasLength(1),
+        reason: 'only plugin:install should run when wrapper present',
+      );
+      expect(
+        runner.calls.single,
+        equals(['dart', 'run', 'crumbs', 'plugin:install', 'crumbs']),
+      );
     });
 
     // -------------------------------------------------------------------------
     // Wrapper-missing branch: run install then plugin:install
     // -------------------------------------------------------------------------
 
-    test(
-        'runs install then plugin:install (both via dart run crumbs) '
+    test('runs install then plugin:install (both via dart run crumbs) '
         'when bin/dispatcher.dart is missing (correct ordering)', () async {
       final runner = _RecordingRunner();
       CrumbsInstallCommand.processRunner = runner.run;
@@ -195,27 +192,25 @@ void main() {
 
       expect(exit, equals(0));
       expect(runner.calls, hasLength(2));
-      expect(runner.calls[0], equals(['dart', 'run', 'crumbs', 'install']),
-          reason: 'install must run first (scaffolds dispatcher.dart + dowel)');
       expect(
-          runner.calls[1],
-          equals([
-            'dart',
-            'run',
-            'crumbs',
-            'plugin:install',
-            'crumbs',
-          ]),
-          reason: 'plugin:install must run after scaffold via the crumbs CLI '
-              'wrapper (no bin/dowel dependency at this stage)');
+        runner.calls[0],
+        equals(['dart', 'run', 'crumbs', 'install']),
+        reason: 'install must run first (scaffolds dispatcher.dart + dowel)',
+      );
+      expect(
+        runner.calls[1],
+        equals(['dart', 'run', 'crumbs', 'plugin:install', 'crumbs']),
+        reason:
+            'plugin:install must run after scaffold via the crumbs CLI '
+            'wrapper (no bin/dowel dependency at this stage)',
+      );
     });
 
     // -------------------------------------------------------------------------
     // Failure propagation
     // -------------------------------------------------------------------------
 
-    test(
-        'returns scaffold exit code (and skips plugin:install) when '
+    test('returns scaffold exit code (and skips plugin:install) when '
         'install fails', () async {
       final runner = _RecordingRunner(exits: <int>[2]);
       CrumbsInstallCommand.processRunner = runner.run;
@@ -226,14 +221,16 @@ void main() {
       );
 
       expect(exit, equals(2));
-      expect(runner.calls, hasLength(1),
-          reason:
-              'plugin:install must not run after scaffold failure (fail-fast)');
+      expect(
+        runner.calls,
+        hasLength(1),
+        reason:
+            'plugin:install must not run after scaffold failure (fail-fast)',
+      );
       expect(runner.calls.single.contains('install'), isTrue);
     });
 
-    test(
-        'returns plugin:install exit code when scaffold passes but '
+    test('returns plugin:install exit code when scaffold passes but '
         'plugin:install fails', () async {
       // First call (scaffold) succeeds; second call (plugin:install) fails.
       final runner = _RecordingRunner(exits: <int>[0, 3]);
@@ -256,22 +253,21 @@ void main() {
     // NOT the removed package:magic sub-barrel.
     // -------------------------------------------------------------------------
 
-    test(
-      'magic-stack app whose resolved magic_devtools ships crumbs.dart: '
-      'injects import for the magic_devtools crumbs barrel (not the removed '
-      'package:magic sub-barrel) plus the integration install call after '
-      'Magic.init',
-      () async {
-        final tempDir =
-            Directory.systemTemp.createTempSync('crumbs_install_magic_');
-        addTearDown(() => tempDir.deleteSync(recursive: true));
+    test('magic-stack app whose resolved magic_devtools ships crumbs.dart: '
+        'injects import for the magic_devtools crumbs barrel (not the removed '
+        'package:magic sub-barrel) plus the integration install call after '
+        'Magic.init', () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'crumbs_install_magic_',
+      );
+      addTearDown(() => tempDir.deleteSync(recursive: true));
 
-        final mainDartPath = _seedProject(
-          tempDir,
-          pubspecDeps: const {'magic': 'any', 'magic_devtools': 'any'},
-          magicDevtoolsLibrary: 'crumbs.dart',
-          absoluteRootUri: true,
-          mainDartContents: '''
+      final mainDartPath = _seedProject(
+        tempDir,
+        pubspecDeps: const {'magic': 'any', 'magic_devtools': 'any'},
+        magicDevtoolsLibrary: 'crumbs.dart',
+        absoluteRootUri: true,
+        mainDartContents: '''
 import 'package:flutter/material.dart';
 import 'package:magic/magic.dart';
 
@@ -281,52 +277,53 @@ Future<void> main() async {
   runApp(const MagicApplication());
 }
 ''',
-        );
+      );
 
-        // Stub subprocesses (install + plugin:install) so the
-        // command flows straight into step 3 (lib/main.dart wiring).
-        final runner = _RecordingRunner();
-        CrumbsInstallCommand.processRunner = runner.run;
-        // Skip install; only plugin:install will record.
-        CrumbsInstallCommand.wrapperExistsCheck = () => true;
+      // Stub subprocesses (install + plugin:install) so the
+      // command flows straight into step 3 (lib/main.dart wiring).
+      final runner = _RecordingRunner();
+      CrumbsInstallCommand.processRunner = runner.run;
+      // Skip install; only plugin:install will record.
+      CrumbsInstallCommand.wrapperExistsCheck = () => true;
 
-        // Switch cwd to the seeded temp dir so the source's relative
-        // `File('lib/main.dart')` (L107) + `File('pubspec.yaml')` (L209)
-        // lookups resolve against the fixture instead of the host project.
-        final previousCwd = Directory.current;
-        Directory.current = tempDir;
-        addTearDown(() => Directory.current = previousCwd);
+      // Switch cwd to the seeded temp dir so the source's relative
+      // `File('lib/main.dart')` (L107) + `File('pubspec.yaml')` (L209)
+      // lookups resolve against the fixture instead of the host project.
+      final previousCwd = Directory.current;
+      Directory.current = tempDir;
+      addTearDown(() => Directory.current = previousCwd);
 
-        final exit = await CrumbsInstallCommand().handle(
-          DowelContext.bare(MapInput(const {}), BufferedOutput()),
-        );
-        expect(exit, equals(0));
+      final exit = await CrumbsInstallCommand().handle(
+        DowelContext.bare(MapInput(const {}), BufferedOutput()),
+      );
+      expect(exit, equals(0));
 
-        final result = File(mainDartPath).readAsStringSync();
+      final result = File(mainDartPath).readAsStringSync();
 
-        // The magic-detect branch (_hasMagicDevtoolsDep + Magic.init anchor)
-        // must inject the magic_devtools crumbs barrel; never the removed
-        // package:magic sub-barrel.
-        expect(
-          result.contains("import 'package:magic_devtools/crumbs.dart';"),
-          isTrue,
-          reason: 'magic-stack inject must reference the magic_devtools crumbs '
-              'barrel, not the removed package:magic sub-barrel',
-        );
+      // The magic-detect branch (_hasMagicDevtoolsDep + Magic.init anchor)
+      // must inject the magic_devtools crumbs barrel; never the removed
+      // package:magic sub-barrel.
+      expect(
+        result.contains("import 'package:magic_devtools/crumbs.dart';"),
+        isTrue,
+        reason:
+            'magic-stack inject must reference the magic_devtools crumbs '
+            'barrel, not the removed package:magic sub-barrel',
+      );
 
-        // The integration install call lands after Magic.init(), under the
-        // same kDebugMode guard as the crumbs block.
-        final magicInitIdx = result.indexOf('await Magic.init(');
-        final integrationIdx =
-            result.indexOf('MagicCrumbsIntegration.install();');
-        expect(integrationIdx, greaterThan(magicInitIdx));
-        expect(result.contains('kReleaseMode'), isFalse);
+      // The integration install call lands after Magic.init(), under the
+      // same kDebugMode guard as the crumbs block.
+      final magicInitIdx = result.indexOf('await Magic.init(');
+      final integrationIdx = result.indexOf(
+        'MagicCrumbsIntegration.install();',
+      );
+      expect(integrationIdx, greaterThan(magicInitIdx));
+      expect(result.contains('kReleaseMode'), isFalse);
 
-        // Sanity: plugin:install ran (wrapper present, scaffold skipped).
-        expect(runner.calls, hasLength(1));
-        expect(runner.calls.single.contains('plugin:install'), isTrue);
-      },
-    );
+      // Sanity: plugin:install ran (wrapper present, scaffold skipped).
+      expect(runner.calls, hasLength(1));
+      expect(runner.calls.single.contains('plugin:install'), isTrue);
+    });
 
     // -------------------------------------------------------------------------
     // Vanilla app with magic_devtools in pubspec but NO Magic.init anchor:
@@ -334,69 +331,67 @@ Future<void> main() async {
     // that breaks `dart analyze` in the consumer).
     // -------------------------------------------------------------------------
 
-    test(
-      'vanilla app with magic_devtools dep but no Magic.init anchor: '
-      'must NOT inject the magic_devtools import or MagicCrumbsIntegration.install()',
-      () async {
-        final tempDir = Directory.systemTemp
-            .createTempSync('crumbs_install_vanilla_magic_dep_');
-        addTearDown(() => tempDir.deleteSync(recursive: true));
+    test('vanilla app with magic_devtools dep but no Magic.init anchor: '
+        'must NOT inject the magic_devtools import or MagicCrumbsIntegration.install()', () async {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'crumbs_install_vanilla_magic_dep_',
+      );
+      addTearDown(() => tempDir.deleteSync(recursive: true));
 
-        final mainDartPath = _seedProject(
-          tempDir,
-          // magic_devtools is listed as a dep but the app has no Magic.init.
-          pubspecDeps: const {'magic_devtools': 'any'},
-          mainDartContents: '''
+      final mainDartPath = _seedProject(
+        tempDir,
+        // magic_devtools is listed as a dep but the app has no Magic.init.
+        pubspecDeps: const {'magic_devtools': 'any'},
+        mainDartContents: '''
 import 'package:flutter/material.dart';
 
 void main() {
   runApp(const MyApp());
 }
 ''',
-        );
+      );
 
-        final runner = _RecordingRunner();
-        CrumbsInstallCommand.processRunner = runner.run;
-        CrumbsInstallCommand.wrapperExistsCheck = () => true;
+      final runner = _RecordingRunner();
+      CrumbsInstallCommand.processRunner = runner.run;
+      CrumbsInstallCommand.wrapperExistsCheck = () => true;
 
-        final previousCwd = Directory.current;
-        Directory.current = tempDir;
-        addTearDown(() => Directory.current = previousCwd);
+      final previousCwd = Directory.current;
+      Directory.current = tempDir;
+      addTearDown(() => Directory.current = previousCwd);
 
-        final exit = await CrumbsInstallCommand().handle(
-          DowelContext.bare(MapInput(const {}), BufferedOutput()),
-        );
-        expect(exit, equals(0));
+      final exit = await CrumbsInstallCommand().handle(
+        DowelContext.bare(MapInput(const {}), BufferedOutput()),
+      );
+      expect(exit, equals(0));
 
-        final result = File(mainDartPath).readAsStringSync();
+      final result = File(mainDartPath).readAsStringSync();
 
-        // The magic_devtools import must NOT appear: injecting it without a
-        // Magic.init call would leave it unused and break `dart analyze`.
-        expect(
-          result.contains("import 'package:magic_devtools/crumbs.dart';"),
-          isFalse,
-          reason:
-              'no Magic.init anchor means there is no MagicCrumbsIntegration '
-              'call site; the import would be unused and break dart analyze',
-        );
+      // The magic_devtools import must NOT appear: injecting it without a
+      // Magic.init call would leave it unused and break `dart analyze`.
+      expect(
+        result.contains("import 'package:magic_devtools/crumbs.dart';"),
+        isFalse,
+        reason:
+            'no Magic.init anchor means there is no MagicCrumbsIntegration '
+            'call site; the import would be unused and break dart analyze',
+      );
 
-        // The integration install call must NOT appear either.
-        expect(
-          result.contains('MagicCrumbsIntegration.install();'),
-          isFalse,
-          reason:
-              'MagicCrumbsIntegration.install() has nowhere to land without '
-              'a Magic.init anchor; it must not be injected',
-        );
+      // The integration install call must NOT appear either.
+      expect(
+        result.contains('MagicCrumbsIntegration.install();'),
+        isFalse,
+        reason:
+            'MagicCrumbsIntegration.install() has nowhere to land without '
+            'a Magic.init anchor; it must not be injected',
+      );
 
-        // The vanilla CrumbsPlugin wiring must still be present (unaffected).
-        expect(
-          result.contains('CrumbsPlugin.install();'),
-          isTrue,
-          reason: 'vanilla wiring is unconditional and must still be injected',
-        );
-      },
-    );
+      // The vanilla CrumbsPlugin wiring must still be present (unaffected).
+      expect(
+        result.contains('CrumbsPlugin.install();'),
+        isTrue,
+        reason: 'vanilla wiring is unconditional and must still be injected',
+      );
+    });
 
     // -------------------------------------------------------------------------
     // Magic guard: a magic_devtools release that predates crumbs ships no
@@ -413,8 +408,7 @@ void main() {
 
       tearDown(() => tempDir.deleteSync(recursive: true));
 
-      test(
-          'magic-stack app whose resolved magic_devtools has no crumbs.dart: '
+      test('magic-stack app whose resolved magic_devtools has no crumbs.dart: '
           'no Magic lines, one upgrade warning, exit 0', () async {
         final mainDartPath = _seedProject(
           tempDir,
@@ -439,8 +433,7 @@ void main() {
         expect(output.content, contains('dart run crumbs crumbs:install'));
       });
 
-      test(
-          'magic-stack app with magic_devtools in pubspec but no '
+      test('magic-stack app with magic_devtools in pubspec but no '
           'package_config.json: no Magic lines, the pub get warning', () async {
         final mainDartPath = _seedProject(
           tempDir,
@@ -458,8 +451,7 @@ void main() {
         expect(output.content, contains('flutter pub get'));
       });
 
-      test(
-          'an invalid package_config.json leaves no Magic lines, and the '
+      test('an invalid package_config.json leaves no Magic lines, and the '
           'installer still exits 0 with the warning', () async {
         final mainDartPath = _seedProject(
           tempDir,
@@ -481,8 +473,7 @@ void main() {
         expect(output.content, contains('has no crumbs integration yet'));
       });
 
-      test(
-          'a consumer without magic_devtools gets the vanilla wiring and no '
+      test('a consumer without magic_devtools gets the vanilla wiring and no '
           'warning', () async {
         final mainDartPath = _seedProject(
           tempDir,
@@ -499,8 +490,7 @@ void main() {
         expect(output.content, isNot(contains('crumbs integration')));
       });
 
-      test(
-          'magicDevtoolsCrumbsSupport reads the package root from '
+      test('magicDevtoolsCrumbsSupport reads the package root from '
           'package_config.json', () {
         expect(
           CrumbsInstallCommand.magicDevtoolsCrumbsSupport(tempDir.path),
@@ -538,42 +528,44 @@ void main() {
 
       for (final MapEntry<String, Map<String, Object>> malformed
           in <String, Map<String, Object>>{
-        'no rootUri': <String, Object>{
-          'name': 'magic_devtools',
-          'packageUri': 'lib/',
-        },
-        'a numeric rootUri': <String, Object>{
-          'name': 'magic_devtools',
-          'rootUri': 42,
-          'packageUri': 'lib/',
-        },
-        'a numeric packageUri': <String, Object>{
-          'name': 'magic_devtools',
-          'rootUri': '../packages/magic_devtools',
-          'packageUri': 7,
-        },
-        'a rootUri that does not parse': <String, Object>{
-          'name': 'magic_devtools',
-          'rootUri': 'file://[bad',
-          'packageUri': 'lib/',
-        },
-      }.entries) {
-        test('a magic_devtools entry with ${malformed.key} reads as unresolved',
-            () {
-          Directory('${tempDir.path}/.dart_tool').createSync();
-          File('${tempDir.path}/.dart_tool/package_config.json')
-              .writeAsStringSync(
-            jsonEncode(<String, Object>{
-              'configVersion': 2,
-              'packages': <Map<String, Object>>[malformed.value],
-            }),
-          );
+            'no rootUri': <String, Object>{
+              'name': 'magic_devtools',
+              'packageUri': 'lib/',
+            },
+            'a numeric rootUri': <String, Object>{
+              'name': 'magic_devtools',
+              'rootUri': 42,
+              'packageUri': 'lib/',
+            },
+            'a numeric packageUri': <String, Object>{
+              'name': 'magic_devtools',
+              'rootUri': '../packages/magic_devtools',
+              'packageUri': 7,
+            },
+            'a rootUri that does not parse': <String, Object>{
+              'name': 'magic_devtools',
+              'rootUri': 'file://[bad',
+              'packageUri': 'lib/',
+            },
+          }.entries) {
+        test(
+          'a magic_devtools entry with ${malformed.key} reads as unresolved',
+          () {
+            Directory('${tempDir.path}/.dart_tool').createSync();
+            File('${tempDir.path}/.dart_tool/package_config.json')
+                .writeAsStringSync(
+                  jsonEncode(<String, Object>{
+                    'configVersion': 2,
+                    'packages': <Map<String, Object>>[malformed.value],
+                  }),
+                );
 
-          expect(
-            CrumbsInstallCommand.magicDevtoolsCrumbsSupport(tempDir.path),
-            equals(MagicDevtoolsCrumbsSupport.unresolved),
-          );
-        });
+            expect(
+              CrumbsInstallCommand.magicDevtoolsCrumbsSupport(tempDir.path),
+              equals(MagicDevtoolsCrumbsSupport.unresolved),
+            );
+          },
+        );
       }
 
       group('in a pub workspace', () {
@@ -594,8 +586,7 @@ void main() {
           );
         });
 
-        test(
-            'a member without its own package config walks up to the '
+        test('a member without its own package config walks up to the '
             'workspace root config', () {
           expect(
             CrumbsInstallCommand.magicDevtoolsCrumbsSupport(member.path),
@@ -613,8 +604,7 @@ void main() {
           );
         });
 
-        test(
-            'a member-local package config takes precedence over the '
+        test('a member-local package config takes precedence over the '
             'workspace root config', () {
           _seedProject(
             tempDir,
@@ -628,17 +618,17 @@ void main() {
           Directory('${member.path}/.dart_tool').createSync();
           File('${member.path}/.dart_tool/package_config.json')
               .writeAsStringSync(
-            jsonEncode(<String, Object>{
-              'configVersion': 2,
-              'packages': <Map<String, String>>[
-                <String, String>{
-                  'name': 'magic_devtools',
-                  'rootUri': '../old/magic_devtools',
-                  'packageUri': 'lib/',
-                },
-              ],
-            }),
-          );
+                jsonEncode(<String, Object>{
+                  'configVersion': 2,
+                  'packages': <Map<String, String>>[
+                    <String, String>{
+                      'name': 'magic_devtools',
+                      'rootUri': '../old/magic_devtools',
+                      'packageUri': 'lib/',
+                    },
+                  ],
+                }),
+              );
 
           expect(
             CrumbsInstallCommand.magicDevtoolsCrumbsSupport(member.path),

@@ -15,7 +15,8 @@ class CrumbsDumpsCommand extends DowelCommand {
   CommandBoot get boot => CommandBoot.connected;
 
   @override
-  String get signature => 'crumbs:dumps '
+  String get signature =>
+      'crumbs:dumps '
       '{--limit=50 : Maximum number of records to print.}';
 
   @override
@@ -28,8 +29,9 @@ class CrumbsDumpsCommand extends DowelCommand {
     final records = (response['dumps'] as List<dynamic>? ?? <dynamic>[])
         .cast<Map<String, dynamic>>();
     if (records.isEmpty) {
-      ctx.output
-          .warning('No dump records (install DumpWatcher in debug mode).');
+      ctx.output.warning(
+        'No dump records (install DumpWatcher in debug mode).',
+      );
       return 0;
     }
     for (final r in records) {

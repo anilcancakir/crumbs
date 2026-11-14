@@ -39,13 +39,13 @@ class MagicModelRecord {
   final String? linkedBy;
 
   Map<String, dynamic> toJson() => {
-        'modelClass': modelClass,
-        'event': event,
-        'modelKey': modelKey,
-        'time': time.toIso8601String(),
-        if (attributes != null) 'attributes': attributes,
-        'atUs': atUs,
-        if (interactionId != null) 'interactionId': interactionId,
-        if (linkedBy != null) 'linkedBy': linkedBy,
-      };
+    'modelClass': modelClass,
+    'event': event,
+    'modelKey': modelKey,
+    'time': time.toIso8601String(),
+    if (attributes != null) 'attributes': attributes,
+    'atUs': atUs,
+    if (interactionId != null) 'interactionId': interactionId,
+    if (linkedBy != null) 'linkedBy': linkedBy,
+  };
 }

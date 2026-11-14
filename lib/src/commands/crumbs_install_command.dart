@@ -51,15 +51,19 @@ class CrumbsInstallCommand extends DowelCommand {
     String executable,
     List<String> arguments, {
     String? workingDirectory,
-  }) processRunner = _defaultProcessRunner;
+  })
+  processRunner = _defaultProcessRunner;
 
   static Future<ProcessResult> _defaultProcessRunner(
     String executable,
     List<String> arguments, {
     String? workingDirectory,
-  }) =>
-      Process.run(executable, arguments,
-          workingDirectory: workingDirectory, runInShell: false);
+  }) => Process.run(
+    executable,
+    arguments,
+    workingDirectory: workingDirectory,
+    runInShell: false,
+  );
 
   /// Hook for tests to override the wrapper-presence check (default: real
   /// `bin/dispatcher.dart` File existence in the cwd). The dispatcher is the
@@ -77,10 +81,11 @@ class CrumbsInstallCommand extends DowelCommand {
     //    project stay idempotent.
     if (!wrapperExistsCheck()) {
       ctx.output.info('Consumer wrapper missing; running install...');
-      final scaffold = await processRunner(
-        'dart',
-        ['run', 'crumbs', 'install'],
-      );
+      final scaffold = await processRunner('dart', [
+        'run',
+        'crumbs',
+        'install',
+      ]);
       stdout.write(scaffold.stdout);
       stderr.write(scaffold.stderr);
       if (scaffold.exitCode != 0) {
@@ -99,10 +104,12 @@ class CrumbsInstallCommand extends DowelCommand {
     //    `delegateToConsumer: false`) so the chain works on a clean
     //    checkout without depending on the AOT-compiled `bin/dowel`.
     ctx.output.info('Registering crumbs via plugin:install...');
-    final install = await processRunner(
-      'dart',
-      ['run', 'crumbs', 'plugin:install', 'crumbs'],
-    );
+    final install = await processRunner('dart', [
+      'run',
+      'crumbs',
+      'plugin:install',
+      'crumbs',
+    ]);
     stdout.write(install.stdout);
     stderr.write(install.stderr);
     if (install.exitCode != 0) {
@@ -116,9 +123,10 @@ class CrumbsInstallCommand extends DowelCommand {
     final mainDart = File('lib/main.dart');
     if (!mainDart.existsSync()) {
       ctx.output.info(
-          'lib/main.dart not found; runtime wiring SKIPPED. Wire manually:'
-          ' import crumbs + CrumbsPlugin.install() + watchers'
-          ' before runApp().');
+        'lib/main.dart not found; runtime wiring SKIPPED. Wire manually:'
+        ' import crumbs + CrumbsPlugin.install() + watchers'
+        ' before runApp().',
+      );
     } else {
       _injectRuntimeWiring(ctx, mainDart.path);
     }
@@ -146,7 +154,8 @@ class CrumbsInstallCommand extends DowelCommand {
     // import would leave a lib/main.dart that does not compile. An app already
     // carrying the integration call needs neither the check nor the warning.
     final String original = FileHelper.readFile(mainDartPath);
-    final bool wantsMagic = original.contains('await Magic.init(') &&
+    final bool wantsMagic =
+        original.contains('await Magic.init(') &&
         _hasMagicDevtoolsDep() &&
         !original.contains('MagicCrumbsIntegration.install()');
     final MagicDevtoolsCrumbsSupport magicSupport = wantsMagic
@@ -193,7 +202,8 @@ class CrumbsInstallCommand extends DowelCommand {
     source = MainDartEditor.injectBeforeAnchor(
       source: source,
       anchor: anchor,
-      snippet: '  if (kDebugMode) {\n'
+      snippet:
+          '  if (kDebugMode) {\n'
           '    CrumbsPlugin.install();\n'
           '    CrumbsPlugin.registerWatcher(ExceptionWatcher());\n'
           '    CrumbsPlugin.registerWatcher(DumpWatcher());\n'
@@ -211,7 +221,7 @@ class CrumbsInstallCommand extends DowelCommand {
     if (wantsMagic && !wiresMagic) {
       final String why = magicSupport == MagicDevtoolsCrumbsSupport.unresolved
           ? 'no lib/crumbs.dart resolved; run `flutter pub get` if it has not '
-              'run'
+                'run'
           : 'no lib/crumbs.dart';
       ctx.output.warning(
         'Skipped MagicCrumbsIntegration: the installed magic_devtools has no '

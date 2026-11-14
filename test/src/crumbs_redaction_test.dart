@@ -22,18 +22,11 @@ void main() {
             'data': <String, dynamic>{
               'token': 'abc',
               'devices': <dynamic>[
-                <String, dynamic>{
-                  'name': 'phone',
-                  'secret': 's3',
-                },
+                <String, dynamic>{'name': 'phone', 'secret': 's3'},
               ],
             },
           },
-          <String>{
-            'password',
-            'token',
-            'secret',
-          },
+          <String>{'password', 'token', 'secret'},
         );
 
         expect(
@@ -56,14 +49,8 @@ void main() {
 
       test('matches keys case-insensitively on both sides', () {
         final Object? redacted = CrumbsRedaction.redactParameters(
-          <String, dynamic>{
-            'Password': 'hunter2',
-            'ACCESS_TOKEN': 'abc',
-          },
-          <String>{
-            'PASSWORD',
-            'access_token',
-          },
+          <String, dynamic>{'Password': 'hunter2', 'ACCESS_TOKEN': 'abc'},
+          <String>{'PASSWORD', 'access_token'},
         );
 
         expect(
@@ -78,20 +65,14 @@ void main() {
       test('masks a structured value under a matching key whole', () {
         final Object? redacted = CrumbsRedaction.redactParameters(
           <String, dynamic>{
-            'token': <String, dynamic>{
-              'plain': 'abc',
-            },
+            'token': <String, dynamic>{'plain': 'abc'},
           },
-          <String>{
-            'token',
-          },
+          <String>{'token'},
         );
 
         expect(
           redacted,
-          equals(<String, dynamic>{
-            'token': CrumbsRedaction.mask,
-          }),
+          equals(<String, dynamic>{'token': CrumbsRedaction.mask}),
         );
       });
 
@@ -118,23 +99,16 @@ void main() {
         expect(redacted, equals(empty));
       });
 
-      test(
-          'masks whatever lies past the depth it walks, and never overflows '
+      test('masks whatever lies past the depth it walks, and never overflows '
           'the stack', () {
-        Object? nested = <String, dynamic>{
-          'token': 'deep',
-        };
+        Object? nested = <String, dynamic>{'token': 'deep'};
         for (var i = 0; i < 20000; i++) {
-          nested = <dynamic>[
-            nested,
-          ];
+          nested = <dynamic>[nested];
         }
 
         final Object? redacted = CrumbsRedaction.redactParameters(
           nested,
-          <String>{
-            'token',
-          },
+          <String>{'token'},
         );
 
         var depth = 0;
@@ -150,23 +124,15 @@ void main() {
       test('never mutates the input', () {
         final Map<String, dynamic> input = <String, dynamic>{
           'password': 'hunter2',
-          'data': <String, dynamic>{
-            'token': 'abc',
-          },
+          'data': <String, dynamic>{'token': 'abc'},
           'items': <dynamic>[
-            <String, dynamic>{
-              'secret': 's3',
-            },
+            <String, dynamic>{'secret': 's3'},
           ],
         };
 
         final Object? redacted = CrumbsRedaction.redactParameters(
           input,
-          <String>{
-            'password',
-            'token',
-            'secret',
-          },
+          <String>{'password', 'token', 'secret'},
         );
 
         expect(redacted, isNot(same(input)));
@@ -181,33 +147,20 @@ void main() {
 
       test('returns a scalar or null unchanged', () {
         expect(
-          CrumbsRedaction.redactParameters(
-            'password',
-            <String>{
-              'password',
-            },
-          ),
+          CrumbsRedaction.redactParameters('password', <String>{'password'}),
           equals('password'),
         );
         expect(
-          CrumbsRedaction.redactParameters(
-            null,
-            <String>{
-              'password',
-            },
-          ),
+          CrumbsRedaction.redactParameters(null, <String>{'password'}),
           isNull,
         );
       });
     });
 
     group('redactBody()', () {
-      test(
-          'masks a JSON body, and keeps one it cannot read or need not '
+      test('masks a JSON body, and keeps one it cannot read or need not '
           'touch as given', () {
-        const Set<String> keys = <String>{
-          'Password',
-        };
+        const Set<String> keys = <String>{'Password'};
         const String pretty = '{\n  "email": "a@b.test"\n}';
         const String text = 'password is hunter2';
 
@@ -220,8 +173,7 @@ void main() {
         expect(CrumbsRedaction.redactBody(null, keys), isNull);
       });
 
-      test(
-          'masks a form-encoded body pair by pair, keeping every other pair '
+      test('masks a form-encoded body pair by pair, keeping every other pair '
           'as given', () {
         const Set<String> keys = <String>{'password', 'client_secret'};
 
@@ -263,9 +215,7 @@ void main() {
 
     group('hideRequestHeaders()', () {
       test('adds to the defaults, lowercased', () {
-        CrumbsRedaction.hideRequestHeaders(<String>[
-          'X-Auth',
-        ]);
+        CrumbsRedaction.hideRequestHeaders(<String>['X-Auth']);
 
         expect(
           CrumbsRedaction.hiddenRequestHeaders,
@@ -283,9 +233,7 @@ void main() {
 
     group('hideRequestParameters()', () {
       test('adds to the defaults, lowercased', () {
-        CrumbsRedaction.hideRequestParameters(<String>[
-          'PIN',
-        ]);
+        CrumbsRedaction.hideRequestParameters(<String>['PIN']);
 
         expect(
           CrumbsRedaction.hiddenRequestParameters,
@@ -311,9 +259,7 @@ void main() {
 
     group('hideResponseParameters()', () {
       test('adds to the defaults, lowercased', () {
-        CrumbsRedaction.hideResponseParameters(<String>[
-          'Backup_Key',
-        ]);
+        CrumbsRedaction.hideResponseParameters(<String>['Backup_Key']);
 
         expect(
           CrumbsRedaction.hiddenResponseParameters,
@@ -364,7 +310,9 @@ void main() {
 
         expect(CrumbsRedaction.redactLogRecord(log), same(log));
         expect(
-            CrumbsRedaction.redactExceptionRecord(exception), same(exception));
+          CrumbsRedaction.redactExceptionRecord(exception),
+          same(exception),
+        );
       });
 
       test('drops a record when the redactor throws', () {
@@ -441,39 +389,27 @@ void main() {
           ),
         )!;
 
-        expect(
-          <String?>[
-            log.level,
-            log.message,
-            log.loggerName,
-            log.error,
-            log.stackTrace,
-          ],
-          everyElement(anyOf('INFO', 'M', 'L', 'E', 'S')),
-        );
-        expect(
-          <String?>[
-            exception.exceptionType,
-            exception.message,
-            exception.stackTrace,
-            exception.isolate,
-          ],
-          equals(<String?>['T', 'M', 'S', 'I']),
-        );
+        expect(<String?>[
+          log.level,
+          log.message,
+          log.loggerName,
+          log.error,
+          log.stackTrace,
+        ], everyElement(anyOf('INFO', 'M', 'L', 'E', 'S')));
+        expect(<String?>[
+          exception.exceptionType,
+          exception.message,
+          exception.stackTrace,
+          exception.isolate,
+        ], equals(<String?>['T', 'M', 'S', 'I']));
       });
     });
 
     group('resetForTesting()', () {
       test('drops every addition and keeps the defaults', () {
-        CrumbsRedaction.hideRequestHeaders(<String>[
-          'x-auth',
-        ]);
-        CrumbsRedaction.hideRequestParameters(<String>[
-          'pin',
-        ]);
-        CrumbsRedaction.hideResponseParameters(<String>[
-          'backup_key',
-        ]);
+        CrumbsRedaction.hideRequestHeaders(<String>['x-auth']);
+        CrumbsRedaction.hideRequestParameters(<String>['pin']);
+        CrumbsRedaction.hideResponseParameters(<String>['backup_key']);
 
         CrumbsRedaction.resetForTesting();
 
@@ -487,9 +423,7 @@ void main() {
       });
 
       test('runs as part of CrumbsStore.resetForTesting()', () {
-        CrumbsRedaction.hideRequestHeaders(<String>[
-          'x-auth',
-        ]);
+        CrumbsRedaction.hideRequestHeaders(<String>['x-auth']);
 
         CrumbsStore.resetForTesting();
 

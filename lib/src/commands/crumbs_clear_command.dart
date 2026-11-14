@@ -1,6 +1,6 @@
 import 'package:dowel/dowel.dart';
 
-/// `dowel crumbs:clear` — clear all crumbs buffers.
+/// `dowel crumbs:clear`: clear all crumbs buffers.
 class CrumbsClearCommand extends DowelCommand {
   @override
   String get name => 'crumbs:clear';

@@ -78,8 +78,8 @@ void main() {
 
       CrumbsStore.recordEvent(original);
 
-      final Map<String, dynamic> stored =
-          CrumbsStore.recentEvents().single.toJson();
+      final Map<String, dynamic> stored = CrumbsStore.recentEvents().single
+          .toJson();
       expect(stored, equals(original.toJson()..['redacted'] = true));
     });
 
@@ -226,9 +226,7 @@ void main() {
           payload: <String, dynamic>{
             'u:p@ss': 'v',
             'nested': <Object, dynamic>{
-              7: <String, dynamic>{
-                'p@ss': 1,
-              },
+              7: <String, dynamic>{'p@ss': 1},
             },
           },
           time: DateTime(2026, 1, 1),
@@ -242,43 +240,43 @@ void main() {
         equals(<String, dynamic>{
           'u:***': 'v',
           'nested': <String, dynamic>{
-            '7': <String, dynamic>{
-              '***': 1,
-            },
+            '7': <String, dynamic>{'***': 1},
           },
         }),
       );
     });
 
-    test('a throwing redactor drops the record from queue and stream',
-        () async {
-      CrumbsRedaction.redactor = (String s) => throw StateError(s);
-      final List<Object> streamed = <Object>[];
-      final List<StreamSubscription<Object>> subscriptions =
-          <StreamSubscription<Object>>[
-        CrumbsStore.onHttpRecord.listen(streamed.add),
-        CrumbsStore.onLogRecord.listen(streamed.add),
-        CrumbsStore.onExceptionRecord.listen(streamed.add),
-        CrumbsStore.onEventRecord.listen(streamed.add),
-      ];
-      addTearDown(() async {
-        for (final StreamSubscription<Object> s in subscriptions) {
-          await s.cancel();
-        }
-      });
+    test(
+      'a throwing redactor drops the record from queue and stream',
+      () async {
+        CrumbsRedaction.redactor = (String s) => throw StateError(s);
+        final List<Object> streamed = <Object>[];
+        final List<StreamSubscription<Object>> subscriptions =
+            <StreamSubscription<Object>>[
+              CrumbsStore.onHttpRecord.listen(streamed.add),
+              CrumbsStore.onLogRecord.listen(streamed.add),
+              CrumbsStore.onExceptionRecord.listen(streamed.add),
+              CrumbsStore.onEventRecord.listen(streamed.add),
+            ];
+        addTearDown(() async {
+          for (final StreamSubscription<Object> s in subscriptions) {
+            await s.cancel();
+          }
+        });
 
-      CrumbsStore.recordHttp(_http(1));
-      CrumbsStore.recordLog(_log('info', 'p@ss'));
-      CrumbsStore.recordException(_exception('p@ss'));
-      CrumbsStore.recordEvent(_event('p@ss'));
-      await Future<void>.delayed(Duration.zero);
+        CrumbsStore.recordHttp(_http(1));
+        CrumbsStore.recordLog(_log('info', 'p@ss'));
+        CrumbsStore.recordException(_exception('p@ss'));
+        CrumbsStore.recordEvent(_event('p@ss'));
+        await Future<void>.delayed(Duration.zero);
 
-      expect(CrumbsStore.recentHttp(), isEmpty);
-      expect(CrumbsStore.recentLogs(), isEmpty);
-      expect(CrumbsStore.recentExceptions(), isEmpty);
-      expect(CrumbsStore.recentEvents(), isEmpty);
-      expect(streamed, isEmpty);
-    });
+        expect(CrumbsStore.recentHttp(), isEmpty);
+        expect(CrumbsStore.recentLogs(), isEmpty);
+        expect(CrumbsStore.recentExceptions(), isEmpty);
+        expect(CrumbsStore.recentEvents(), isEmpty);
+        expect(streamed, isEmpty);
+      },
+    );
 
     test('resetForTesting() drops the redactor', () {
       CrumbsRedaction.redactor = redactor;
@@ -590,10 +588,7 @@ void main() {
     test('onGateRecord stream emits on recordGate', () async {
       final record = _gate('streamed', true);
 
-      final future = expectLater(
-        CrumbsStore.onGateRecord,
-        emits(same(record)),
-      );
+      final future = expectLater(CrumbsStore.onGateRecord, emits(same(record)));
 
       CrumbsStore.recordGate(record);
 
@@ -635,19 +630,13 @@ void main() {
       final recent = CrumbsStore.recentDumps(limit: 3);
 
       expect(recent.length, equals(3));
-      expect(
-        recent.map((r) => r.message).toList(),
-        equals(['d5', 'd6', 'd7']),
-      );
+      expect(recent.map((r) => r.message).toList(), equals(['d5', 'd6', 'd7']));
     });
 
     test('onDumpRecord stream emits on recordDump', () async {
       final record = _dump('streamed');
 
-      final future = expectLater(
-        CrumbsStore.onDumpRecord,
-        emits(same(record)),
-      );
+      final future = expectLater(CrumbsStore.onDumpRecord, emits(same(record)));
 
       CrumbsStore.recordDump(record);
 
@@ -725,10 +714,7 @@ void main() {
     test('recordHttp appends and onHttpRecord emits', () async {
       final record = _http(42);
 
-      final future = expectLater(
-        CrumbsStore.onHttpRecord,
-        emits(same(record)),
-      );
+      final future = expectLater(CrumbsStore.onHttpRecord, emits(same(record)));
 
       CrumbsStore.recordHttp(record);
 
@@ -743,10 +729,7 @@ void main() {
     test('recordLog appends and onLogRecord emits', () async {
       final record = _log('info', 'hello');
 
-      final future = expectLater(
-        CrumbsStore.onLogRecord,
-        emits(same(record)),
-      );
+      final future = expectLater(CrumbsStore.onLogRecord, emits(same(record)));
 
       CrumbsStore.recordLog(record);
 
@@ -836,64 +819,69 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('CrumbsStore FIFO eviction on original 5 buffers (order check)', () {
-    test('recordLog enforces FIFO: oldest entries evicted, newest retained',
-        () {
-      CrumbsStore.setCapacity(3);
+    test(
+      'recordLog enforces FIFO: oldest entries evicted, newest retained',
+      () {
+        CrumbsStore.setCapacity(3);
 
-      for (var i = 0; i < 6; i++) {
-        CrumbsStore.recordLog(_log('info', 'msg$i'));
-      }
+        for (var i = 0; i < 6; i++) {
+          CrumbsStore.recordLog(_log('info', 'msg$i'));
+        }
 
-      final recent = CrumbsStore.recentLogs();
-      expect(recent.length, equals(3));
-      expect(recent.first.message, equals('msg3'));
-      expect(recent.last.message, equals('msg5'));
-    });
+        final recent = CrumbsStore.recentLogs();
+        expect(recent.length, equals(3));
+        expect(recent.first.message, equals('msg3'));
+        expect(recent.last.message, equals('msg5'));
+      },
+    );
 
     test(
-        'recordException enforces FIFO: oldest entries evicted, newest retained',
-        () {
-      CrumbsStore.setCapacity(3);
+      'recordException enforces FIFO: oldest entries evicted, newest retained',
+      () {
+        CrumbsStore.setCapacity(3);
 
-      for (var i = 0; i < 5; i++) {
-        CrumbsStore.recordException(_exception('err$i'));
-      }
+        for (var i = 0; i < 5; i++) {
+          CrumbsStore.recordException(_exception('err$i'));
+        }
 
-      final recent = CrumbsStore.recentExceptions();
-      expect(recent.length, equals(3));
-      expect(recent.first.message, equals('err2'));
-      expect(recent.last.message, equals('err4'));
-    });
-
-    test(
-        'recordMagicModel enforces FIFO: oldest entries evicted, newest retained',
-        () {
-      CrumbsStore.setCapacity(2);
-
-      CrumbsStore.recordMagicModel(_model('User', 'created'));
-      CrumbsStore.recordMagicModel(_model('Team', 'updated'));
-      CrumbsStore.recordMagicModel(_model('Monitor', 'deleted'));
-
-      final recent = CrumbsStore.recentModels();
-      expect(recent.length, equals(2));
-      expect(recent.first.modelClass, equals('Team'));
-      expect(recent.last.modelClass, equals('Monitor'));
-    });
+        final recent = CrumbsStore.recentExceptions();
+        expect(recent.length, equals(3));
+        expect(recent.first.message, equals('err2'));
+        expect(recent.last.message, equals('err4'));
+      },
+    );
 
     test(
-        'recordMagicCache enforces FIFO: oldest entries evicted, newest retained',
-        () {
-      CrumbsStore.setCapacity(2);
+      'recordMagicModel enforces FIFO: oldest entries evicted, newest retained',
+      () {
+        CrumbsStore.setCapacity(2);
 
-      CrumbsStore.recordMagicCache(_cache('k1'));
-      CrumbsStore.recordMagicCache(_cache('k2'));
-      CrumbsStore.recordMagicCache(_cache('k3'));
+        CrumbsStore.recordMagicModel(_model('User', 'created'));
+        CrumbsStore.recordMagicModel(_model('Team', 'updated'));
+        CrumbsStore.recordMagicModel(_model('Monitor', 'deleted'));
 
-      final recent = CrumbsStore.recentCaches();
-      expect(recent.length, equals(2));
-      expect(recent.first.key, equals('k2'));
-      expect(recent.last.key, equals('k3'));
-    });
+        final recent = CrumbsStore.recentModels();
+        expect(recent.length, equals(2));
+        expect(recent.first.modelClass, equals('Team'));
+        expect(recent.last.modelClass, equals('Monitor'));
+      },
+    );
+
+    test(
+      'recordMagicCache enforces FIFO: oldest entries evicted, newest retained',
+      () {
+        CrumbsStore.setCapacity(2);
+
+        CrumbsStore.recordMagicCache(_cache('k1'));
+        CrumbsStore.recordMagicCache(_cache('k2'));
+        CrumbsStore.recordMagicCache(_cache('k3'));
+
+        final recent = CrumbsStore.recentCaches();
+        expect(recent.length, equals(2));
+        expect(recent.first.key, equals('k2'));
+        expect(recent.last.key, equals('k3'));
+      },
+    );
   });
 
   group('CrumbsStore recentX(limit:) on original 5 buffers', () {
@@ -919,17 +907,19 @@ void main() {
       expect(recent.last.message, equals('msg7'));
     });
 
-    test('recentExceptions(limit:) returns at most limit items, newest-last',
-        () {
-      for (var i = 0; i < 6; i++) {
-        CrumbsStore.recordException(_exception('err$i'));
-      }
+    test(
+      'recentExceptions(limit:) returns at most limit items, newest-last',
+      () {
+        for (var i = 0; i < 6; i++) {
+          CrumbsStore.recordException(_exception('err$i'));
+        }
 
-      final recent = CrumbsStore.recentExceptions(limit: 2);
-      expect(recent.length, equals(2));
-      expect(recent.first.message, equals('err4'));
-      expect(recent.last.message, equals('err5'));
-    });
+        final recent = CrumbsStore.recentExceptions(limit: 2);
+        expect(recent.length, equals(2));
+        expect(recent.first.message, equals('err4'));
+        expect(recent.last.message, equals('err5'));
+      },
+    );
 
     test('recentModels(limit:) returns at most limit items, newest-last', () {
       final classes = ['User', 'Team', 'Monitor', 'Metric', 'Incident'];
@@ -955,41 +945,43 @@ void main() {
     });
   });
 
-  group('CrumbsStore _meetsLevel boundary cases (via recentLogs minLevel:)',
-      () {
-    test('minLevel equal to record level passes (warning >= warning)', () {
-      CrumbsStore.recordLog(_log('warning', 'at-boundary'));
+  group(
+    'CrumbsStore _meetsLevel boundary cases (via recentLogs minLevel:)',
+    () {
+      test('minLevel equal to record level passes (warning >= warning)', () {
+        CrumbsStore.recordLog(_log('warning', 'at-boundary'));
 
-      final recent = CrumbsStore.recentLogs(minLevel: 'warning');
-      expect(recent, hasLength(1));
-      expect(recent.single.message, equals('at-boundary'));
-    });
+        final recent = CrumbsStore.recentLogs(minLevel: 'warning');
+        expect(recent, hasLength(1));
+        expect(recent.single.message, equals('at-boundary'));
+      });
 
-    test('record level below minLevel is filtered out (info < warning)', () {
-      CrumbsStore.recordLog(_log('info', 'too-low'));
+      test('record level below minLevel is filtered out (info < warning)', () {
+        CrumbsStore.recordLog(_log('info', 'too-low'));
 
-      final recent = CrumbsStore.recentLogs(minLevel: 'warning');
-      expect(recent, isEmpty);
-    });
+        final recent = CrumbsStore.recentLogs(minLevel: 'warning');
+        expect(recent, isEmpty);
+      });
 
-    test('_meetsLevel is case-insensitive (WARNING matches warning)', () {
-      CrumbsStore.recordLog(_log('WARNING', 'upper'));
-      CrumbsStore.recordLog(_log('info', 'lower'));
+      test('_meetsLevel is case-insensitive (WARNING matches warning)', () {
+        CrumbsStore.recordLog(_log('WARNING', 'upper'));
+        CrumbsStore.recordLog(_log('info', 'lower'));
 
-      final recent = CrumbsStore.recentLogs(minLevel: 'Warning');
-      expect(recent, hasLength(1));
-      expect(recent.single.message, equals('upper'));
-    });
+        final recent = CrumbsStore.recentLogs(minLevel: 'Warning');
+        expect(recent, hasLength(1));
+        expect(recent.single.message, equals('upper'));
+      });
 
-    test('severe passes when minLevel is warning (severe > warning)', () {
-      CrumbsStore.recordLog(_log('severe', 'critical'));
-      CrumbsStore.recordLog(_log('info', 'dropped'));
+      test('severe passes when minLevel is warning (severe > warning)', () {
+        CrumbsStore.recordLog(_log('severe', 'critical'));
+        CrumbsStore.recordLog(_log('info', 'dropped'));
 
-      final recent = CrumbsStore.recentLogs(minLevel: 'warning');
-      expect(recent, hasLength(1));
-      expect(recent.single.message, equals('critical'));
-    });
-  });
+        final recent = CrumbsStore.recentLogs(minLevel: 'warning');
+        expect(recent, hasLength(1));
+        expect(recent.single.message, equals('critical'));
+      });
+    },
+  );
 
   group('CrumbsStore clear() does not close streams', () {
     test('onHttpRecord stream remains usable after clear()', () async {
@@ -998,10 +990,7 @@ void main() {
 
       final record = _http(2);
 
-      final future = expectLater(
-        CrumbsStore.onHttpRecord,
-        emits(same(record)),
-      );
+      final future = expectLater(CrumbsStore.onHttpRecord, emits(same(record)));
 
       CrumbsStore.recordHttp(record);
       expect(CrumbsStore.recentHttp().single, same(record));
@@ -1014,10 +1003,7 @@ void main() {
 
       final record = _log('info', 'after');
 
-      final future = expectLater(
-        CrumbsStore.onLogRecord,
-        emits(same(record)),
-      );
+      final future = expectLater(CrumbsStore.onLogRecord, emits(same(record)));
 
       CrumbsStore.recordLog(record);
       expect(CrumbsStore.recentLogs().single, same(record));
@@ -1026,30 +1012,32 @@ void main() {
   });
 
   group(
-      'CrumbsStore setCapacity() does not trim existing entries retroactively',
-      () {
-    test(
+    'CrumbsStore setCapacity() does not trim existing entries retroactively',
+    () {
+      test(
         'reducing capacity leaves existing entries untouched until next record',
         () {
-      // 1. Fill 5 entries at default capacity.
-      for (var i = 0; i < 5; i++) {
-        CrumbsStore.recordHttp(_http(i));
-      }
+          // 1. Fill 5 entries at default capacity.
+          for (var i = 0; i < 5; i++) {
+            CrumbsStore.recordHttp(_http(i));
+          }
 
-      // 2. Lower capacity below current count; no eviction yet.
-      CrumbsStore.setCapacity(3);
+          // 2. Lower capacity below current count; no eviction yet.
+          CrumbsStore.setCapacity(3);
 
-      expect(CrumbsStore.recentHttp(), hasLength(5));
+          expect(CrumbsStore.recentHttp(), hasLength(5));
 
-      // 3. Next record triggers eviction down to the new cap.
-      CrumbsStore.recordHttp(_http(5));
+          // 3. Next record triggers eviction down to the new cap.
+          CrumbsStore.recordHttp(_http(5));
 
-      final recent = CrumbsStore.recentHttp();
-      expect(recent.length, equals(3));
-      expect(recent.first.method, equals('GET-3'));
-      expect(recent.last.method, equals('GET-5'));
-    });
-  });
+          final recent = CrumbsStore.recentHttp();
+          expect(recent.length, equals(3));
+          expect(recent.first.method, equals('GET-3'));
+          expect(recent.last.method, equals('GET-5'));
+        },
+      );
+    },
+  );
 
   group('CrumbsStore resetForTesting() full contract', () {
     test('resetForTesting() clears all buffers', () {
@@ -1099,7 +1087,7 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Step 3.4 — pendingHttpCount getter.
+  // Step 3.4: pendingHttpCount getter.
   // ---------------------------------------------------------------------------
 
   group('CrumbsStore.pendingHttpCount', () {
@@ -1109,22 +1097,26 @@ void main() {
       expect(CrumbsStore.pendingHttpCount, equals(0));
     });
 
-    test('returns 0 when the registered adapter does not override pendingCount',
-        () {
-      httpAdapterRegistry.add(_DefaultHttpAdapter());
-      expect(CrumbsStore.pendingHttpCount, equals(0));
-    });
+    test(
+      'returns 0 when the registered adapter does not override pendingCount',
+      () {
+        httpAdapterRegistry.add(_DefaultHttpAdapter());
+        expect(CrumbsStore.pendingHttpCount, equals(0));
+      },
+    );
 
-    test('delegates to the registered adapter\'s pendingCount when overridden',
-        () {
-      final adapter = _CountingHttpAdapter(7);
-      httpAdapterRegistry.add(adapter);
+    test(
+      'delegates to the registered adapter\'s pendingCount when overridden',
+      () {
+        final adapter = _CountingHttpAdapter(7);
+        httpAdapterRegistry.add(adapter);
 
-      expect(CrumbsStore.pendingHttpCount, equals(7));
+        expect(CrumbsStore.pendingHttpCount, equals(7));
 
-      adapter.pendingCount = 12;
-      expect(CrumbsStore.pendingHttpCount, equals(12));
-    });
+        adapter.pendingCount = 12;
+        expect(CrumbsStore.pendingHttpCount, equals(12));
+      },
+    );
 
     test('sums pendingCount across multiple registered adapters', () {
       httpAdapterRegistry.add(_CountingHttpAdapter(3));
@@ -1146,8 +1138,7 @@ void main() {
 
   group('CrumbsStore', () {
     group('recordHttp() redaction', () {
-      test(
-          'masks a hidden request header whatever its case, and keeps the '
+      test('masks a hidden request header whatever its case, and keeps the '
           'rest', () {
         CrumbsStore.recordHttp(
           _httpWith(
@@ -1173,9 +1164,7 @@ void main() {
 
       test('masks hidden parameters in a JSON request body', () {
         CrumbsStore.recordHttp(
-          _httpWith(
-            requestBody: '{"email":"a@b.test","password":"hunter2"}',
-          ),
+          _httpWith(requestBody: '{"email":"a@b.test","password":"hunter2"}'),
         );
 
         final HttpRequestRecord stored = CrumbsStore.recentHttp().single;
@@ -1190,9 +1179,7 @@ void main() {
 
       test('masks hidden parameters nested in a JSON response body', () {
         CrumbsStore.recordHttp(
-          _httpWith(
-            responseBody: '{"data":{"token":"abc","user":{"id":1}}}',
-          ),
+          _httpWith(responseBody: '{"data":{"token":"abc","user":{"id":1}}}'),
         );
 
         final HttpRequestRecord stored = CrumbsStore.recentHttp().single;
@@ -1201,20 +1188,15 @@ void main() {
           equals(<String, dynamic>{
             'data': <String, dynamic>{
               'token': '********',
-              'user': <String, dynamic>{
-                'id': 1,
-              },
+              'user': <String, dynamic>{'id': 1},
             },
           }),
         );
       });
 
-      test(
-          'reads the response body against the response list, not the '
+      test('reads the response body against the response list, not the '
           'request list', () {
-        CrumbsRedaction.hideRequestParameters(<String>[
-          'pin',
-        ]);
+        CrumbsRedaction.hideRequestParameters(<String>['pin']);
 
         CrumbsStore.recordHttp(
           _httpWith(
@@ -1229,23 +1211,15 @@ void main() {
       });
 
       test('honours a header added through hideRequestHeaders()', () {
-        CrumbsRedaction.hideRequestHeaders(<String>[
-          'X-Auth',
-        ]);
+        CrumbsRedaction.hideRequestHeaders(<String>['X-Auth']);
 
         CrumbsStore.recordHttp(
-          _httpWith(
-            requestHeaders: <String, String>{
-              'x-auth': 'Bearer abc',
-            },
-          ),
+          _httpWith(requestHeaders: <String, String>{'x-auth': 'Bearer abc'}),
         );
 
         expect(
           CrumbsStore.recentHttp().single.requestHeaders,
-          equals(<String, String>{
-            'x-auth': '********',
-          }),
+          equals(<String, String>{'x-auth': '********'}),
         );
       });
 
@@ -1261,15 +1235,15 @@ void main() {
 
         final HttpRequestRecord stored = CrumbsStore.recentHttp().single;
         expect(
-            stored.requestBody, equals('email=a%40b.test&password=********'));
+          stored.requestBody,
+          equals('email=a%40b.test&password=********'),
+        );
         expect(stored.responseBody, equals(truncated));
       });
 
       test('masks hidden parameters inside a top-level JSON array body', () {
         CrumbsStore.recordHttp(
-          _httpWith(
-            responseBody: '[{"name":"ci","token":"abc"}]',
-          ),
+          _httpWith(responseBody: '[{"name":"ci","token":"abc"}]'),
         );
 
         expect(
@@ -1278,8 +1252,7 @@ void main() {
         );
       });
 
-      test(
-          'masks the two-factor setup answer, the secret inside the QR url '
+      test('masks the two-factor setup answer, the secret inside the QR url '
           'included', () {
         CrumbsStore.recordHttp(
           _httpWith(
@@ -1288,9 +1261,7 @@ void main() {
                 'secret': 'JBSWY3DP',
                 'qr_url': 'otpauth://totp/app?secret=JBSWY3DP',
                 'qr_svg': '<svg>JBSWY3DP</svg>',
-                'recovery_codes': <String>[
-                  'r1-r1',
-                ],
+                'recovery_codes': <String>['r1-r1'],
               },
             }),
           ),
@@ -1304,11 +1275,7 @@ void main() {
       test('never throws on a JSON body nested past the depth it walks', () {
         final String deep = '${'[' * 20000}{"token":"deep"}${']' * 20000}';
 
-        CrumbsStore.recordHttp(
-          _httpWith(
-            responseBody: deep,
-          ),
-        );
+        CrumbsStore.recordHttp(_httpWith(responseBody: deep));
 
         expect(
           CrumbsStore.recentHttp().single.responseBody,
@@ -1320,10 +1287,7 @@ void main() {
         const String pretty = '{\n  "email": "a@b.test"\n}';
 
         CrumbsStore.recordHttp(
-          _httpWith(
-            requestBody: pretty,
-            responseBody: '"token"',
-          ),
+          _httpWith(requestBody: pretty, responseBody: '"token"'),
         );
 
         final HttpRequestRecord stored = CrumbsStore.recentHttp().single;
@@ -1339,9 +1303,7 @@ void main() {
           durationMs: 42,
           isError: false,
           timestamp: DateTime(2026, 1, 1),
-          requestHeaders: <String, String>{
-            'Authorization': 'Bearer abc',
-          },
+          requestHeaders: <String, String>{'Authorization': 'Bearer abc'},
           attributedHeuristically: true,
           requestId: 'r1',
           startUs: 10,
@@ -1353,12 +1315,10 @@ void main() {
 
         CrumbsStore.recordHttp(original);
 
-        final Map<String, dynamic> stored =
-            CrumbsStore.recentHttp().single.toJson();
+        final Map<String, dynamic> stored = CrumbsStore.recentHttp().single
+            .toJson();
         final Map<String, dynamic> expected = original.toJson()
-          ..['requestHeaders'] = <String, String>{
-            'Authorization': '********',
-          };
+          ..['requestHeaders'] = <String, String>{'Authorization': '********'};
         expect(stored, equals(expected));
       });
 
@@ -1368,9 +1328,7 @@ void main() {
 
         CrumbsStore.recordHttp(
           _httpWith(
-            requestHeaders: <String, String>{
-              'Authorization': 'Bearer abc',
-            },
+            requestHeaders: <String, String>{'Authorization': 'Bearer abc'},
             responseBody: '{"token":"abc"}',
           ),
         );
@@ -1387,18 +1345,17 @@ HttpRequestRecord _httpWith({
   Map<String, String>? requestHeaders,
   String? requestBody,
   String? responseBody,
-}) =>
-    HttpRequestRecord(
-      method: 'POST',
-      url: 'https://example.test/login',
-      statusCode: 200,
-      durationMs: 1,
-      isError: false,
-      timestamp: DateTime(2026, 1, 1),
-      requestHeaders: requestHeaders,
-      requestBody: requestBody,
-      responseBody: responseBody,
-    );
+}) => HttpRequestRecord(
+  method: 'POST',
+  url: 'https://example.test/login',
+  statusCode: 200,
+  durationMs: 1,
+  isError: false,
+  timestamp: DateTime(2026, 1, 1),
+  requestHeaders: requestHeaders,
+  requestBody: requestBody,
+  responseBody: responseBody,
+);
 
 // ---------------------------------------------------------------------------
 // Record fixture helpers (keep tests terse; each helper carries a unique
@@ -1406,78 +1363,73 @@ HttpRequestRecord _httpWith({
 // ---------------------------------------------------------------------------
 
 HttpRequestRecord _http(int n) => HttpRequestRecord(
-      method: 'GET-$n',
-      url: 'https://example.test/$n',
-      statusCode: 200,
-      durationMs: 1,
-      isError: false,
-      timestamp: DateTime(2026, 1, 1),
-    );
+  method: 'GET-$n',
+  url: 'https://example.test/$n',
+  statusCode: 200,
+  durationMs: 1,
+  isError: false,
+  timestamp: DateTime(2026, 1, 1),
+);
 
 LogRecordEntry _log(String level, String message) => LogRecordEntry(
-      level: level,
-      levelValue: 800,
-      loggerName: 'test',
-      message: message,
-      time: DateTime(2026, 1, 1),
-    );
+  level: level,
+  levelValue: 800,
+  loggerName: 'test',
+  message: message,
+  time: DateTime(2026, 1, 1),
+);
 
 ExceptionRecord _exception(String message) => ExceptionRecord(
-      exceptionType: 'TestException',
-      message: message,
-      time: DateTime(2026, 1, 1),
-    );
+  exceptionType: 'TestException',
+  message: message,
+  time: DateTime(2026, 1, 1),
+);
 
 MagicModelRecord _model(String modelClass, String event) => MagicModelRecord(
-      modelClass: modelClass,
-      event: event,
-      modelKey: '1',
-      time: DateTime(2026, 1, 1),
-    );
+  modelClass: modelClass,
+  event: event,
+  modelKey: '1',
+  time: DateTime(2026, 1, 1),
+);
 
-MagicCacheRecord _cache(String key) => MagicCacheRecord(
-      operation: 'get',
-      key: key,
-      time: DateTime(2026, 1, 1),
-    );
+MagicCacheRecord _cache(String key) =>
+    MagicCacheRecord(operation: 'get', key: key, time: DateTime(2026, 1, 1));
 
 EventRecord _event(String eventType) => EventRecord(
-      eventType: eventType,
-      payload: const {},
-      time: DateTime(2026, 1, 1),
-    );
+  eventType: eventType,
+  payload: const {},
+  time: DateTime(2026, 1, 1),
+);
 
 FramePerfRecord _frame(int n) => FramePerfRecord(
-      frameNumber: n,
-      buildMicros: 1,
-      rasterMicros: 1,
-      vsyncOverheadMicros: 1,
-      totalSpanMicros: 2,
-      time: DateTime(2026, 1, 1),
-      blocks: const {},
-    );
+  frameNumber: n,
+  buildMicros: 1,
+  rasterMicros: 1,
+  vsyncOverheadMicros: 1,
+  totalSpanMicros: 2,
+  time: DateTime(2026, 1, 1),
+  blocks: const {},
+);
 
 QueryRecord _query(int n) => QueryRecord(
-      sql: 'select $n',
-      bindings: const [],
-      timeMs: 1,
-      time: DateTime(2026, 1, 1),
-    );
+  sql: 'select $n',
+  bindings: const [],
+  timeMs: 1,
+  time: DateTime(2026, 1, 1),
+);
 
 GateRecord _gate(String ability, bool result) => GateRecord(
-      ability: ability,
-      result: result,
-      arguments: const [],
-      time: DateTime(2026, 1, 1),
-    );
+  ability: ability,
+  result: result,
+  arguments: const [],
+  time: DateTime(2026, 1, 1),
+);
 
-DumpRecord _dump(String message) => DumpRecord(
-      message: message,
-      time: DateTime(2026, 1, 1),
-    );
+DumpRecord _dump(String message) =>
+    DumpRecord(message: message, time: DateTime(2026, 1, 1));
 
 // ---------------------------------------------------------------------------
-// Step 3.4 — pendingHttpCount delegate
+// Step 3.4: pendingHttpCount delegate
 // ---------------------------------------------------------------------------
 
 /// Fake adapter that overrides `pendingCount` so the delegate path can be
@@ -1514,6 +1466,6 @@ class _DefaultHttpAdapter extends CrumbsHttpAdapter {
   @override
   void uninstall() {}
 
-  // Intentionally does NOT override `pendingCount` — relies on the default
+  // Intentionally does NOT override `pendingCount`, relies on the default
   // body declared on the abstract contract (returns 0).
 }

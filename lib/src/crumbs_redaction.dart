@@ -378,17 +378,23 @@ final class CrumbsRedaction {
     if (!_formBody.hasMatch(body)) return body;
 
     bool masked = false;
-    final String redacted = body.split('&').map((String pair) {
-      final int equals = pair.indexOf('=');
-      // Latin-1 maps every byte, so a key that is not UTF-8 still decodes;
-      // the default names are ASCII either way.
-      final String key = _formLeaf(
-        Uri.decodeQueryComponent(pair.substring(0, equals), encoding: latin1),
-      );
-      if (!_hides(key, pair.substring(equals + 1), hidden)) return pair;
-      masked = true;
-      return '${pair.substring(0, equals + 1)}$mask';
-    }).join('&');
+    final String redacted = body
+        .split('&')
+        .map((String pair) {
+          final int equals = pair.indexOf('=');
+          // Latin-1 maps every byte, so a key that is not UTF-8 still decodes;
+          // the default names are ASCII either way.
+          final String key = _formLeaf(
+            Uri.decodeQueryComponent(
+              pair.substring(0, equals),
+              encoding: latin1,
+            ),
+          );
+          if (!_hides(key, pair.substring(equals + 1), hidden)) return pair;
+          masked = true;
+          return '${pair.substring(0, equals + 1)}$mask';
+        })
+        .join('&');
 
     return masked ? redacted : body;
   }

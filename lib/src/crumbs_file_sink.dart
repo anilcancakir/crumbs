@@ -37,14 +37,11 @@ import 'crumbs_store.dart';
 /// cannot reach any other file.
 final class CrumbsFileSink {
   CrumbsFileSink._({
-    required Directory directory,
-    required int maxFileBytes,
-    required int maxFiles,
-    required String launchStamp,
-  })  : _directory = directory,
-        _maxFileBytes = maxFileBytes,
-        _maxFiles = maxFiles,
-        _launchStamp = launchStamp;
+    required this._directory,
+    required this._maxFileBytes,
+    required this._maxFiles,
+    required this._launchStamp,
+  });
 
   static const int _batchLines = 64;
   static const Duration _flushInterval = Duration(milliseconds: 500);
@@ -221,12 +218,9 @@ final class CrumbsFileSink {
       final List<String> lines = bytes.isEmpty
           ? <String>[]
           : (utf8.decode(bytes, allowMalformed: true).split('\n')
-            ..removeLast());
+              ..removeLast());
 
-      return <String, Object>{
-        'lines': lines,
-        'next': offset + bytes.length,
-      };
+      return <String, Object>{'lines': lines, 'next': offset + bytes.length};
     });
   }
 
@@ -257,12 +251,7 @@ final class CrumbsFileSink {
       return;
     }
 
-    _pending.add(
-      jsonEncode(<String, dynamic>{
-        'kind': kind,
-        ...toJson(),
-      }),
-    );
+    _pending.add(jsonEncode(<String, dynamic>{'kind': kind, ...toJson()}));
     if (_opened) _scheduleFlush();
   }
 
@@ -414,11 +403,10 @@ final class CrumbsFileSink {
       );
     }
 
-    return timeline
-      ..sort((_TimelineEntry a, _TimelineEntry b) {
-        final int byStamp = b.stamp.compareTo(a.stamp);
-        return byStamp != 0 ? byStamp : b.counter.compareTo(a.counter);
-      });
+    return timeline..sort((_TimelineEntry a, _TimelineEntry b) {
+      final int byStamp = b.stamp.compareTo(a.stamp);
+      return byStamp != 0 ? byStamp : b.counter.compareTo(a.counter);
+    });
   }
 
   Future<File?> _find(String name) async {
@@ -479,10 +467,7 @@ final class CrumbsFileSink {
 /// A file the sink opened: its handle, rotation counter and the bytes it
 /// holds so far, those a same-second launch left in it included.
 final class _TimelineFile {
-  _TimelineFile({
-    required this.file,
-    required this.counter,
-  });
+  _TimelineFile({required this.file, required this.counter});
 
   final File file;
   final int counter;

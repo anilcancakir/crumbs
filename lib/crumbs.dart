@@ -1,8 +1,8 @@
-/// crumbs — Passive inspector for Flutter apps (Telescope/Pail analog).
+/// crumbs: passive inspector for Flutter apps (Telescope/Pail analog).
 ///
-/// V1 ships 5 watchers (HttpAdapter pluggable, LogWatcher auto, ExceptionWatcher
-/// opt-in, MagicModelWatcher via magic, MagicCacheWatcher via magic) + an in-app
-/// Flutter overlay dashboard (Alice/Talker pattern, deferred to V1.x).
+/// Captures HTTP traffic (a pluggable adapter), logs, uncaught exceptions,
+/// debug dumps, events, gate checks, queries and cache operations into
+/// in-memory ring buffers, and serves them over VM Service extensions.
 ///
 /// Extension points:
 /// - [CrumbsPlugin.registerHttpAdapter] for pluggable HTTP capture (Dio,

@@ -15,8 +15,9 @@ class CrumbsCachesCommand extends DowelCommand {
   CommandBoot get boot => CommandBoot.connected;
 
   @override
-  String get signature => 'crumbs:caches '
-      '{--limit=50 : Maximum number of records to print (newest first).}';
+  String get signature =>
+      'crumbs:caches '
+      '{--limit=50 : Maximum number of records to print (the newest N, oldest first).}';
 
   @override
   Future<int> handle(DowelContext ctx) async {
@@ -33,9 +34,7 @@ class CrumbsCachesCommand extends DowelCommand {
     }
     for (final r in records) {
       final ttl = r['ttlMs'] != null ? ' ttl=${r['ttlMs']}ms' : '';
-      ctx.output.writeln(
-        '${r['time']} [${r['operation']}] ${r['key']}$ttl',
-      );
+      ctx.output.writeln('${r['time']} [${r['operation']}] ${r['key']}$ttl');
     }
     return 0;
   }

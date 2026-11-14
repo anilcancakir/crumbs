@@ -36,22 +36,24 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('install()', () {
-      test('a log message emitted after install is recorded in CrumbsStore',
-          () async {
-        watcher.install();
+      test(
+        'a log message emitted after install is recorded in CrumbsStore',
+        () async {
+          watcher.install();
 
-        final recorded = <LogRecordEntry>[];
-        final sub = CrumbsStore.onLogRecord.listen(recorded.add);
+          final recorded = <LogRecordEntry>[];
+          final sub = CrumbsStore.onLogRecord.listen(recorded.add);
 
-        Logger('test').info('hello');
+          Logger('test').info('hello');
 
-        await Future<void>.delayed(Duration.zero);
-        await sub.cancel();
+          await Future<void>.delayed(Duration.zero);
+          await sub.cancel();
 
-        expect(recorded, hasLength(1));
-        expect(recorded.first.message, 'hello');
-        expect(recorded.first.loggerName, 'test');
-      });
+          expect(recorded, hasLength(1));
+          expect(recorded.first.message, 'hello');
+          expect(recorded.first.loggerName, 'test');
+        },
+      );
 
       test('recorded entry carries the correct level name', () async {
         watcher.install();
@@ -94,21 +96,23 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('idempotency', () {
-      test('calling install() twice records each log message exactly once',
-          () async {
-        watcher.install();
-        watcher.install(); // second call must be a no-op
+      test(
+        'calling install() twice records each log message exactly once',
+        () async {
+          watcher.install();
+          watcher.install(); // second call must be a no-op
 
-        final recorded = <LogRecordEntry>[];
-        final sub = CrumbsStore.onLogRecord.listen(recorded.add);
+          final recorded = <LogRecordEntry>[];
+          final sub = CrumbsStore.onLogRecord.listen(recorded.add);
 
-        Logger('idempotency-check').info('one-message');
+          Logger('idempotency-check').info('one-message');
 
-        await Future<void>.delayed(Duration.zero);
-        await sub.cancel();
+          await Future<void>.delayed(Duration.zero);
+          await sub.cancel();
 
-        expect(recorded, hasLength(1));
-      });
+          expect(recorded, hasLength(1));
+        },
+      );
     });
   });
 }

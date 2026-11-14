@@ -58,9 +58,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('recording', () {
-      test(
-          'debugPrint call after install records a DumpRecord to onDumpRecord stream',
-          () async {
+      test('debugPrint call after install records a DumpRecord to onDumpRecord stream', () async {
         watcher.install();
 
         final recorded = <DumpRecord>[];

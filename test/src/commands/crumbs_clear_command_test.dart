@@ -5,11 +5,9 @@ import 'package:crumbs/src/commands/crumbs_clear_command.dart';
 
 /// Stubs [DowelContext.callExtension] so tests never hit a real VM Service.
 class _StubContext extends DowelContext {
-  _StubContext({
-    required DowelInput input,
-    required DowelOutput output,
-  })  : _response = const {},
-        super.bare(input, output);
+  _StubContext({required DowelInput input, required DowelOutput output})
+    : _response = const {},
+      super.bare(input, output);
 
   final Map<String, dynamic> _response;
 
@@ -65,10 +63,7 @@ void main() {
 
     test('handle calls ext.crumbs.clear', () async {
       final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-      );
+      final ctx = _StubContext(input: MapInput(const {}), output: output);
 
       await CrumbsClearCommand().handle(ctx);
 
@@ -77,10 +72,7 @@ void main() {
 
     test('handle passes no params to callExtension', () async {
       final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-      );
+      final ctx = _StubContext(input: MapInput(const {}), output: output);
 
       await CrumbsClearCommand().handle(ctx);
 
@@ -93,10 +85,7 @@ void main() {
 
     test('handle writes a "cleared" confirmation line', () async {
       final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-      );
+      final ctx = _StubContext(input: MapInput(const {}), output: output);
 
       final code = await CrumbsClearCommand().handle(ctx);
 
@@ -106,10 +95,7 @@ void main() {
 
     test('handle returns 0', () async {
       final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-      );
+      final ctx = _StubContext(input: MapInput(const {}), output: output);
 
       final code = await CrumbsClearCommand().handle(ctx);
 

@@ -144,20 +144,22 @@ void main() {
     // Identity equality (matches existing records ; no Equatable)
     // -------------------------------------------------------------------------
 
-    test('two records with same fields are not identical (default identity eq)',
-        () {
-      final a = ExceptionRecord(
-        exceptionType: 'StateError',
-        message: 'Bad state: no element',
-        time: time,
-      );
-      final b = ExceptionRecord(
-        exceptionType: 'StateError',
-        message: 'Bad state: no element',
-        time: time,
-      );
+    test(
+      'two records with same fields are not identical (default identity eq)',
+      () {
+        final a = ExceptionRecord(
+          exceptionType: 'StateError',
+          message: 'Bad state: no element',
+          time: time,
+        );
+        final b = ExceptionRecord(
+          exceptionType: 'StateError',
+          message: 'Bad state: no element',
+          time: time,
+        );
 
-      expect(identical(a, b), isFalse);
-    });
+        expect(identical(a, b), isFalse);
+      },
+    );
   });
 }

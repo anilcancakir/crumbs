@@ -121,21 +121,23 @@ void main() {
       expect(record.atUs, equals(555));
     });
 
-    test('interactionId and linkedBy default to null and toJson omits them',
-        () {
-      final record = MagicCacheRecord(
-        operation: 'hit',
-        key: 'monitors.team-1',
-        time: time,
-      );
+    test(
+      'interactionId and linkedBy default to null and toJson omits them',
+      () {
+        final record = MagicCacheRecord(
+          operation: 'hit',
+          key: 'monitors.team-1',
+          time: time,
+        );
 
-      expect(record.interactionId, isNull);
-      expect(record.linkedBy, isNull);
+        expect(record.interactionId, isNull);
+        expect(record.linkedBy, isNull);
 
-      final json = record.toJson();
-      expect(json.containsKey('interactionId'), isFalse);
-      expect(json.containsKey('linkedBy'), isFalse);
-    });
+        final json = record.toJson();
+        expect(json.containsKey('interactionId'), isFalse);
+        expect(json.containsKey('linkedBy'), isFalse);
+      },
+    );
 
     test('interactionId and linkedBy are set and serialized when provided', () {
       final record = MagicCacheRecord(
@@ -172,20 +174,22 @@ void main() {
     // Identity equality (matches existing records ; no Equatable)
     // -------------------------------------------------------------------------
 
-    test('two records with same fields are not identical (default identity eq)',
-        () {
-      final a = MagicCacheRecord(
-        operation: 'hit',
-        key: 'monitors.team-1',
-        time: time,
-      );
-      final b = MagicCacheRecord(
-        operation: 'hit',
-        key: 'monitors.team-1',
-        time: time,
-      );
+    test(
+      'two records with same fields are not identical (default identity eq)',
+      () {
+        final a = MagicCacheRecord(
+          operation: 'hit',
+          key: 'monitors.team-1',
+          time: time,
+        );
+        final b = MagicCacheRecord(
+          operation: 'hit',
+          key: 'monitors.team-1',
+          time: time,
+        );
 
-      expect(identical(a, b), isFalse);
-    });
+        expect(identical(a, b), isFalse);
+      },
+    );
   });
 }

@@ -86,7 +86,7 @@ class FramePerfWatcher implements CrumbsWatcher {
   /// Block maps drained but not yet joined to a [FrameTiming], keyed by
   /// [_nextDrainKey] at the time of the drain.
   final Map<int, Map<String, ({int micros, int selfMicros, int count})>>
-      _pendingBlocks =
+  _pendingBlocks =
       <int, Map<String, ({int micros, int selfMicros, int count})>>{};
 
   int _nextDrainKey = 0;
@@ -205,17 +205,18 @@ class FramePerfWatcher implements CrumbsWatcher {
   /// harness reaches the same point by overriding `frameDidDraw()`, which a
   /// watcher cannot do without replacing the binding.
   void _park(int key, AggregatedTimings timings) {
-    final Map<String, double> selfMicrosByName =
-        _selfMicrosByName(timings.timedBlocks);
+    final Map<String, double> selfMicrosByName = _selfMicrosByName(
+      timings.timedBlocks,
+    );
     final Map<String, ({int micros, int selfMicros, int count})> blocks =
         <String, ({int micros, int selfMicros, int count})>{
-      for (final AggregatedTimedBlock block in timings.aggregatedBlocks)
-        block.name: (
-          micros: block.duration.round(),
-          selfMicros: (selfMicrosByName[block.name] ?? 0).round(),
-          count: block.count,
-        ),
-    };
+          for (final AggregatedTimedBlock block in timings.aggregatedBlocks)
+            block.name: (
+              micros: block.duration.round(),
+              selfMicros: (selfMicrosByName[block.name] ?? 0).round(),
+              count: block.count,
+            ),
+        };
     if (blocks.isEmpty) return;
 
     _pendingBlocks[key] = blocks;
@@ -328,7 +329,8 @@ class FramePerfWatcher implements CrumbsWatcher {
           totalSpanMicros: timing.totalSpan.inMicroseconds,
           vsyncStartUs: timing.timestampInMicroseconds(FramePhase.vsyncStart),
           time: DateTime.now(),
-          blocks: blocks ??
+          blocks:
+              blocks ??
               const <String, ({int micros, int selfMicros, int count})>{},
         ),
       );
