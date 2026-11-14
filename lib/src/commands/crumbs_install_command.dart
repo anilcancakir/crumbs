@@ -143,17 +143,23 @@ class CrumbsInstallCommand extends DowelCommand {
   ///       already present) + the `kDebugMode`-gated crumbs block before
   ///       the canonical install anchor: `await Magic.init(` on Magic-stack
   ///       apps (so ExceptionWatcher captures Magic boot errors), otherwise
-  ///       `runApp(` for vanilla Flutter apps.
+  ///       `runApp(` for vanilla Flutter apps. A file that already calls
+  ///       `CrumbsPlugin.install(` in any shape skips 3a and 3b.
   ///   3c. When pubspec has `magic_devtools:`, its resolved release ships
   ///       `lib/crumbs.dart` AND main.dart has `await Magic.init(`, inject
   ///       `MagicCrumbsIntegration.install()` after that call.
   static void _injectRuntimeWiring(DowelContext ctx, String mainDartPath) {
     ctx.output.info('Wiring CrumbsPlugin into $mainDartPath...');
 
+    // An app already calling CrumbsPlugin.install() is wired whatever the
+    // shape of its block; a second block would chain the watchers and record
+    // every exception and debugPrint twice.
+    //
     // A magic_devtools release that predates crumbs has no `crumbs.dart`; its
     // import would leave a lib/main.dart that does not compile. An app already
     // carrying the integration call needs neither the check nor the warning.
     final String original = FileHelper.readFile(mainDartPath);
+    final bool wiresCrumbs = !original.contains('CrumbsPlugin.install(');
     final bool wantsMagic =
         original.contains('await Magic.init(') &&
         _hasMagicDevtoolsDep() &&
@@ -166,14 +172,18 @@ class CrumbsInstallCommand extends DowelCommand {
 
     // 3a. Imports first. ConfigEditor.addImportToFile (delegated by
     //     MainDartEditor.addImport) is idempotent on duplicates.
-    MainDartEditor.addImport(
-      mainDartPath,
-      "import 'package:flutter/foundation.dart' show kDebugMode;",
-    );
-    MainDartEditor.addImport(
-      mainDartPath,
-      "import 'package:crumbs/crumbs.dart';",
-    );
+    if (wiresCrumbs || wiresMagic) {
+      MainDartEditor.addImport(
+        mainDartPath,
+        "import 'package:flutter/foundation.dart' show kDebugMode;",
+      );
+    }
+    if (wiresCrumbs) {
+      MainDartEditor.addImport(
+        mainDartPath,
+        "import 'package:crumbs/crumbs.dart';",
+      );
+    }
 
     // 3b. Read once, choose the correct anchor, transform via two
     //     pure-functional injects (idempotent: each helper checks
@@ -191,24 +201,26 @@ class CrumbsInstallCommand extends DowelCommand {
     // Magic apps already call WidgetsFlutterBinding.ensureInitialized()
     // before Magic.init, so skip the inject when it is already present
     // (avoids a duplicate call right above the existing one).
-    if (!source.contains('WidgetsFlutterBinding.ensureInitialized()')) {
+    if (wiresCrumbs) {
+      if (!source.contains('WidgetsFlutterBinding.ensureInitialized()')) {
+        source = MainDartEditor.injectBeforeAnchor(
+          source: source,
+          anchor: anchor,
+          snippet: '  WidgetsFlutterBinding.ensureInitialized();\n',
+        );
+      }
+
       source = MainDartEditor.injectBeforeAnchor(
         source: source,
         anchor: anchor,
-        snippet: '  WidgetsFlutterBinding.ensureInitialized();\n',
+        snippet:
+            '  if (kDebugMode) {\n'
+            '    CrumbsPlugin.install();\n'
+            '    CrumbsPlugin.registerWatcher(ExceptionWatcher());\n'
+            '    CrumbsPlugin.registerWatcher(DumpWatcher());\n'
+            '  }\n',
       );
     }
-
-    source = MainDartEditor.injectBeforeAnchor(
-      source: source,
-      anchor: anchor,
-      snippet:
-          '  if (kDebugMode) {\n'
-          '    CrumbsPlugin.install();\n'
-          '    CrumbsPlugin.registerWatcher(ExceptionWatcher());\n'
-          '    CrumbsPlugin.registerWatcher(DumpWatcher());\n'
-          '  }\n',
-    );
 
     if (source != before) {
       FileHelper.writeFile(mainDartPath, source);
@@ -319,14 +331,17 @@ class CrumbsInstallCommand extends DowelCommand {
   /// writes one shared config at the workspace root. Null when the walk
   /// reaches the filesystem root without finding one.
   static File? _nearestPackageConfig(String projectRoot) {
-    Directory dir = Directory(
-      Directory(projectRoot).absolute.uri.normalizePath().toFilePath(),
-    );
+    // Walk on directory URIs: a file path round trip keeps the trailing
+    // separator, and the `<root>//.dart_tool` it leads to makes a relative
+    // `rootUri` resolve one level too deep.
+    Uri dir = Directory(projectRoot).absolute.uri.normalizePath();
     while (true) {
-      final config = File('${dir.path}/.dart_tool/package_config.json');
+      final config = File.fromUri(
+        dir.resolve('.dart_tool/package_config.json'),
+      );
       if (config.existsSync()) return config;
-      final Directory parent = dir.parent;
-      if (parent.path == dir.path) return null;
+      final Uri parent = dir.resolve('..');
+      if (parent == dir) return null;
       dir = parent;
     }
   }

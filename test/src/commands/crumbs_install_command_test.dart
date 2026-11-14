@@ -637,6 +637,109 @@ void main() {
         });
       });
 
+      group('with a path dependency outside the project', () {
+        // `magic_devtools: path: ../magic_devtools` from a project in
+        // `<tempDir>/app`: pub writes a `rootUri` that climbs out of both
+        // `.dart_tool` and the project, two levels in all.
+        late Directory project;
+        late Directory library;
+
+        setUp(() {
+          project = Directory('${tempDir.path}/app')..createSync();
+          library = Directory('${tempDir.path}/magic_devtools/lib')
+            ..createSync(recursive: true);
+          Directory('${project.path}/.dart_tool').createSync();
+          File('${project.path}/.dart_tool/package_config.json')
+              .writeAsStringSync(
+                jsonEncode(<String, Object>{
+                  'configVersion': 2,
+                  'packages': <Map<String, String>>[
+                    <String, String>{
+                      'name': 'magic_devtools',
+                      'rootUri': '../../magic_devtools',
+                      'packageUri': 'lib/',
+                    },
+                  ],
+                }),
+              );
+        });
+
+        test('resolves the package root two levels up', () {
+          File('${library.path}/telescope.dart').writeAsStringSync('// stub\n');
+          expect(
+            CrumbsInstallCommand.magicDevtoolsCrumbsSupport(project.path),
+            equals(MagicDevtoolsCrumbsSupport.missing),
+          );
+
+          File('${library.path}/crumbs.dart').writeAsStringSync('// stub\n');
+          expect(
+            CrumbsInstallCommand.magicDevtoolsCrumbsSupport(project.path),
+            equals(MagicDevtoolsCrumbsSupport.available),
+          );
+        });
+
+        test('the installer wires the Magic lines', () async {
+          File('${library.path}/crumbs.dart').writeAsStringSync('// stub\n');
+          final mainDartPath = _seedProject(
+            project,
+            pubspecDeps: const {
+              'magic': 'any',
+              'magic_devtools': '\n    path: ../magic_devtools',
+            },
+            mainDartContents: _magicMain,
+          );
+          final output = BufferedOutput();
+
+          final exit = await _runInstallIn(project, output);
+
+          expect(exit, equals(0));
+          final result = File(mainDartPath).readAsStringSync();
+          expect(
+            result,
+            contains("import 'package:magic_devtools/crumbs.dart';"),
+          );
+          expect(result, contains('MagicCrumbsIntegration.install();'));
+          expect(output.content, isNot(contains('crumbs integration')));
+        });
+      });
+
+      test('a Magic app already calling CrumbsPlugin.install() gets the '
+          'Magic lines and no second crumbs block', () async {
+        final mainDartPath = _seedProject(
+          tempDir,
+          pubspecDeps: const {'magic': 'any', 'magic_devtools': 'any'},
+          magicDevtoolsLibrary: 'crumbs.dart',
+          mainDartContents: '''
+import 'package:crumbs/crumbs.dart';
+import 'package:flutter/material.dart';
+import 'package:magic/magic.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  CrumbsPlugin.install(); // Unconditional on purpose.
+  await Magic.init(configFactories: [() => {}]);
+  runApp(const MagicApplication());
+}
+''',
+        );
+
+        await _runInstallIn(tempDir, BufferedOutput());
+
+        final result = File(mainDartPath).readAsStringSync();
+        expect('CrumbsPlugin.install('.allMatches(result).length, equals(1));
+        expect('ExceptionWatcher()'.allMatches(result).length, equals(0));
+        expect(
+          "import 'package:crumbs/crumbs.dart';".allMatches(result).length,
+          equals(1),
+        );
+        expect(
+          result,
+          contains("import 'package:magic_devtools/crumbs.dart';"),
+        );
+        expect(result, contains('MagicCrumbsIntegration.install();'));
+        expect(result, contains('show kDebugMode;'));
+      });
+
       test('re-running with crumbs.dart available is idempotent', () async {
         final mainDartPath = _seedProject(
           tempDir,
@@ -661,6 +764,87 @@ void main() {
               .length,
           equals(1),
         );
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Already wired: any existing `CrumbsPlugin.install(` call means the app
+    // is wired, whatever its shape. A second block would chain the watchers
+    // and record every exception and debugPrint twice.
+    // -------------------------------------------------------------------------
+
+    group('an app that already calls CrumbsPlugin.install()', () {
+      late Directory tempDir;
+
+      setUp(() {
+        tempDir = Directory.systemTemp.createTempSync('crumbs_install_wired_');
+      });
+
+      tearDown(() => tempDir.deleteSync(recursive: true));
+
+      for (final MapEntry<String, String> wired in <String, String>{
+        'with comments between the calls': '''
+import 'package:flutter/foundation.dart';
+import 'package:crumbs/crumbs.dart';
+import 'package:material_ui/material_ui.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (kDebugMode) {
+    // 1. Install core watcher.
+    CrumbsPlugin.install();
+    // 2. Opt-in exception + dump watchers.
+    CrumbsPlugin.registerWatcher(ExceptionWatcher());
+    CrumbsPlugin.registerWatcher(DumpWatcher());
+  }
+  runApp(const App());
+}
+''',
+        'in a different shape': '''
+import 'package:crumbs/crumbs.dart' show CrumbsPlugin;
+import 'package:flutter/widgets.dart';
+
+void main() {
+  const bool wireCrumbs = !bool.fromEnvironment('dart.vm.product');
+  if (wireCrumbs) CrumbsPlugin.install();
+  runApp(const App());
+}
+''',
+      }.entries) {
+        test('${wired.key} is left byte-identical', () async {
+          final mainDartPath = _seedProject(
+            tempDir,
+            mainDartContents: wired.value,
+          );
+
+          final exit = await _runInstallIn(tempDir, BufferedOutput());
+
+          expect(exit, equals(0));
+          expect(File(mainDartPath).readAsStringSync(), equals(wired.value));
+        });
+      }
+
+      test('a re-run on a freshly wired file is a no-op', () async {
+        final mainDartPath = _seedProject(
+          tempDir,
+          mainDartContents: '''
+import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(const App());
+}
+''',
+        );
+
+        await _runInstallIn(tempDir, BufferedOutput());
+        final afterFirst = File(mainDartPath).readAsStringSync();
+        await _runInstallIn(tempDir, BufferedOutput());
+
+        expect(
+          'CrumbsPlugin.install('.allMatches(afterFirst).length,
+          equals(1),
+        );
+        expect(File(mainDartPath).readAsStringSync(), equals(afterFirst));
       });
     });
   });
