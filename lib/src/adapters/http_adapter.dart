@@ -19,8 +19,8 @@ abstract class CrumbsHttpAdapter {
 
   /// Number of HTTP requests currently in flight on this adapter.
   ///
-  /// Default body returns 0 ; existing implementations (DioHttpAdapter,
-  /// alpha-1 third-party adapters) get the default without changes.
+  /// Default body returns 0 ; existing implementations (DioHttpAdapter and
+  /// third-party adapters) get the default without changes.
   /// Implementations that track in-flight requests (e.g. magic's
   /// `MagicHttpFacadeAdapter`) override this to expose the live count.
   ///

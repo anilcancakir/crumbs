@@ -31,8 +31,8 @@ enum CrumbsKind {
   framePerf,
 }
 
-/// In-memory ring-buffer store for the 9 V1+alpha-2 watcher record types
-/// plus the frame-perf buffer.
+/// In-memory ring-buffer store for the watcher record types plus the
+/// frame-perf buffer.
 ///
 /// Default cap: 500 entries per buffer (configurable via [setCapacity], for
 /// every buffer at once or for one [CrumbsKind]). The frame-perf buffer

@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://pub.dev/packages/crumbs"><img src="https://img.shields.io/pub/v/crumbs.svg" alt="pub package"></a>
   <a href="https://github.com/anilcancakir/crumbs/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/anilcancakir/crumbs/ci.yml?branch=master&label=CI" alt="CI"></a>
+  <a href="https://codecov.io/gh/anilcancakir/crumbs"><img src="https://codecov.io/gh/anilcancakir/crumbs/graph/badge.svg" alt="codecov"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://pub.dev/packages/crumbs/score"><img src="https://img.shields.io/pub/points/crumbs" alt="pub points"></a>
 </p>
