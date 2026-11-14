@@ -81,7 +81,7 @@ These units ship in `crumbs` and depend on no application framework.
 ### LogWatcher
 
 | Field | Value |
-|---|---|
+|:---|:---|
 | Contract | `CrumbsWatcher` |
 | Name | `log` |
 | Installed by | `CrumbsPlugin.install()`, always |
@@ -95,7 +95,7 @@ Install sets `hierarchicalLoggingEnabled` to `true` so named child loggers (`Log
 ### ExceptionWatcher
 
 | Field | Value |
-|---|---|
+|:---|:---|
 | Contract | `CrumbsWatcher` |
 | Name | `exception` |
 | Installed by | `CrumbsPlugin.registerWatcher(ExceptionWatcher())` (written by `crumbs:install`) |
@@ -122,7 +122,7 @@ if (!kReleaseMode) {
 ### DumpWatcher
 
 | Field | Value |
-|---|---|
+|:---|:---|
 | Contract | `CrumbsWatcher` |
 | Name | `dump` |
 | Installed by | `CrumbsPlugin.registerWatcher(DumpWatcher())` (written by `crumbs:install`) |
@@ -143,7 +143,7 @@ if (!kReleaseMode) {
 ### FramePerfWatcher
 
 | Field | Value |
-|---|---|
+|:---|:---|
 | Contract | `CrumbsWatcher` |
 | Name | `frame_perf` |
 | Installed by | `CrumbsPlugin.registerWatcher(FramePerfWatcher())`, never automatically |
@@ -170,7 +170,7 @@ HTTP adapters implement `CrumbsHttpAdapter`: `name`, `install`, `uninstall` and 
 The HTTP buffer is served to AI agents, so `CrumbsStore.recordHttp` masks credentials before it buffers a record, and `onHttpRecord` subscribers receive the masked copy too. The model is Laravel Telescope's: three name lists, matched case-insensitively, each value under a matching name replaced with `********`.
 
 | List | Applies to | Defaults |
-|---|---|---|
+|:---|:---|:---|
 | Request headers | `requestHeaders` | `authorization`, `proxy-authorization`, `cookie`, `set-cookie`, `x-api-key` |
 | Request parameters | keys of a JSON or form `requestBody`, at any depth; the query parameters of the `url`; the keys of the Map elements of a query's `bindings` and a gate check's `arguments` (a positional binding has no key) | `password`, `password_confirmation`, `current_password`, `new_password`, `token`, `access_token`, `refresh_token`, `secret`, `client_secret`, `authorization_code`, `id_token`, `two_factor_token`, `recovery_code`, `api_key`, `apikey`, `signature`, `sig`, `x-amz-signature`, `x-amz-credential`, `x-amz-security-token` |
 | Response parameters | keys of a JSON or form `responseBody`, at any depth | every request parameter name above, plus `plain_text_token`, `recovery_codes`, `qr_url`, `qr_svg` |
@@ -234,7 +234,7 @@ Add it with `dio.interceptors.add(CrumbsDioInterceptor())`. The bundled `example
 ### MagicHttpFacadeAdapter
 
 | Field | Value |
-|---|---|
+|:---|:---|
 | Contract | `CrumbsHttpAdapter` |
 | Name | `magic_http_facade` |
 | Package | `magic_devtools` (`package:magic_devtools/crumbs.dart`) |

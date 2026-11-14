@@ -58,7 +58,7 @@ Use this to inspect what the app logged without scraping `flutter run` stdout vi
 ### Input Schema
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `limit` | integer | no | Maximum number of records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer (cap enforced by ring-buffer size, 500). |
 | `level` | string | no | Minimum log level to include. Common values: `FINE`, `INFO`, `WARNING`, `SEVERE`, `SHOUT`. Omit for all levels. A name that is not a level matches nothing. |
 | `logger` | string | no | Exact logger name to include. Omit for every logger. |
@@ -89,7 +89,7 @@ back. See [Cursor and filters](cursor-and-filters.md).
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `level` | string | yes | Log level name (e.g. `INFO`, `WARNING`, `SEVERE`) |
 | `levelValue` | integer | yes | Numeric level value from `package:logging` |
 | `message` | string | yes | Log message string |
@@ -139,7 +139,7 @@ Use this to debug API issues without a proxy or the network panel of DevTools.
 ### Input Schema
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `limit` | integer | no | Maximum number of HTTP records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer. |
 
 ### Output Shape
@@ -166,7 +166,7 @@ Use this to debug API issues without a proxy or the network panel of DevTools.
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `url` | string | yes | Full request URL; the value of a credential-named query parameter reads `********` |
 | `method` | string | yes | HTTP method (`GET`, `POST`, etc.) |
 | `statusCode` | integer | yes | HTTP status code; 0 when the call failed before a response |
@@ -223,7 +223,7 @@ unhandled exception was thrown and you need the stack without scraping `flutter 
 ### Input Schema
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `limit` | integer | no | Maximum number of exception records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer. |
 
 ### Output Shape
@@ -244,7 +244,7 @@ unhandled exception was thrown and you need the stack without scraping `flutter 
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `exceptionType` | string | yes | Runtime type name of the exception object |
 | `message` | string | yes | Exception message string |
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; this record has no `atUs` |
@@ -285,7 +285,7 @@ to trace event-driven side effects without adding `print` statements.
 ### Input Schema
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `limit` | integer | no | Maximum number of event records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer (cap enforced by ring-buffer size, 500). |
 | `type` | string | no | Prefix of the event type to include. Omit for every event. |
 | `since` | integer | no | Microseconds, exclusive, compared with each record's `atUs`: pass the `cursor` of the previous answer to read only newer records. A value that is not an integer is refused. |
@@ -315,7 +315,7 @@ back. See [Cursor and filters](cursor-and-filters.md).
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `eventType` | string | yes | Runtime class name of the dispatched event |
 | `payload` | object | yes | JSON snapshot of the event payload. A value `jsonEncode` cannot write is stored as its `toString()` |
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
@@ -361,7 +361,7 @@ route is blocked) without modifying policy classes.
 ### Input Schema
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `limit` | integer | no | Maximum number of gate check records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer (cap enforced by ring-buffer size, 500). |
 
 ### Output Shape
@@ -381,7 +381,7 @@ route is blocked) without modifying policy classes.
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `ability` | string | yes | Ability name passed to `Gate.allows` / `Gate.denies` |
 | `result` | boolean | yes | `true` when the gate allowed the action; `false` when denied |
 | `arguments` | array | yes | List of argument values (class name strings or serialised primitives); a value under a credential-named key reads `********` |
@@ -420,7 +420,7 @@ scraping `flutter run` output.
 ### Input Schema
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `limit` | integer | no | Maximum number of dump records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer (cap enforced by ring-buffer size, 500). |
 
 ### Output Shape
@@ -438,7 +438,7 @@ scraping `flutter run` output.
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `message` | string | yes | Full message string passed to `debugPrint` |
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; this record has no `atUs` |
 | `wrapWidth` | integer | no | Wrap width passed to the original `debugPrint` call, when provided |
@@ -478,7 +478,7 @@ a separate SQL profiler.
 ### Input Schema
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `limit` | integer | no | Maximum number of query records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer (cap enforced by ring-buffer size, 500). |
 
 ### Output Shape
@@ -499,7 +499,7 @@ a separate SQL profiler.
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `sql` | string | yes | SQL string the query builder dispatched to the driver |
 | `bindings` | array | yes | Positional or named query bindings; a value under a credential-named key of a Map element reads `********`, a positional value only a host `redactor` masks |
 | `timeMs` | integer | yes | Execution time in milliseconds reported by the query builder |
@@ -543,7 +543,7 @@ instrumenting the app.
 ### Input Schema
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `limit` | integer | no | Maximum number of cache records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer (cap enforced by ring-buffer size, 500). |
 
 ### Output Shape
@@ -563,7 +563,7 @@ instrumenting the app.
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `operation` | string | yes | One of: `hit`, `miss`, `put`, `forget`, `flush` |
 | `key` | string | yes | Cache key string (`*` for a flush) |
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
@@ -606,7 +606,7 @@ to attribute jank to a specific widget or layout phase after driving an interact
 ### Input Schema
 
 | Parameter | Type | Required | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `limit` | integer | no | Maximum number of frame records to return (oldest-first; last entry is newest). Omit for the whole buffer (cap enforced by the frame-perf buffer size, default 3600). |
 
 ### Output Shape
@@ -633,7 +633,7 @@ to attribute jank to a specific widget or layout phase after driving an interact
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `frames` | array | yes | The frame records, may be empty |
 | `frames[].frameNumber` | integer | yes | The engine's frame number |
 | `frames[].buildMicros` | integer | yes | Build phase duration in microseconds |
@@ -691,7 +691,7 @@ No parameters.
 ```
 
 | Field | Type | Always present | Description |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `cleared` | boolean | yes | Always `true` on success |
 
 ### Example Invocations

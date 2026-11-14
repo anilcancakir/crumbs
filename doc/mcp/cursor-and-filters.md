@@ -17,7 +17,7 @@ The parameters belong to the VM Service extensions and the CLI, and the MCP tool
 All values are strings on the wire, as with every VM Service extension.
 
 | Extension | Parameter | Meaning |
-|---|---|---|
+|:---|:---|:---|
 | `ext.crumbs.console` | `level` | Minimum `package:logging` level name. An unknown name matches nothing. |
 | `ext.crumbs.console` | `logger` | Exact logger name. |
 | `ext.crumbs.events` | `type` | Prefix of `eventType`. |
@@ -67,7 +67,7 @@ Every other read extension keeps its own envelope and takes `limit` only.
 `crumbs:tail` and `crumbs:events` expose the same parameters as flags:
 
 | Flag | `crumbs:tail` | `crumbs:events` | Meaning |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `--limit=<n>` | yes (50) | yes (50) | Records to print. |
 | `--level=<name>` | yes | no | Minimum log level. |
 | `--since=<atUs>` | yes | yes | Only records after this `atUs`. |
@@ -111,7 +111,7 @@ Future<void> follow(
 ```
 
 | Parameter | Default | Meaning |
-|---|---|---|
+|:---|:---|:---|
 | `read` | required | Called with the cursor the previous round returned; returns the next cursor. A null keeps the last one. |
 | `since` | null | The cursor of the first round. |
 | `interval` | 1 second | Wait between rounds. |
