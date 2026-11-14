@@ -1,8 +1,8 @@
 ---
 name: crumbs
-description: "Read what a running Flutter app captured (HTTP, logs, exceptions, events, queries) from an agent with crumbs."
+description: "Read the HTTP, logs, exceptions and events a running Flutter app captured, with crumbs."
 version: 0.0.13
-when_to_use: "Use when reading HTTP traffic, logs, exceptions, dumps, events, gates, queries or frames from a running Flutter app via crumbs_* tools or crumbs:* commands; not for driving the UI (tapir) or app lifecycle and MCP wiring (dowel)."
+when_to_use: "Use when calling crumbs_* tools or crumbs:* commands to see what a running Flutter app did; driving the UI is tapir, app lifecycle is dowel."
 ---
 
 <!-- crumbs v0.0.13 | Skill updated: 2026-11-14 -->
@@ -18,7 +18,7 @@ Scope: this skill reads captured state. Driving the UI (taps, text, navigation, 
 If a `crumbs_*` call reports that no app or VM Service is reachable, the app is not running; if it reports an unregistered `ext.crumbs.*` method, crumbs is not installed or the app predates the install. From the Flutter app root:
 
 ```bash
-dart pub add crumbs
+flutter pub add crumbs
 dart run crumbs crumbs:install        # scaffolds ./bin/dowel, registers the plugin, patches lib/main.dart
 dart run crumbs mcp:install           # writes the `dowel` entry into .mcp.json
 ./bin/dowel start --device=chrome     # or macos, linux, windows, a device id
@@ -35,7 +35,7 @@ if (kDebugMode) {
 }
 ```
 
-On a Magic app it also adds `MagicCrumbsIntegration.install()` (from `package:magic_devtools/crumbs.dart`) after `Magic.init()`, which registers the Magic HTTP adapter and the model, cache, event, gate and query watchers, but only when the resolved `magic_devtools` is a release built on crumbs; otherwise it warns and skips that line, so upgrade `magic_devtools` and rerun. Re-running the command is safe. Reconnect the MCP client after `mcp:install` (in Claude Code, `/mcp reconnect dowel`); a stdio server is not reloaded on its own. A Claude Code allow-list entry for the tools is `mcp__dowel__crumbs_*`.
+On a Magic app it also adds `MagicCrumbsIntegration.install()` (from `package:magic_devtools/crumbs.dart`) after `Magic.init()`, which registers the Magic HTTP adapter and the model, cache, event, gate and query watchers, but only when the resolved `magic_devtools` is a release built on crumbs; otherwise it warns and skips that line. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app; upgrade `magic_devtools` then and rerun. Re-running the command is safe. Reconnect the MCP client after `mcp:install` (in Claude Code, `/mcp reconnect dowel`); a stdio server is not reloaded on its own. A Claude Code allow-list entry for the tools is `mcp__dowel__crumbs_*`.
 
 ## Rules
 
@@ -50,9 +50,9 @@ On a Magic app it also adds `MagicCrumbsIntegration.install()` (from `package:ma
    | HTTP | `crumbs_requests` | a `CrumbsHttpAdapter`; `DioHttpAdapter` installs no interceptor, the app's own interceptor calls `DioHttpAdapter.recordRequest` |
    | exceptions | `crumbs_exceptions` | `ExceptionWatcher`: uncaught errors from `FlutterError.onError` and `PlatformDispatcher.instance.onError` |
    | dumps | `crumbs_dumps` | `DumpWatcher`: `debugPrint` only (not `print`), debug builds only |
-   | events, gates, queries, caches | `crumbs_events`, `crumbs_gates`, `crumbs_queries`, `crumbs_caches` | the Magic watchers from `MagicCrumbsIntegration` |
+   | events, gates, queries, caches | `crumbs_events`, `crumbs_gates`, `crumbs_queries`, `crumbs_caches` | the Magic watchers from `MagicCrumbsIntegration`; `crumbs_events` holds auth, database and gate-definition events |
    | frames | `crumbs_frames` | `FramePerfWatcher`, registered by the host |
-   | models | nothing | Magic's model watcher; no extension serves it, model events reach `crumbs_events` |
+   | models | nothing | Magic's model watcher; model events go to this buffer, which no tool serves |
 
    The CLI says so on an empty read (`No HTTP records (register a CrumbsHttpAdapter).`). `crumbs_frames` always carries `livenessCounter`, the count of frames drawn: frames empty while it stays still means no watcher or a stalled engine, not an idle app.
 3. **Crumbs is debug-only by the host's guard.** `CrumbsPlugin.install()` itself checks no build mode; the guard around it in `lib/main.dart` decides. `DumpWatcher` adds its own debug check. `--dart-define=CRUMBS_DISABLE=1` skips the install.

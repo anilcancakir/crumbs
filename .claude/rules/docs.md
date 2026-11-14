@@ -38,5 +38,5 @@ No count of commands, MCP tools, watchers, extensions or buffers appears in pros
 
 ## Before a release tag
 
-1. `## [Unreleased]` is promoted with its footer link, and every stamp in CLAUDE.md Release moved.
+1. `## [Unreleased]` is promoted, and every stamp in CLAUDE.md Release moved.
 2. No doc states a count, and `python3 tool/check-docs.py` reports 0 issues.

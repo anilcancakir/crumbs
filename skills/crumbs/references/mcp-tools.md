@@ -37,7 +37,7 @@ Record fields are in `records.md`.
 - `crumbs_tail`: `level` is a minimum level name, compared case-insensitively against the `package:logging` order `FINEST`, `FINER`, `FINE`, `CONFIG`, `INFO`, `WARNING`, `SEVERE`, `SHOUT`. A name outside that list (`ALL`, a typo) matches nothing. The buffer keeps every level; the filter runs at read time.
 - `crumbs_exceptions`: uncaught errors only. A caught exception appears only if the code logged it, and then in `crumbs_tail`.
 - `crumbs_dumps`: `debugPrint` output only. `print` and `stdout.write` do not go through `debugPrint`.
-- `crumbs_events`, `crumbs_gates`, `crumbs_queries`, `crumbs_caches`: filled only by the Magic watchers `MagicCrumbsIntegration` registers (events through Magic's `Event` facade, checks through `Gate`, queries that dispatch `QueryExecuted`, `Cache` facade operations). Magic model lifecycle events arrive in `crumbs_events`; the model buffer itself has no tool.
+- `crumbs_events`, `crumbs_gates`, `crumbs_queries`, `crumbs_caches`: filled only by the Magic watchers `MagicCrumbsIntegration` registers (auth, database and gate-definition events, checks through `Gate`, queries that dispatch `QueryExecuted`, `Cache` facade operations). Magic model events go to the model buffer, which no tool serves.
 - `crumbs_frames`: `livenessCounter` is present on every answer, the list empty or not. It counts frames drawn since the first `FramePerfWatcher` install; when it does not move between two reads, the engine drew nothing. `blocks` is filled only while timeline collection is on (a tapir perf session turns it on).
 - `crumbs_clear`: empties every buffer the store holds, frames included. It does not touch the file sink's files or any other reporter.
 

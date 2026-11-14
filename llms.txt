@@ -7,7 +7,7 @@
 **Setup**:
 
 ```bash
-dart pub add crumbs
+flutter pub add crumbs
 dart run crumbs crumbs:install        # scaffolds ./bin/dowel, registers the plugin, patches lib/main.dart
 dart run crumbs mcp:install           # the `dowel` entry in .mcp.json
 ./bin/dowel start --device=chrome     # or macos, linux, windows, a device id
@@ -41,7 +41,7 @@ void main() {
 - `CrumbsRedaction`: credential masking of HTTP records (`hideRequestHeaders`, `hideRequestParameters`, `hideResponseParameters`, `redactParameters`, `redactBody`) and the host text hook `redactor`.
 - `CrumbsFileSink.start(directory:, maxFileBytes:, maxFiles:)`: the rotating JSONL timeline of redacted log, event and exception records.
 - `CrumbsDowelProvider` and `followCursor` (`package:crumbs/cli.dart`): the provider dowel loads from `lib/app/_plugins.g.dart`, and the polling loop behind `--follow`.
-- `MagicCrumbsIntegration.install()` (`package:magic_devtools/crumbs.dart`): the Magic HTTP adapter and the model, cache, event, gate and query watchers, after `Magic.init()`. Available only with a `magic_devtools` release built on crumbs; otherwise `crumbs:install` warns and skips it.
+- `MagicCrumbsIntegration.install()` (`package:magic_devtools/crumbs.dart`): the Magic HTTP adapter and the model, cache, event, gate and query watchers, after `Magic.init()`. Available only with a `magic_devtools` release built on crumbs; otherwise `crumbs:install` warns and skips it. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
 - MCP tools: `crumbs_tail` (logs, reads `ext.crumbs.console`), `crumbs_requests`, `crumbs_exceptions`, `crumbs_dumps`, `crumbs_events`, `crumbs_gates`, `crumbs_queries`, `crumbs_caches`, `crumbs_frames`, `crumbs_clear`.
 - CLI commands mirror the tools by name, except: `crumbs_exceptions` has no command, and `crumbs:install` and `crumbs:files` (the timeline files) have no tool.
 
@@ -58,7 +58,7 @@ Any Flutter target that exposes a VM Service in a debug or profile build: Androi
 - Page logs and events with the `cursor` each read returns, passed back as `since` (CLI: `--since`, or `--follow` to keep polling). A `since` that is not an integer is refused, never ignored.
 - `********` is crumbs' credential mask, not the app's value. A host `redactor` that throws drops the record, so a missing line after a sensitive log call can mean a failing redactor.
 - Exceptions are uncaught ones only; a swallowed `try`/`catch` shows up only if the code logged it.
-- The model buffer has no extension, tool or command; Magic model events reach `crumbs_events` instead.
+- Magic model events go to the model buffer, which no extension, tool or command serves; `crumbs_events` holds auth, database and gate-definition events.
 
 ## Docs
 

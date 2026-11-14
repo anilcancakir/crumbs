@@ -2,9 +2,10 @@ import '../records/http_request_record.dart';
 import '../crumbs_store.dart';
 import 'http_adapter.dart';
 
-/// Vanilla Dio HTTP adapter. Hook by calling
-/// `dio.interceptors.add(DioHttpAdapter(dio).asDioInterceptor());`
-/// after constructing the adapter.
+/// Vanilla Dio HTTP adapter. It installs no interceptor: register it with
+/// `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter())` and call
+/// [recordRequest] from the app's own Dio interceptor (`onResponse` and
+/// `onError`), as the example app does.
 ///
 /// NOT a Magic-coupled implementation: vanilla Flutter apps using raw Dio
 /// instances feed CrumbsStore via this adapter. Magic-app users get the

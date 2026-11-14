@@ -38,7 +38,6 @@ Future<void> startTimeline(String supportPath, String Function(String) maskSecre
 | `stop()` | Flushes, closes the file, and clears `current`. Safe to call twice. |
 | `droppedUnredacted` | Count of records refused because `redacted` was false. |
 | `writeFailures` | Count of background batch writes that failed. |
-| `pendingLines` | Lines accepted and not yet handed to the disk queue. |
 
 `maxFileBytes` must be at least 1 and `maxFiles` at least 1. A single line larger than `maxFileBytes` still
 gets a file of its own.

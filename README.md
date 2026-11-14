@@ -22,7 +22,7 @@
   <a href="https://github.com/anilcancakir/crumbs/issues">Issues</a>
 </p>
 
-crumbs is a passive inspector: it never changes what the app does, it only records. Watchers hook `package:logging`, `FlutterError.onError`, `debugPrint` and the frame scheduler; HTTP adapters and the Magic watchers feed the rest. Every record lands in a ring buffer inside the app, and `ext.crumbs.*` VM Service extensions serve those buffers to `crumbs:*` commands and `crumbs_*` MCP tools on [`dowel`](https://pub.dev/packages/dowel). Its sibling [`tapir`](https://pub.dev/packages/tapir) drives the app; crumbs reads what the app captured. crumbs is inspired by [Laravel Telescope](https://laravel.com/docs/telescope), which records the requests, exceptions, logs, queries, cache hits and events of a Laravel app into a queryable timeline; crumbs serves the same kind of timeline to a terminal and an AI agent instead of a web dashboard.
+crumbs is a passive inspector: it records what the app does and drives nothing. Watchers hook `package:logging`, `FlutterError.onError`, `debugPrint` and the frame scheduler, and call any handler set before them; the log watcher also turns on hierarchical logging and sets `Logger.root.level` to `Level.ALL`, so every log record reaches the buffer. HTTP adapters and the Magic watchers feed the rest. Every record lands in a ring buffer inside the app, and `ext.crumbs.*` VM Service extensions serve those buffers to `crumbs:*` commands and `crumbs_*` MCP tools on [`dowel`](https://pub.dev/packages/dowel). Its sibling [`tapir`](https://pub.dev/packages/tapir) drives the app; crumbs reads what the app captured. crumbs is inspired by [Laravel Telescope](https://laravel.com/docs/telescope), which records the requests, exceptions, logs, queries, cache hits and events of a Laravel app into a queryable timeline; crumbs serves the same kind of timeline to a terminal and an AI agent instead of a web dashboard.
 
 ## At a glance
 
@@ -66,7 +66,7 @@ void main() {
 
 The guard belongs to the call site: crumbs installs none of its own. `kDebugMode` is what the installer writes; `!kReleaseMode` also keeps crumbs in a profile build, which a frame measurement needs. Either way a release build tree-shakes crumbs. Without a guard crumbs ships in release, and anyone who reaches that app's VM Service can read every buffer. `--dart-define=CRUMBS_DISABLE=1` skips registration in a build that must not expose the extensions. The [`example/`](example/) app wires the core watchers and routes Dio traffic into the HTTP buffer.
 
-On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter and the model, cache, event, gate and query watchers. It exists only in a [`magic_devtools`](https://pub.dev/packages/magic_devtools) release built on crumbs: `crumbs:install` writes those lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise.
+On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter and the model, cache, event, gate and query watchers. It exists only in a [`magic_devtools`](https://pub.dev/packages/magic_devtools) release built on crumbs: `crumbs:install` writes those lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
 
 ## What it captures
 
@@ -140,17 +140,23 @@ crumbs_queries {}
 | Read `livenessCounter` with an empty `crumbs_frames` answer | A counter that does not advance means `FramePerfWatcher` is not registered or the engine draws nothing, not a smooth app |
 | Treat `********` in an HTTP record as crumbs's mask | The app sent the real credential; crumbs hid it before buffering |
 | Set `CrumbsRedaction.redactor` before `CrumbsFileSink.start()` | The sink writes only redacted records and counts the rest in `droppedUnredacted` |
-| Use `crumbs:tail --json --follow` or `crumbs:events --json --follow` to page by cursor | The MCP descriptors declare only `limit` (and `level` on `crumbs_tail`); `since`, `logger`, `type` and `cursor` live on the extensions and the CLI |
+| Page logs and events by passing the `cursor` of one answer back as `since` (CLI: `--since`, or `--json --follow`) | The MCP descriptors declare only `limit` (and `level` on `crumbs_tail`), but dowel forwards every argument, so `since`, `logger` and `type` work over MCP too |
 | Point the MCP client at the `dowel` key and reconnect after `mcp:install` | The tools ride on the dowel server, and clients do not reload an entry on their own |
 
 ## Moving from fluttersdk_telescope
 
-crumbs is the new name of `fluttersdk_telescope`, and dowel the new name of the CLI substrate it runs on. Swap the dependencies and rerun the installer:
+crumbs is the new name of `fluttersdk_telescope`, and dowel the new name of the CLI substrate it runs on. Nothing is migrated automatically:
 
 ```bash
 flutter pub remove fluttersdk_telescope fluttersdk_artisan && flutter pub add crumbs dowel
+mv .artisan .dowel && rm -f .dowel/plugins.json .dowel/installed/fluttersdk_telescope.json
+rm bin/dispatcher.dart bin/fsa lib/app/_plugins.g.dart lib/app/commands/_index.g.dart
 dart run crumbs crumbs:install
+dart run dowel commands:refresh
+dart run crumbs mcp:install
 ```
+
+The old dispatcher and codegen barrels import `fluttersdk_artisan`, and the installer keeps a file that exists, so they go first. Rename the imports and identifiers below, and in your own commands under `lib/app/commands/` replace `package:fluttersdk_artisan/artisan.dart` with `package:dowel/dowel.dart` and `Artisan*` with `Dowel*` before `commands:refresh`. Delete the `fluttersdk` entry from `.mcp.json` and run `/mcp reconnect dowel`. On a Magic app, `MagicTelescopeIntegration` keeps feeding `fluttersdk_telescope`, not crumbs, until a `magic_devtools` release built on crumbs ships; upgrade to it then and rerun `dart run crumbs crumbs:install`.
 
 | Before | After |
 |---|---|
@@ -158,7 +164,8 @@ dart run crumbs crumbs:install
 | `Telescope*` identifiers (`TelescopePlugin`, `TelescopeStore`, `TelescopeRedaction`, `TelescopeFileSink`) | `Crumbs*` (`CrumbsPlugin`, `CrumbsStore`, `CrumbsRedaction`, `CrumbsFileSink`) |
 | `telescope:*` commands, `telescope_*` tools, `ext.telescope.*` | `crumbs:*`, `crumbs_*`, `ext.crumbs.*` |
 | `TELESCOPE_DISABLE` | `CRUMBS_DISABLE` |
-| The old `.mcp.json` server key | `dowel` (run `dart run crumbs mcp:install`, then `/mcp reconnect dowel`) |
+| The `fluttersdk` server key in `.mcp.json` | `dowel` |
+| `package:fluttersdk_artisan/artisan.dart`, `Artisan*` in your own commands | `package:dowel/dowel.dart`, `Dowel*` |
 
 The [changelog](https://github.com/anilcancakir/crumbs/blob/master/CHANGELOG.md) lists the rest.
 

@@ -54,7 +54,7 @@ A subtree nested past 64 levels is masked whole.
 
 ### The `redacted` flag
 
-The log, event, exception and HTTP records carry a read-only `redacted` getter, serialized in `toJson`. It
+The log, event, exception and HTTP records carry a read-only `redacted` getter, serialised in `toJson`. It
 is true only for a record the store's redaction pass produced with a redactor registered. The
 constructors take no `redacted` argument, and `HttpRequestRecord.copyWith` returns an unredacted copy, so
 no caller can build a record that a persisting consumer would take for masked. `CrumbsFileSink` relies
