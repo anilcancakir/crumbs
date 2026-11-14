@@ -66,9 +66,7 @@ void main() {
       });
     });
 
-    test(
-        'toJson serializes a non-empty block map as nested micros/selfMicros/count',
-        () {
+    test('toJson serializes a non-empty block map as nested micros/selfMicros/count', () {
       final record = FramePerfRecord(
         frameNumber: 8,
         buildMicros: 900,
@@ -93,37 +91,35 @@ void main() {
       final decoded = jsonDecode(encoded) as Map<String, dynamic>;
       expect(
         (decoded['blocks'] as Map<String, dynamic>)['Widget.build'],
-        equals(<String, dynamic>{
-          'micros': 600,
-          'selfMicros': 400,
-          'count': 5,
-        }),
+        equals(<String, dynamic>{'micros': 600, 'selfMicros': 400, 'count': 5}),
       );
     });
 
-    test('two records with same fields are not identical (default identity)',
-        () {
-      final a = FramePerfRecord(
-        frameNumber: 1,
-        buildMicros: 1,
-        rasterMicros: 1,
-        vsyncOverheadMicros: 1,
-        totalSpanMicros: 3,
-        time: fixedTime,
-        blocks: const <String, ({int micros, int selfMicros, int count})>{},
-      );
-      final b = FramePerfRecord(
-        frameNumber: 1,
-        buildMicros: 1,
-        rasterMicros: 1,
-        vsyncOverheadMicros: 1,
-        totalSpanMicros: 3,
-        time: fixedTime,
-        blocks: const <String, ({int micros, int selfMicros, int count})>{},
-      );
+    test(
+      'two records with same fields are not identical (default identity)',
+      () {
+        final a = FramePerfRecord(
+          frameNumber: 1,
+          buildMicros: 1,
+          rasterMicros: 1,
+          vsyncOverheadMicros: 1,
+          totalSpanMicros: 3,
+          time: fixedTime,
+          blocks: const <String, ({int micros, int selfMicros, int count})>{},
+        );
+        final b = FramePerfRecord(
+          frameNumber: 1,
+          buildMicros: 1,
+          rasterMicros: 1,
+          vsyncOverheadMicros: 1,
+          totalSpanMicros: 3,
+          time: fixedTime,
+          blocks: const <String, ({int micros, int selfMicros, int count})>{},
+        );
 
-      expect(identical(a, b), isFalse);
-    });
+        expect(identical(a, b), isFalse);
+      },
+    );
 
     // -------------------------------------------------------------------------
     // Clock, interaction link (shared shape across every crumbs record)
@@ -160,8 +156,7 @@ void main() {
       expect(record.atUs, equals(555));
     });
 
-    test(
-        'vsyncStartUs, interactionId and linkedBy default to null and '
+    test('vsyncStartUs, interactionId and linkedBy default to null and '
         'toJson omits them', () {
       final record = FramePerfRecord(
         frameNumber: 1,
@@ -183,8 +178,7 @@ void main() {
       expect(json.containsKey('linkedBy'), isFalse);
     });
 
-    test(
-        'vsyncStartUs, interactionId and linkedBy are set and serialized '
+    test('vsyncStartUs, interactionId and linkedBy are set and serialized '
         'when provided', () {
       final record = FramePerfRecord(
         frameNumber: 1,
@@ -212,14 +206,14 @@ void main() {
 
   group('CrumbsStore frame perf buffer', () {
     FramePerfRecord frame(int n) => FramePerfRecord(
-          frameNumber: n,
-          buildMicros: n,
-          rasterMicros: n,
-          vsyncOverheadMicros: n,
-          totalSpanMicros: n * 3,
-          time: fixedTime,
-          blocks: const <String, ({int micros, int selfMicros, int count})>{},
-        );
+      frameNumber: n,
+      buildMicros: n,
+      rasterMicros: n,
+      vsyncOverheadMicros: n,
+      totalSpanMicros: n * 3,
+      time: fixedTime,
+      blocks: const <String, ({int micros, int selfMicros, int count})>{},
+    );
 
     test('recordFramePerf appends and recentFramePerf returns in order', () {
       CrumbsStore.recordFramePerf(frame(1));
@@ -228,14 +222,10 @@ void main() {
 
       final recent = CrumbsStore.recentFramePerf();
 
-      expect(
-        recent.map((r) => r.frameNumber).toList(),
-        equals(<int>[1, 2, 3]),
-      );
+      expect(recent.map((r) => r.frameNumber).toList(), equals(<int>[1, 2, 3]));
     });
 
-    test(
-        'setting the frame buffer own cap and recording cap+5 evicts the '
+    test('setting the frame buffer own cap and recording cap+5 evicts the '
         'oldest, leaving exactly cap surviving', () {
       CrumbsStore.setFramePerfCapacity(10);
 
@@ -251,8 +241,7 @@ void main() {
       expect(recent.last.frameNumber, equals(14));
     });
 
-    test(
-        'recording many frames leaves the shared _cap (other buffers) '
+    test('recording many frames leaves the shared _cap (other buffers) '
         'untouched', () {
       CrumbsStore.setFramePerfCapacity(10);
 
@@ -260,24 +249,28 @@ void main() {
         CrumbsStore.recordFramePerf(frame(i));
       }
 
-      CrumbsStore.recordHttp(HttpRequestRecord(
-        url: 'https://example.test/',
-        method: 'GET',
-        statusCode: 200,
-        durationMs: 5,
-        isError: false,
-        timestamp: fixedTime,
-      ));
-
-      for (var i = 0; i < 600; i++) {
-        CrumbsStore.recordHttp(HttpRequestRecord(
+      CrumbsStore.recordHttp(
+        HttpRequestRecord(
           url: 'https://example.test/',
           method: 'GET',
           statusCode: 200,
-          durationMs: i,
+          durationMs: 5,
           isError: false,
           timestamp: fixedTime,
-        ));
+        ),
+      );
+
+      for (var i = 0; i < 600; i++) {
+        CrumbsStore.recordHttp(
+          HttpRequestRecord(
+            url: 'https://example.test/',
+            method: 'GET',
+            statusCode: 200,
+            durationMs: i,
+            isError: false,
+            timestamp: fixedTime,
+          ),
+        );
       }
 
       // The shared _cap default (500) governs the http buffer; the frame
@@ -287,14 +280,16 @@ void main() {
 
     test('clearFramePerf() empties only the frame buffer', () {
       CrumbsStore.recordFramePerf(frame(1));
-      CrumbsStore.recordHttp(HttpRequestRecord(
-        url: 'https://example.test/',
-        method: 'GET',
-        statusCode: 200,
-        durationMs: 5,
-        isError: false,
-        timestamp: fixedTime,
-      ));
+      CrumbsStore.recordHttp(
+        HttpRequestRecord(
+          url: 'https://example.test/',
+          method: 'GET',
+          statusCode: 200,
+          durationMs: 5,
+          isError: false,
+          timestamp: fixedTime,
+        ),
+      );
 
       CrumbsStore.clearFramePerf();
 

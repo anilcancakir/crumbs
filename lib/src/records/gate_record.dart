@@ -20,10 +20,10 @@ class GateRecord {
   final String? userId;
 
   Map<String, dynamic> toJson() => {
-        'ability': ability,
-        'result': result,
-        'arguments': arguments,
-        'time': time.toIso8601String(),
-        if (userId != null) 'userId': userId,
-      };
+    'ability': ability,
+    'result': result,
+    'arguments': arguments,
+    'time': time.toIso8601String(),
+    if (userId != null) 'userId': userId,
+  };
 }

@@ -6,12 +6,12 @@ import 'http_adapter.dart';
 /// `dio.interceptors.add(DioHttpAdapter(dio).asDioInterceptor());`
 /// after constructing the adapter.
 ///
-/// NOT a Magic-coupled implementation — vanilla Flutter apps using raw Dio
+/// NOT a Magic-coupled implementation: vanilla Flutter apps using raw Dio
 /// instances feed CrumbsStore via this adapter. Magic-app users get the
 /// Magic.Http facade adapter via magic's MagicCrumbsIntegration instead.
 ///
 /// V1 stub: the actual Dio Interceptor subclass requires `package:dio` which
-/// is not in crumbs's pubspec (vanilla Flutter friendly — we avoid
+/// is not in crumbs's pubspec (vanilla Flutter friendly, we avoid
 /// declaring opinionated HTTP lib deps). Consumers add `dio` to THEIR pubspec
 /// and wire this adapter manually. V1.x: move this to `crumbs_dio`
 /// adapter sub-package.

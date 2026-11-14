@@ -48,27 +48,31 @@ void main() {
     // Extension methods
     // -------------------------------------------------------------------------
 
-    test('each descriptor maps to the correct ext.crumbs.* extension method',
-        () {
-      final byName = {for (final t in tools) t.name: t.extensionMethod};
+    test(
+      'each descriptor maps to the correct ext.crumbs.* extension method',
+      () {
+        final byName = {for (final t in tools) t.name: t.extensionMethod};
 
-      expect(byName['crumbs_tail'], equals('ext.crumbs.console'));
-      expect(byName['crumbs_requests'], equals('ext.crumbs.requests'));
-      expect(byName['crumbs_clear'], equals('ext.crumbs.clear'));
-      expect(byName['crumbs_exceptions'], equals('ext.crumbs.exceptions'));
-      expect(byName['crumbs_events'], equals('ext.crumbs.events'));
-      expect(byName['crumbs_gates'], equals('ext.crumbs.gates'));
-      expect(byName['crumbs_dumps'], equals('ext.crumbs.dumps'));
-      expect(byName['crumbs_queries'], equals('ext.crumbs.queries'));
-      expect(byName['crumbs_caches'], equals('ext.crumbs.caches'));
-      expect(byName['crumbs_frames'], equals('ext.crumbs.frames'));
-    });
+        expect(byName['crumbs_tail'], equals('ext.crumbs.console'));
+        expect(byName['crumbs_requests'], equals('ext.crumbs.requests'));
+        expect(byName['crumbs_clear'], equals('ext.crumbs.clear'));
+        expect(byName['crumbs_exceptions'], equals('ext.crumbs.exceptions'));
+        expect(byName['crumbs_events'], equals('ext.crumbs.events'));
+        expect(byName['crumbs_gates'], equals('ext.crumbs.gates'));
+        expect(byName['crumbs_dumps'], equals('ext.crumbs.dumps'));
+        expect(byName['crumbs_queries'], equals('ext.crumbs.queries'));
+        expect(byName['crumbs_caches'], equals('ext.crumbs.caches'));
+        expect(byName['crumbs_frames'], equals('ext.crumbs.frames'));
+      },
+    );
 
-    test('no two descriptors share an extensionMethod (no overlap, no gap)',
-        () {
-      final methods = tools.map((t) => t.extensionMethod).toList();
-      expect(methods.toSet(), hasLength(tools.length));
-    });
+    test(
+      'no two descriptors share an extensionMethod (no overlap, no gap)',
+      () {
+        final methods = tools.map((t) => t.extensionMethod).toList();
+        expect(methods.toSet(), hasLength(tools.length));
+      },
+    );
 
     // -------------------------------------------------------------------------
     // Input schemas : JSON round-trip
@@ -89,9 +93,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test('crumbs_exceptions declares a limit integer property', () {
-      final exceptions = tools.firstWhere(
-        (t) => t.name == 'crumbs_exceptions',
-      );
+      final exceptions = tools.firstWhere((t) => t.name == 'crumbs_exceptions');
       final properties =
           exceptions.inputSchema['properties'] as Map<String, dynamic>;
       expect(properties.containsKey('limit'), isTrue);
@@ -100,9 +102,7 @@ void main() {
     });
 
     test('crumbs_exceptions does not declare required params', () {
-      final exceptions = tools.firstWhere(
-        (t) => t.name == 'crumbs_exceptions',
-      );
+      final exceptions = tools.firstWhere((t) => t.name == 'crumbs_exceptions');
       expect(exceptions.inputSchema.containsKey('required'), isFalse);
     });
 
@@ -212,8 +212,10 @@ void main() {
 
   group('CrumbsDowelProvider.commands()', () {
     test('registers every crumbs CLI command, in order', () {
-      final names =
-          CrumbsDowelProvider().commands().map((c) => c.name).toList();
+      final names = CrumbsDowelProvider()
+          .commands()
+          .map((c) => c.name)
+          .toList();
 
       expect(
         names,

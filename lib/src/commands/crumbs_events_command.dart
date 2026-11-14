@@ -11,14 +11,10 @@ import '../cursor_follow.dart';
 /// object per line, and `--follow` re-reads every second from the cursor the
 /// previous read returned until the process is interrupted.
 class CrumbsEventsCommand extends DowelCommand {
-  /// [delay] waits between two `--follow` polls and [shouldStop] ends the loop
+  /// [_delay] waits between two `--follow` polls and [_shouldStop] ends the loop
   /// once it returns true for the number of polls made so far; both exist so
   /// a test can run the loop without a clock or a Ctrl-C.
-  CrumbsEventsCommand({
-    Future<void> Function(Duration) delay = _wait,
-    bool Function(int polls) shouldStop = _never,
-  })  : _delay = delay,
-        _shouldStop = shouldStop;
+  CrumbsEventsCommand({this._delay = _wait, this._shouldStop = _never});
 
   static const Duration _pollInterval = Duration(seconds: 1);
 
@@ -36,7 +32,8 @@ class CrumbsEventsCommand extends DowelCommand {
   CommandBoot get boot => CommandBoot.connected;
 
   @override
-  String get signature => 'crumbs:events '
+  String get signature =>
+      'crumbs:events '
       '{--limit=50 : Maximum number of records to print.} '
       '{--since= : Only records after this atUs (microseconds).} '
       '{--type= : Only event types starting with this prefix.} '
@@ -87,8 +84,9 @@ class CrumbsEventsCommand extends DowelCommand {
   }
 
   String _format(Map<String, dynamic> r) {
-    final listeners =
-        r['listenerCount'] == null ? '' : ' listeners=${r['listenerCount']}';
+    final listeners = r['listenerCount'] == null
+        ? ''
+        : ' listeners=${r['listenerCount']}';
     return '${r['time']} ${r['eventType']} ${r['payload']}$listeners';
   }
 }

@@ -10,14 +10,10 @@ import '../cursor_follow.dart';
 /// object per line, and `--follow` re-reads every second from the cursor the
 /// previous read returned until the process is interrupted.
 class CrumbsTailCommand extends DowelCommand {
-  /// [delay] waits between two `--follow` polls and [shouldStop] ends the loop
+  /// [_delay] waits between two `--follow` polls and [_shouldStop] ends the loop
   /// once it returns true for the number of polls made so far; both exist so
   /// a test can run the loop without a clock or a Ctrl-C.
-  CrumbsTailCommand({
-    Future<void> Function(Duration) delay = _wait,
-    bool Function(int polls) shouldStop = _never,
-  })  : _delay = delay,
-        _shouldStop = shouldStop;
+  CrumbsTailCommand({this._delay = _wait, this._shouldStop = _never});
 
   static const Duration _pollInterval = Duration(seconds: 1);
 
@@ -38,10 +34,7 @@ class CrumbsTailCommand extends DowelCommand {
     parser
       ..addOption('level', help: 'Minimum level (info/warning/severe).')
       ..addOption('limit', defaultsTo: '50')
-      ..addOption(
-        'since',
-        help: 'Only records after this atUs (microseconds).',
-      )
+      ..addOption('since', help: 'Only records after this atUs (microseconds).')
       ..addOption('logger', help: 'Only records of this exact logger name.')
       ..addFlag(
         'json',

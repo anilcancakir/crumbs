@@ -15,8 +15,9 @@ class CrumbsQueriesCommand extends DowelCommand {
   CommandBoot get boot => CommandBoot.connected;
 
   @override
-  String get signature => 'crumbs:queries '
-      '{--limit=50 : Maximum number of records to print (newest first).}';
+  String get signature =>
+      'crumbs:queries '
+      '{--limit=50 : Maximum number of records to print (the newest N, oldest first).}';
 
   @override
   Future<int> handle(DowelContext ctx) async {

@@ -75,22 +75,22 @@ class FramePerfRecord {
   final String? linkedBy;
 
   Map<String, dynamic> toJson() => {
-        'frameNumber': frameNumber,
-        'buildMicros': buildMicros,
-        'rasterMicros': rasterMicros,
-        'vsyncOverheadMicros': vsyncOverheadMicros,
-        'totalSpanMicros': totalSpanMicros,
-        'time': time.toIso8601String(),
-        'blocks': blocks.map(
-          (name, block) => MapEntry(name, {
-            'micros': block.micros,
-            'selfMicros': block.selfMicros,
-            'count': block.count,
-          }),
-        ),
-        if (vsyncStartUs != null) 'vsyncStartUs': vsyncStartUs,
-        'atUs': atUs,
-        if (interactionId != null) 'interactionId': interactionId,
-        if (linkedBy != null) 'linkedBy': linkedBy,
-      };
+    'frameNumber': frameNumber,
+    'buildMicros': buildMicros,
+    'rasterMicros': rasterMicros,
+    'vsyncOverheadMicros': vsyncOverheadMicros,
+    'totalSpanMicros': totalSpanMicros,
+    'time': time.toIso8601String(),
+    'blocks': blocks.map(
+      (name, block) => MapEntry(name, {
+        'micros': block.micros,
+        'selfMicros': block.selfMicros,
+        'count': block.count,
+      }),
+    ),
+    if (vsyncStartUs != null) 'vsyncStartUs': vsyncStartUs,
+    'atUs': atUs,
+    if (interactionId != null) 'interactionId': interactionId,
+    if (linkedBy != null) 'linkedBy': linkedBy,
+  };
 }

@@ -18,7 +18,8 @@ class CrumbsFilesCommand extends DowelCommand {
   CommandBoot get boot => CommandBoot.connected;
 
   @override
-  String get signature => 'crumbs:files '
+  String get signature =>
+      'crumbs:files '
       '{--name= : Print the lines of this file (as listed) instead of the list.} '
       '{--offset=0 : Byte offset to start reading from; 0 or a previous next.}';
 

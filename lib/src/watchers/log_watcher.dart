@@ -8,7 +8,7 @@ import 'watcher.dart';
 
 /// Subscribes to [Logger.root.onRecord] and feeds [CrumbsStore.recordLog].
 ///
-/// Auto-installed by [CrumbsPlugin.install]. Zero ceremony — the package
+/// Auto-installed by [CrumbsPlugin.install]. Zero ceremony: the package
 /// `package:logging` is the de-facto standard for structured logging in Dart
 /// + Flutter; if the app doesn't use it, this watcher is dormant (no log
 /// records flow through Logger.root).

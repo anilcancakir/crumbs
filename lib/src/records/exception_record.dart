@@ -24,11 +24,11 @@ class ExceptionRecord {
   bool get redacted => CrumbsRedaction.isRedacted(this);
 
   Map<String, dynamic> toJson() => {
-        'exceptionType': exceptionType,
-        'message': message,
-        'time': time.toIso8601String(),
-        if (stackTrace != null) 'stackTrace': stackTrace,
-        if (isolate != null) 'isolate': isolate,
-        'redacted': redacted,
-      };
+    'exceptionType': exceptionType,
+    'message': message,
+    'time': time.toIso8601String(),
+    if (stackTrace != null) 'stackTrace': stackTrace,
+    if (isolate != null) 'isolate': isolate,
+    'redacted': redacted,
+  };
 }

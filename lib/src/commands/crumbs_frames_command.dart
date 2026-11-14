@@ -16,7 +16,8 @@ class CrumbsFramesCommand extends DowelCommand {
   CommandBoot get boot => CommandBoot.connected;
 
   @override
-  String get signature => 'crumbs:frames '
+  String get signature =>
+      'crumbs:frames '
       '{--limit=50 : Cap the window to the most recent N records, printed '
       'oldest to newest.}';
 

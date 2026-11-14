@@ -36,12 +36,12 @@ class MagicCacheRecord {
   final String? linkedBy;
 
   Map<String, dynamic> toJson() => {
-        'operation': operation,
-        'key': key,
-        'time': time.toIso8601String(),
-        if (ttl != null) 'ttlMs': ttl!.inMilliseconds,
-        'atUs': atUs,
-        if (interactionId != null) 'interactionId': interactionId,
-        if (linkedBy != null) 'linkedBy': linkedBy,
-      };
+    'operation': operation,
+    'key': key,
+    'time': time.toIso8601String(),
+    if (ttl != null) 'ttlMs': ttl!.inMilliseconds,
+    'atUs': atUs,
+    if (interactionId != null) 'interactionId': interactionId,
+    if (linkedBy != null) 'linkedBy': linkedBy,
+  };
 }

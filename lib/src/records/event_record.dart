@@ -46,13 +46,13 @@ class EventRecord {
   bool get redacted => CrumbsRedaction.isRedacted(this);
 
   Map<String, dynamic> toJson() => {
-        'eventType': eventType,
-        'payload': payload,
-        'time': time.toIso8601String(),
-        if (listenerCount != null) 'listenerCount': listenerCount,
-        'atUs': atUs,
-        if (interactionId != null) 'interactionId': interactionId,
-        if (linkedBy != null) 'linkedBy': linkedBy,
-        'redacted': redacted,
-      };
+    'eventType': eventType,
+    'payload': payload,
+    'time': time.toIso8601String(),
+    if (listenerCount != null) 'listenerCount': listenerCount,
+    'atUs': atUs,
+    if (interactionId != null) 'interactionId': interactionId,
+    if (linkedBy != null) 'linkedBy': linkedBy,
+    'redacted': redacted,
+  };
 }

@@ -11,10 +11,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test('constructor sets all required fields', () {
-      final record = DumpRecord(
-        message: 'debug output here',
-        time: time,
-      );
+      final record = DumpRecord(message: 'debug output here', time: time);
 
       expect(record.message, equals('debug output here'));
       expect(record.time, equals(time));
@@ -36,17 +33,15 @@ void main() {
     // -------------------------------------------------------------------------
 
     test('toJson returns expected map without optional fields', () {
-      final record = DumpRecord(
-        message: 'debug output here',
-        time: time,
-      );
+      final record = DumpRecord(message: 'debug output here', time: time);
 
       expect(
-          record.toJson(),
-          equals({
-            'message': 'debug output here',
-            'time': time.toIso8601String(),
-          }));
+        record.toJson(),
+        equals({
+          'message': 'debug output here',
+          'time': time.toIso8601String(),
+        }),
+      );
     });
 
     test('toJson includes wrapWidth when set', () {
@@ -62,10 +57,7 @@ void main() {
     });
 
     test('toJson omits wrapWidth when null', () {
-      final record = DumpRecord(
-        message: 'debug output here',
-        time: time,
-      );
+      final record = DumpRecord(message: 'debug output here', time: time);
 
       expect(record.toJson().containsKey('wrapWidth'), isFalse);
     });
@@ -74,18 +66,14 @@ void main() {
     // Identity equality (matches existing records ; no Equatable)
     // -------------------------------------------------------------------------
 
-    test('two records with same fields are not identical (default identity eq)',
-        () {
-      final a = DumpRecord(
-        message: 'debug output here',
-        time: time,
-      );
-      final b = DumpRecord(
-        message: 'debug output here',
-        time: time,
-      );
+    test(
+      'two records with same fields are not identical (default identity eq)',
+      () {
+        final a = DumpRecord(message: 'debug output here', time: time);
+        final b = DumpRecord(message: 'debug output here', time: time);
 
-      expect(identical(a, b), isFalse);
-    });
+        expect(identical(a, b), isFalse);
+      },
+    );
   });
 }

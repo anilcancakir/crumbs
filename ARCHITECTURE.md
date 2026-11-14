@@ -116,6 +116,5 @@ Timeline on disk:
 - The model buffer has no extension, so no agent can read it: `CrumbsStore.recentModels`
 - `livenessCounter` advances from a post-frame callback, which also runs while a deferred first frame keeps frames from the engine: `lib/src/watchers/frame_perf_watcher.dart`
 - `vsyncStartUs` is not proven to share the `atUs` clock: `lib/src/records/frame_perf_record.dart`
-- `crumbs:queries` and `crumbs:caches` describe `--limit` as "newest first", but every read prints oldest first: `lib/src/commands/`
 
 Last reviewed: 2026-11-14 after the rename to crumbs.

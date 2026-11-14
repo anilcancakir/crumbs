@@ -142,15 +142,15 @@ void main() {
       final json = record.toJson();
 
       expect(
-          json['requestHeaders'], equals({'Content-Type': 'application/json'}));
+        json['requestHeaders'],
+        equals({'Content-Type': 'application/json'}),
+      );
       expect(json['requestBody'], equals('{"url":"https://example.com"}'));
       expect(json['responseBody'], equals('{"data":{}}'));
       expect(json['attributedHeuristically'], isTrue);
     });
 
-    test(
-        'toJson omits optional fields when null and attributedHeuristically false',
-        () {
+    test('toJson omits optional fields when null and attributedHeuristically false', () {
       final record = HttpRequestRecord(
         url: 'https://api.uptizm.com/monitors',
         method: 'DELETE',
@@ -192,29 +192,31 @@ void main() {
       expect(record.endUs, isNull);
     });
 
-    test('requestId, startUs and endUs are set and serialized when provided',
-        () {
-      final record = HttpRequestRecord(
-        url: 'https://api.uptizm.com/monitors',
-        method: 'GET',
-        statusCode: 200,
-        durationMs: 123,
-        isError: false,
-        timestamp: timestamp,
-        requestId: 'req-42',
-        startUs: 10,
-        endUs: 20,
-      );
+    test(
+      'requestId, startUs and endUs are set and serialized when provided',
+      () {
+        final record = HttpRequestRecord(
+          url: 'https://api.uptizm.com/monitors',
+          method: 'GET',
+          statusCode: 200,
+          durationMs: 123,
+          isError: false,
+          timestamp: timestamp,
+          requestId: 'req-42',
+          startUs: 10,
+          endUs: 20,
+        );
 
-      expect(record.requestId, equals('req-42'));
-      expect(record.startUs, equals(10));
-      expect(record.endUs, equals(20));
+        expect(record.requestId, equals('req-42'));
+        expect(record.startUs, equals(10));
+        expect(record.endUs, equals(20));
 
-      final json = record.toJson();
-      expect(json['requestId'], equals('req-42'));
-      expect(json['startUs'], equals(10));
-      expect(json['endUs'], equals(20));
-    });
+        final json = record.toJson();
+        expect(json['requestId'], equals('req-42'));
+        expect(json['startUs'], equals(10));
+        expect(json['endUs'], equals(20));
+      },
+    );
 
     test('atUs defaults to FlutterTimeline.now captured at construction', () {
       final int before = FlutterTimeline.now;
@@ -292,27 +294,29 @@ void main() {
     // Identity equality (matches existing records ; no Equatable)
     // -------------------------------------------------------------------------
 
-    test('two records with same fields are not identical (default identity eq)',
-        () {
-      final a = HttpRequestRecord(
-        url: 'https://api.uptizm.com/monitors',
-        method: 'GET',
-        statusCode: 200,
-        durationMs: 123,
-        isError: false,
-        timestamp: timestamp,
-      );
-      final b = HttpRequestRecord(
-        url: 'https://api.uptizm.com/monitors',
-        method: 'GET',
-        statusCode: 200,
-        durationMs: 123,
-        isError: false,
-        timestamp: timestamp,
-      );
+    test(
+      'two records with same fields are not identical (default identity eq)',
+      () {
+        final a = HttpRequestRecord(
+          url: 'https://api.uptizm.com/monitors',
+          method: 'GET',
+          statusCode: 200,
+          durationMs: 123,
+          isError: false,
+          timestamp: timestamp,
+        );
+        final b = HttpRequestRecord(
+          url: 'https://api.uptizm.com/monitors',
+          method: 'GET',
+          statusCode: 200,
+          durationMs: 123,
+          isError: false,
+          timestamp: timestamp,
+        );
 
-      expect(identical(a, b), isFalse);
-    });
+        expect(identical(a, b), isFalse);
+      },
+    );
 
     // -------------------------------------------------------------------------
     // copyWith

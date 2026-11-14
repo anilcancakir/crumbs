@@ -81,33 +81,38 @@ void main() {
       );
 
       expect(
-          delays,
-          equals(const [
-            Duration(milliseconds: 250),
-            Duration(milliseconds: 250),
-          ]));
-    });
-
-    test('on the real clock waits the interval and runs until a read fails',
-        () async {
-      var reads = 0;
-      final clock = Stopwatch()..start();
-
-      await expectLater(
-        followCursor(
-          read: (int? since) async {
-            if (++reads == 3) throw StateError('The app is gone.');
-            return reads;
-          },
-          interval: const Duration(milliseconds: 50),
-        ),
-        throwsStateError,
+        delays,
+        equals(const [
+          Duration(milliseconds: 250),
+          Duration(milliseconds: 250),
+        ]),
       );
-
-      expect(reads, equals(3));
-      expect(clock.elapsed,
-          greaterThanOrEqualTo(const Duration(milliseconds: 90)));
     });
+
+    test(
+      'on the real clock waits the interval and runs until a read fails',
+      () async {
+        var reads = 0;
+        final clock = Stopwatch()..start();
+
+        await expectLater(
+          followCursor(
+            read: (int? since) async {
+              if (++reads == 3) throw StateError('The app is gone.');
+              return reads;
+            },
+            interval: const Duration(milliseconds: 50),
+          ),
+          throwsStateError,
+        );
+
+        expect(reads, equals(3));
+        expect(
+          clock.elapsed,
+          greaterThanOrEqualTo(const Duration(milliseconds: 90)),
+        );
+      },
+    );
 
     test('defaults to a one second interval', () async {
       final delays = <Duration>[];

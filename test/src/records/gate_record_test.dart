@@ -61,13 +61,14 @@ void main() {
       );
 
       expect(
-          record.toJson(),
-          equals({
-            'ability': 'monitors.destroy',
-            'result': true,
-            'arguments': ['monitor-id-1'],
-            'time': time.toIso8601String(),
-          }));
+        record.toJson(),
+        equals({
+          'ability': 'monitors.destroy',
+          'result': true,
+          'arguments': ['monitor-id-1'],
+          'time': time.toIso8601String(),
+        }),
+      );
     });
 
     test('toJson includes userId when set', () {
@@ -99,22 +100,24 @@ void main() {
     // Identity equality (matches existing records ; no Equatable)
     // -------------------------------------------------------------------------
 
-    test('two records with same fields are not identical (default identity eq)',
-        () {
-      final a = GateRecord(
-        ability: 'monitors.destroy',
-        result: true,
-        arguments: [],
-        time: time,
-      );
-      final b = GateRecord(
-        ability: 'monitors.destroy',
-        result: true,
-        arguments: [],
-        time: time,
-      );
+    test(
+      'two records with same fields are not identical (default identity eq)',
+      () {
+        final a = GateRecord(
+          ability: 'monitors.destroy',
+          result: true,
+          arguments: [],
+          time: time,
+        );
+        final b = GateRecord(
+          ability: 'monitors.destroy',
+          result: true,
+          arguments: [],
+          time: time,
+        );
 
-      expect(identical(a, b), isFalse);
-    });
+        expect(identical(a, b), isFalse);
+      },
+    );
   });
 }

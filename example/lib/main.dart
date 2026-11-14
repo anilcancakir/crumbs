@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:crumbs/crumbs.dart';
 import 'package:logging/logging.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +22,7 @@ void main() {
 }
 
 // ---------------------------------------------------------------------------
-// Dio interceptor — canonical V1 pattern for routing Dio traffic into
+// Dio interceptor: canonical V1 pattern for routing Dio traffic into
 // CrumbsStore via DioHttpAdapter.recordRequest.
 // ---------------------------------------------------------------------------
 
@@ -81,7 +81,7 @@ class _CrumbsDioInterceptor extends Interceptor {
 // App root
 // ---------------------------------------------------------------------------
 
-/// Public app root — exposed so widget tests can pump it directly.
+/// Public app root, exposed so widget tests can pump it directly.
 class App extends StatelessWidget {
   const App({super.key, required this.dio});
 
@@ -98,7 +98,7 @@ class App extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Home — StatefulWidget so clear() can setState to repopulate initialData.
+// Home: StatefulWidget so clear() can setState to repopulate initialData.
 // ---------------------------------------------------------------------------
 
 class _Home extends StatefulWidget {
@@ -146,7 +146,7 @@ class _HomeState extends State<_Home> {
 }
 
 // ---------------------------------------------------------------------------
-// Status bar — live per-buffer counts.
+// Status bar: live per-buffer counts.
 // ---------------------------------------------------------------------------
 
 class _StatusBar extends StatelessWidget {
@@ -300,7 +300,7 @@ class _HttpSection extends StatelessWidget {
                       dense: true,
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                        '${r.method} $url — ${r.statusCode} (${r.durationMs}ms)',
+                        '${r.method} $url: ${r.statusCode} (${r.durationMs}ms)',
                         style: const TextStyle(fontFamily: 'monospace'),
                       ),
                       trailing: r.isError

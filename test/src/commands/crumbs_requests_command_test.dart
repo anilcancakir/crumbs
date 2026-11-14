@@ -8,9 +8,8 @@ class _StubContext extends DowelContext {
   _StubContext({
     required DowelInput input,
     required DowelOutput output,
-    required Map<String, dynamic> response,
-  })  : _response = response,
-        super.bare(input, output);
+    required this._response,
+  }) : super.bare(input, output);
 
   final Map<String, dynamic> _response;
 
@@ -115,65 +114,69 @@ void main() {
       expect(output.content, contains('No HTTP records'));
     });
 
-    test('handle formats method, url, statusCode, durationMs per entry',
-        () async {
-      final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-        response: {
-          'records': [
-            {
-              'timestamp': '2026-05-18T12:00:00.000Z',
-              'method': 'GET',
-              'url': 'https://api.example.com/monitors',
-              'statusCode': 200,
-              'durationMs': 142,
-            },
-          ],
-        },
-      );
+    test(
+      'handle formats method, url, statusCode, durationMs per entry',
+      () async {
+        final output = BufferedOutput();
+        final ctx = _StubContext(
+          input: MapInput(const {}),
+          output: output,
+          response: {
+            'records': [
+              {
+                'timestamp': '2026-05-18T12:00:00.000Z',
+                'method': 'GET',
+                'url': 'https://api.example.com/monitors',
+                'statusCode': 200,
+                'durationMs': 142,
+              },
+            ],
+          },
+        );
 
-      final code = await CrumbsRequestsCommand().handle(ctx);
+        final code = await CrumbsRequestsCommand().handle(ctx);
 
-      expect(code, equals(0));
-      expect(output.content, contains('GET'));
-      expect(output.content, contains('https://api.example.com/monitors'));
-      expect(output.content, contains('200'));
-      expect(output.content, contains('142'));
-    });
+        expect(code, equals(0));
+        expect(output.content, contains('GET'));
+        expect(output.content, contains('https://api.example.com/monitors'));
+        expect(output.content, contains('200'));
+        expect(output.content, contains('142'));
+      },
+    );
 
-    test('formats atUs, requestId and the interaction link when present',
-        () async {
-      final output = BufferedOutput();
-      final ctx = _StubContext(
-        input: MapInput(const {}),
-        output: output,
-        response: {
-          'records': [
-            {
-              'timestamp': '2026-05-18T12:00:00.000Z',
-              'method': 'GET',
-              'url': 'https://api.example.com/monitors',
-              'statusCode': 200,
-              'durationMs': 142,
-              'atUs': 123456,
-              'requestId': 'req-42',
-              'interactionId': 'tap-1',
-              'linkedBy': 'zone',
-            },
-          ],
-        },
-      );
+    test(
+      'formats atUs, requestId and the interaction link when present',
+      () async {
+        final output = BufferedOutput();
+        final ctx = _StubContext(
+          input: MapInput(const {}),
+          output: output,
+          response: {
+            'records': [
+              {
+                'timestamp': '2026-05-18T12:00:00.000Z',
+                'method': 'GET',
+                'url': 'https://api.example.com/monitors',
+                'statusCode': 200,
+                'durationMs': 142,
+                'atUs': 123456,
+                'requestId': 'req-42',
+                'interactionId': 'tap-1',
+                'linkedBy': 'zone',
+              },
+            ],
+          },
+        );
 
-      final code = await CrumbsRequestsCommand().handle(ctx);
+        final code = await CrumbsRequestsCommand().handle(ctx);
 
-      expect(code, equals(0));
-      expect(output.content, contains('atUs=123456'));
-      expect(output.content, contains('requestId=req-42'));
-      expect(output.content, contains('interactionId=tap-1'));
-      expect(output.content, contains('linkedBy=zone'));
-    });
+        expect(code, equals(0));
+        expect(output.content, contains('atUs=123456'));
+        expect(output.content, contains('requestId=req-42'));
+        expect(output.content, contains('interactionId=tap-1'));
+        expect(output.content, contains('linkedBy=zone'));
+      },
+    );
 
     test('omits requestId and the interaction link when absent', () async {
       final output = BufferedOutput();
