@@ -2,7 +2,7 @@
 
 ## Overview
 
-Crumbs is one pipeline split across two processes. Inside the app (a Flutter debug or profile build), producers (watchers, HTTP adapters, or host code calling `CrumbsStore.recordX`) push records into `CrumbsStore`, which redacts at insert, keeps a bounded queue per buffer and re-emits each record on a broadcast stream. The `ext.crumbs.*` handlers answer reads from the queues, and `CrumbsFileSink` listens on the streams. On the host (the plain Dart VM), the `crumbs:*` commands and dowel's MCP server reach those handlers over the VM Service; nothing flows from the host into the app except reads, `clear`, `pause` and `resume`.
+Crumbs is one pipeline split across two processes. Inside the app (a Flutter debug build), producers (watchers, HTTP adapters, or host code calling `CrumbsStore.recordX`) push records into `CrumbsStore`, which redacts at insert, keeps a bounded queue per buffer and re-emits each record on a broadcast stream. The `ext.crumbs.*` handlers answer reads from the queues, and `CrumbsFileSink` listens on the streams. On the host (the plain Dart VM), the `crumbs:*` commands and dowel's MCP server reach those handlers over the VM Service; nothing flows from the host into the app except reads, `clear`, `pause` and `resume`.
 
 ```text
 watchers, adapters, host ──recordX──▶ CrumbsStore ──redact──▶ queue + stream
@@ -23,7 +23,7 @@ watchers, adapters, host ──recordX──▶ CrumbsStore ──redact──�
 ### `CrumbsRedaction` (`lib/src/crumbs_redaction.dart`, `lib/src/internal/redaction_lists.dart`)
 
 - Owns: credential masking of HTTP records, the host `redactor`, and the only way a record becomes `redacted` (a private `Expando`).
-- Must not: hold a record; it returns a copy or null.
+- Must not: hold a record; it returns a record, or null when the `redactor` throws.
 - Depends on: the records.
 
 ### `CrumbsFileSink` (`lib/src/crumbs_file_sink.dart`)
@@ -41,12 +41,12 @@ watchers, adapters, host ──recordX──▶ CrumbsStore ──redact──�
 ### The host half (`lib/src/commands/`, `CrumbsDowelProvider`, `cursor_follow.dart`, `cli_args.dart`, `bin/crumbs.dart`, `lib/cli.dart`)
 
 - Owns: the commands, the MCP descriptors, the `--follow` loop, the CLI wrapper.
-- Must not: import Flutter, `dart:ui` or `lib/crumbs.dart`; it reaches the app only through `ctx.callExtension('ext.crumbs.<verb>', ...)`.
+- Must not: reach the app except through `ctx.callExtension('ext.crumbs.<verb>', ...)`.
 - Depends on: `dowel`.
 
 ### The Magic producers (in `magic_devtools`, not here)
 
-`MagicCrumbsIntegration`, `MagicHttpFacadeAdapter` and the model, cache, event, gate and query watchers implement this package's contracts from another repository. Crumbs depends on no Magic package.
+In a `magic_devtools` release built on crumbs, `MagicCrumbsIntegration`, `MagicHttpFacadeAdapter` and the model, cache, event, gate and query watchers implement this package's contracts from another repository. Crumbs depends on no Magic package.
 
 ## Invariants
 
@@ -60,9 +60,6 @@ watchers, adapters, host ──recordX──▶ CrumbsStore ──redact──�
 | A cursor read never skips or repeats a record; a non-integer `since` is refused | Agents page with `--follow` and trust an empty page | `flutter test test/src/extensions/register_crumbs_extensions_test.dart --plain-name "cursor"` |
 | Replaced global hooks are chain-preserved and restored exactly | Sentry and Bugsnag share them | `flutter test test/src/watchers/exception_watcher_test.dart test/src/watchers/dump_watcher_test.dart` |
 | One `FramePerfWatcher` counts frames, however many are registered | A doubled `livenessCounter` hides a stalled engine | `flutter test test/src/watchers/frame_perf_watcher_test.dart --plain-name "SECOND watcher instance"` |
-| The host half imports no Flutter | It runs under `dart run` on the plain VM | `rg -n -e "^import 'package:flutter" -e "^import 'dart:ui" bin lib/cli.dart lib/src/commands lib/src/crumbs_dowel_provider.dart lib/src/cursor_follow.dart lib/src/cli_args.dart` prints nothing |
-| Tool names, extension methods and command order hold | Frozen for agents and `magic_devtools` | `flutter test test/crumbs_dowel_provider_mcp_tools_test.dart` |
-| `server.json` version equals `pubspec.yaml` | The MCP registry entry | `flutter test test/server_json_version_test.dart` |
 
 ## Flows
 
@@ -70,7 +67,7 @@ Install and capture:
 
 1. The consumer's `main()` calls `CrumbsPlugin.install()` inside its build-mode guard; `CRUMBS_DISABLE` skips it and a second call only logs: `lib/src/crumbs_plugin.dart:CrumbsPlugin.install`
 2. It installs `LogWatcher` (`Logger.root.onRecord`, root level `ALL`) and registers every extension through dowel's `registerExtensionIdempotent`: `lib/src/extensions/register_crumbs_extensions.dart:registerAllCrumbsExtensions`
-3. The host registers more producers (`ExceptionWatcher`, `DumpWatcher`, `FramePerfWatcher`, an adapter; on Magic, `MagicCrumbsIntegration.install()`): `CrumbsPlugin.registerWatcher`, `CrumbsPlugin.registerHttpAdapter`
+3. The host registers more producers (`ExceptionWatcher`, `DumpWatcher`, `FramePerfWatcher`, an adapter; on Magic, `MagicCrumbsIntegration.install()` from a `magic_devtools` release built on crumbs): `CrumbsPlugin.registerWatcher`, `CrumbsPlugin.registerHttpAdapter`
 4. A producer records: return while paused, redact, append, evict from the front past the cap, emit: `lib/src/crumbs_store.dart:CrumbsStore.recordLog` and its siblings
 
 Read with a cursor:
@@ -117,4 +114,4 @@ Timeline on disk:
 - `livenessCounter` advances from a post-frame callback, which also runs while a deferred first frame keeps frames from the engine: `lib/src/watchers/frame_perf_watcher.dart`
 - `vsyncStartUs` is not proven to share the `atUs` clock: `lib/src/records/frame_perf_record.dart`
 
-Last reviewed: 2026-11-14 after the rename to crumbs.
+Last reviewed: 2026-11-14, after merging the facts it shared with CLAUDE.md and the rules.

@@ -21,8 +21,8 @@ Signature `Future<ServiceExtensionResponse> Function(String method, Map<String, 
 - `limit` keeps the newest N; a non-integer reads everything.
 - A filter whose typo would read as "everything" must refuse or match nothing: a non-integer `since` answers `ServiceExtensionResponse.error(invalidParams, ...)`, an unknown `level` matches nothing.
 - A cursor read (`since` given) keeps the oldest N after it and extends the page through the run of records sharing the last `atUs`; `cursor` is the largest `atUs` returned, else the `since`, else null.
-- A file handler answers `{error}` with a fixed message, and a caller's `name` only ever reaches `CrumbsFileSink.read`, which compares it with the sink's own listing; never join it into a path.
+- A file handler answers `{error}` with a fixed message and hands the caller's `name` only to `CrumbsFileSink.read`.
 
 ## The store
 
-One `Queue<T>` and one broadcast `StreamController<T>` per buffer, evicting from the front past its cap (`_capacityOf(kind)`; frame perf has its own). Every `recordX` returns at once while paused. The log, event, exception and HTTP paths go through `CrumbsRedaction.redactXRecord` before the queue and the stream, and a null from it (the `redactor` threw) drops the record from both. A new buffer adds a `CrumbsKind` value, a `clear()` line, a reset in `resetForTesting()` and, to be readable, a handler.
+Each buffer pairs its ring buffer with one broadcast `StreamController<T>`, evicting from the front past its cap (`_capacityOf(kind)`). Every `recordX` returns at once while paused. A new buffer adds a `CrumbsKind` value, a `clear()` line, a reset in `resetForTesting()` and, to be readable, a handler.

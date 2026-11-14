@@ -2,73 +2,58 @@
 
 ## Stack
 
-Flutter package `crumbs` (Dart 3.13+, Flutter 3.47+), a plugin of `dowel`: a passive runtime inspector that captures an app's HTTP traffic, logs, exceptions, dumps, events, gate checks, queries, cache operations and frames into in-memory ring buffers and serves them as `crumbs:*` CLI commands and `crumbs_*` MCP tools over the `ext.crumbs.*` VM Service extensions. Inspired by Laravel Telescope; its sibling `tapir` drives the app. Prose (README, `llms.txt`, `doc/**`, the skill, this file) states no counts of commands, tools, watchers, extensions or buffers; `test/crumbs_dowel_provider_mcp_tools_test.dart` holds them.
-
-Consumers guard `CrumbsPlugin.install()` themselves (`crumbs:install` writes `if (kDebugMode)`); crumbs checks no build mode except inside `DumpWatcher`. The Flutter-free CLI is `bin/crumbs.dart` (`dart run crumbs <cmd>`); `lib/cli.dart` exports `CrumbsDowelProvider` for the consumer's `_plugins.g.dart`. Before changing module boundaries or a main flow, read ARCHITECTURE.md; update it in the same change when a boundary, flow or invariant moves.
+Flutter package `crumbs`, a plugin of `dowel`: a passive runtime inspector that captures an app's HTTP traffic, logs, exceptions, dumps, events, gate checks, queries, cache operations and frames into in-memory ring buffers and serves them as `crumbs:*` CLI commands and `crumbs_*` MCP tools over the `ext.crumbs.*` VM Service extensions.
 
 ## Commands
 
 | Command | When |
 |---|---|
-| `flutter pub get` | Resolve dependencies. |
 | `flutter analyze --no-fatal-infos` | Zero issues. |
 | `dart format --output=none --set-exit-if-changed .` | Zero diff. |
-| `flutter test --exclude-tags=integration` | The suite; CI adds `--coverage --timeout=30s` and an 80% line floor. |
+| `flutter test --exclude-tags=integration` | The suite. |
 | `python3 tool/check-docs.py` | Docs gate (the `Internal Links` check): 0 issues. |
-| `dart pub publish --dry-run` | Archive check, as `publish.yml` runs it at release. |
+| `flutter pub publish --dry-run` | Archive check, as `publish.yml` runs it at release. |
 
 A live check drives `example/` (`cd example && dart run crumbs start --device=macos`, then `crumbs:*`, then `stop`).
 
 ## Post-Change Checklist
 
-A change is not done while any of these is stale: `CHANGELOG.md` under `## [Unreleased]`, `README.md`, `llms.txt`, the matching `doc/**` page, `skills/crumbs/`, `ARCHITECTURE.md` and the Architecture table below. Then format, analyze, test and `python3 tool/check-docs.py`.
+A change is not done while any of these is stale: `CHANGELOG.md` under `## [Unreleased]`, `README.md`, `llms.txt`, the matching `doc/**` page, `skills/crumbs/`, `ARCHITECTURE.md` and the split under Architecture below. Then run every command above.
 
 ## Development Flow
 
-Red, green, refactor: the failing test first, failing for the right reason. One long-lived branch, `master`. Cut a short kebab-case branch from it (`fix/dump-watcher-leak`), one topic each, and open a pull request; CI must pass `Lint & Test`, `Changelog` and `Internal Links`, and it lands as a merge commit. Coverage stays at or above 80%: lift it with a test, never by excluding code.
+Red, green, refactor: the failing test first, failing for the right reason. One long-lived branch, `master`. Cut a short kebab-case branch from it (`fix/dump-watcher-leak`), one topic each, and open a pull request; it lands as a merge commit.
 
 ## Testing
 
-Tests mirror `lib/src/` under `test/src/`, with `flutter_test` only (no mockito) and no real VM Service connection; the provider test is `test/crumbs_dowel_provider_mcp_tools_test.dart`.
+A test for `lib/src/<path>.dart` sits at `test/src/<path>_test.dart` (the provider test, Off-limits item 6, is the exception), with `flutter_test` only (no mockito) and no real VM Service connection.
 
 ## Architecture
 
-One runtime barrel, `lib/crumbs.dart`; one Flutter-free barrel, `lib/cli.dart`.
-
-| Path | Owns |
-|---|---|
-| `lib/src/watchers/` | `CrumbsWatcher` and `LogWatcher`, `ExceptionWatcher`, `DumpWatcher`, `FramePerfWatcher` |
-| `lib/src/adapters/` | `CrumbsHttpAdapter` and the `DioHttpAdapter` stub |
-| `lib/src/records/` | The immutable record types and their `toJson()` |
-| `lib/src/crumbs_store.dart` | `CrumbsStore`: the ring buffers, their streams and caps (`CrumbsKind`) |
-| `lib/src/crumbs_redaction.dart`, `internal/` | Credential masking, the host `redactor`, the adapter registry behind `pendingHttpCount` |
-| `lib/src/crumbs_file_sink.dart` | `CrumbsFileSink`: the rotating JSONL timeline |
-| `lib/src/extensions/` | The `ext.crumbs.*` handlers and `registerAllCrumbsExtensions()` |
-| `lib/src/commands/`, `crumbs_dowel_provider.dart` | The CLI commands and the MCP tool descriptors |
-| `lib/src/crumbs_plugin.dart` | `CrumbsPlugin.install()`, `registerWatcher`, `registerHttpAdapter` |
-| `lib/src/cursor_follow.dart`, `cli_args.dart` | The `--follow` loop and the `mcp:install` invocation flag; pure Dart |
+Two halves split by where they run: the in-app runtime (`lib/crumbs.dart`) and the host CLI that reaches it over the VM Service (`bin/crumbs.dart`, `lib/cli.dart`); `lib/src/` holds both.
+Before changing module boundaries or a main flow, read ARCHITECTURE.md; update it in the same change when a boundary, flow or invariant moves.
 
 ## Off-limits (frozen contracts)
 
-These change only with a coordinated bump in `magic_devtools`, which builds on them from another repository:
+These change only with a coordinated bump in `magic_devtools`, which is meant to build on them from another repository:
 
 1. `CrumbsWatcher` (`name`, `install()`, `uninstall()`) and `CrumbsHttpAdapter` (the same plus `pendingCount`, default 0).
 2. `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` signatures.
 3. `CrumbsStore` public statics: `recordX`, `recentX` and `onXRecord` per buffer, `clear`, `clearFramePerf`, `pause`, `resume`, `setCapacity`, `pendingHttpCount`.
-4. `CrumbsRedaction.redactor` semantics: it runs at insert over log, event, exception and HTTP records, a throw drops the record, and `redacted` is set only by the store's redaction pass (never a constructor argument). `CrumbsFileSink` writes only `redacted` records.
-5. The `DumpWatcher` debug gate (`kDebugMode` unless `allowInRelease`).
-6. The MCP tool names and their `extensionMethod` strings, the answer keys (`records`, `messages`, `exceptions` and the rest) and the `since` and `cursor` semantics.
+4. `CrumbsRedaction.redactor` semantics and the `redacted` flag, as the Invariants and Decisions of ARCHITECTURE.md state them.
+5. The build-mode gates: `DumpWatcher` checks `kDebugMode` unless `allowInRelease`, and nothing else in crumbs checks the build mode; the consumer guards `CrumbsPlugin.install()` (`crumbs:install` writes `if (kDebugMode)`).
+6. The MCP tool names and their `extensionMethod` strings, the answer keys (`records`, `messages`, `exceptions` and the rest) and the `since` and `cursor` semantics; `test/crumbs_dowel_provider_mcp_tools_test.dart` holds the names and `extensionMethod` strings.
 7. `install.yaml`: load-bearing for `plugin:install crumbs`; keep `plugin_name` and the `post_install` message.
-8. No production dependency beyond `dowel`, `logging`, `meta`; `example/` may add its own (Dio).
+8. No production dependency beyond the Flutter SDK, `dowel`, `logging` and `meta`; `example/` may add its own (Dio).
 
 ## Key Gotchas
 
 | Mistake | Fix |
 |---|---|
-| Importing `lib/crumbs.dart`, or anything Flutter, from `bin/`, `lib/cli.dart`, `commands/` or the provider | They run on the plain Dart VM; import the `src/` files directly, as `bin/crumbs.dart` does. |
+| A `crumbs:*` command from a git worktree that has not run `dowel start` | Run `dart run crumbs start` from the worktree's `example/` (or pass `--state=<path>`) first. Otherwise dowel refuses ("belongs to another project"), because the recorded app root is `<main>/example`; a recorded root that contained the worktree would pass the check and drive the main checkout's app, reporting success. |
 | A relative path in `pubspec_overrides.yaml` | Absolute paths only: `.worktreeinclude` copies the file into `.claude/worktrees/<slug>`, where `../dowel` resolves wrong. |
-| Importing `package:flutter/material.dart` in `lib/` | Deprecated from Flutter 3.50; `lib/` uses `foundation.dart` and `scheduler.dart`. |
-| A count in prose, or an em or en dash in docs, comments or the CHANGELOG | Name the items; comma, colon, semicolon, period or parentheses. |
+| Importing `package:flutter/material.dart` in `lib/` | Deprecated from Flutter 3.50 (`material_ui` replaces it); `lib/` uses `foundation.dart` and `scheduler.dart`. |
+| A count of commands, tools, watchers, extensions or buffers in prose (README, `llms.txt`, `doc/**`, the skill, ARCHITECTURE.md, this file), or an em or en dash in docs, comments or the CHANGELOG | Name the items; the provider test holds the numbers. Dashes: comma, colon, semicolon, period or parentheses. |
 
 ## Release
 
@@ -77,7 +62,7 @@ These change only with a coordinated bump in `magic_devtools`, which builds on t
 
 ## CI
 
-The required checks on a pull request are `Lint & Test` (format, analyze, tests with coverage and the 80% floor), `Changelog` (a PR that changes `lib/`, `bin/` or `install.yaml` changes `CHANGELOG.md`) and `Internal Links` (`python3 tool/check-docs.py`). `publish.yml` runs on a version tag.
+The required checks on a pull request are `Lint & Test`, `Changelog` (a PR that changes `lib/`, `bin/` or `install.yaml` changes `CHANGELOG.md`) and `Internal Links`.
 
 ## Style
 

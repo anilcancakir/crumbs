@@ -13,28 +13,35 @@ paths:
 
 # Commands and MCP descriptors
 
+## Plain Dart VM
+
+Every non-test file this rule covers runs under `dart run` on the plain VM: no `package:flutter`, no `dart:ui`, no import of `lib/crumbs.dart`. Import the `src/` files directly, as `bin/crumbs.dart` does. Check: this prints nothing.
+
+```bash
+rg -n -e "^import 'package:flutter" -e "^import 'dart:ui" -e "^import .*[/']crumbs\.dart'" bin lib/cli.dart lib/src/commands lib/src/crumbs_dowel_provider.dart lib/src/cursor_follow.dart lib/src/cli_args.dart
+```
+
 ## Shape
 
-One `crumbs_<verb>_command.dart` per command, extending `DowelCommand`: `name` (`crumbs:<verb>`), `description`, `boot`, flags through `signature` or `configure(ArgParser)`, and `handle(DowelContext ctx)`, which calls `ctx.callExtension<Map<String, dynamic>>('ext.crumbs.<verb>', params)` and writes through `ctx.output`. Every value passed to an extension is a string. These files run on the plain Dart VM: no `package:flutter`, no `dart:ui`, no import of `lib/crumbs.dart`.
+One `crumbs_<verb>_command.dart` per command, extending `DowelCommand`: `name` (`crumbs:<verb>`), `description`, `boot`, flags through `signature` or `configure(ArgParser)`, and `handle(DowelContext ctx)`, which calls `ctx.callExtension<Map<String, dynamic>>('ext.crumbs.<verb>', params)` and writes through `ctx.output`.
 
 `CommandBoot.connected` for every read command; `CommandBoot.none` only for `crumbs:install`, which shells out through `CrumbsInstallCommand.processRunner` and patches `lib/main.dart` with dowel's `MainDartEditor`.
 
 ## Output
 
-- One line per record, oldest first, in the order the extension returned them. An empty answer prints `ctx.output.warning` naming the producer to register, and exits 0.
+- One line per record, oldest first, in the order the extension returned them. An empty answer prints one `ctx.output.warning` and exits 0; name the producer to register when the buffer has one (`crumbs:tail` and `crumbs:files` have none to name).
 - A command that takes `--follow` also takes `--json` (one `jsonEncode`d record per line) and `--since`, and polls through `followCursor` with injectable `delay` and `shouldStop`, so a test runs the loop without a clock.
 - Exit 0 on success, 1 on a refusal the extension reported (`crumbs:files` on an `{error}` answer); dowel's dispatcher owns 3 (a throw) and 75 (extension not registered yet).
 
 ## MCP descriptors
 
-Each `mcpTools()` entry is a const `McpToolDescriptor` named `crumbs_<verb>`: an imperative opening sentence, one context paragraph, a `Usage:` list. `inputSchema` is a JSON Schema object with `type: object` and `properties`; no tool has a required parameter. The names and `extensionMethod` strings are frozen. Pause, resume and the timeline files have no tool on purpose; `crumbs_exceptions` has no command.
+Each `mcpTools()` entry is a const `McpToolDescriptor` named `crumbs_<verb>`: an imperative opening sentence, one context paragraph, a `Usage:` list. `inputSchema` is a JSON Schema object with `type: object` and `properties`; no tool has a required parameter. Pause, resume and the timeline files have no tool on purpose; `crumbs_exceptions` has no command.
 
 ## The CLI wrapper
 
-`bin/crumbs.dart` imports `src/cli_args.dart` and `src/crumbs_dowel_provider.dart` directly, appends `--invocation=crumbs` to `mcp:install` through `injectInvocationForMcpInstall` (a user-supplied `--invocation` wins), collects MCP tools only for `mcp:serve`, and never delegates to the consumer. `lib/cli.dart` exports only `CrumbsDowelProvider` and `followCursor`; dowel's `plugins:refresh` generates the import by that class name.
+`bin/crumbs.dart` appends `--invocation=crumbs` to `mcp:install` through `injectInvocationForMcpInstall` (a user-supplied `--invocation` wins), collects MCP tools only for `mcp:serve`, and never delegates to the consumer. `lib/cli.dart` exports only `CrumbsDowelProvider` and `followCursor`; dowel's `plugins:refresh` generates the import by that class name.
 
 ## Adding a command
 
 1. The command file and its test under `test/src/commands/`, with a handler under `lib/src/extensions/` when it reads something new.
-2. Append it to `commands()` and, unless CLI-only, a descriptor to `mcpTools()`; update the provider test's names and `extensionMethod` assertions.
-3. The docs and the CHANGELOG in the same change.
+2. Append it to `commands()` and, unless CLI-only, a descriptor to `mcpTools()`; update the provider test's names, order and `extensionMethod` assertions.

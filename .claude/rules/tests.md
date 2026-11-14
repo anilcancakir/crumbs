@@ -6,9 +6,7 @@ paths:
 
 # Tests
 
-## Layout and fakes
-
-One test file per production file, at the mirrored path: `lib/src/watchers/exception_watcher.dart` is tested in `test/src/watchers/exception_watcher_test.dart`. The provider test sits at `test/crumbs_dowel_provider_mcp_tools_test.dart`, `test/server_json_version_test.dart` guards `server.json`.
+## Fakes
 
 Stub by contract inheritance with private fakes inside the test file (`_StubContext extends DowelContext` in the command tests, `_CountingHttpAdapter extends CrumbsHttpAdapter`); move a fake to a shared file only at its third user. A handler test calls the `@visibleForTesting` handler directly and decodes the `ServiceExtensionResponse` JSON. `crumbs:install` is tested through `CrumbsInstallCommand.processRunner` and `wrapperExistsCheck`, restored in `tearDown`, and a temp directory as the working directory.
 
@@ -19,18 +17,18 @@ Restore every global a test touches:
 - `CrumbsStore.resetForTesting()` in any group that records: it clears the buffers, caps, pause, the `redactor`, the hidden-name lists and the adapter registry.
 - `await CrumbsFileSink.current?.stop()` and delete the temp directory after a sink test.
 - `FramePerfWatcher.resetLivenessCounterForTesting()` and `uninstall()` after a frame test; the single-instance guard is static.
-- A replaced `FlutterError.onError`, `PlatformDispatcher.instance.onError` or `debugPrint`: save it first and restore it with `addTearDown`.
+- A replaced `FlutterError.onError`, `PlatformDispatcher.instance.onError` or `debugPrint`: save the previous value in `setUp` and restore exactly that value in `tearDown`, as `dump_watcher_test.dart` does.
 - `Directory.current`, when a test changes it.
 
-## Naming and TDD
+## Naming
 
-`group('ClassName')`, a nested `group('.method()')` for an instance method, and a test description that states the condition or outcome in plain English. The new test fails on a genuine assertion first, not on a compile or setup error. Eviction past a cap, an empty buffer, a chain-preserved handler, a refused `since` and a dropped record each get their own test.
+`group('ClassName')`, a nested `group('.method()')` for an instance method, and a test description that states the condition or outcome in plain English. Eviction past a cap, an empty buffer, a chain-preserved handler, a refused `since` and a dropped record each get their own test.
 
-Assert through the public surface (`CrumbsStore.recentX()`, the `onXRecord` streams, decoded handler JSON), never a private field. A new or renamed command or tool updates the names, order and `extensionMethod` assertions in the provider test.
+Assert through the public surface (`CrumbsStore.recentX()`, the `onXRecord` streams, decoded handler JSON), never a private field.
 
 ## Coverage
 
-CI enforces 80% line coverage. After a behavioural change:
+Line coverage stays at or above 80%, the CI floor: lift it with a test, never by excluding code. After a behavioural change:
 
 ```bash
 flutter test --coverage --exclude-tags=integration --timeout=30s
