@@ -2,7 +2,7 @@
     "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
     "name": "io.github.anilcancakir/crumbs",
     "title": "Crumbs",
-    "description": "Inspect a running Flutter app: HTTP traffic, logs, exceptions and queries. Debug only.",
+    "description": "Read a running Flutter app's HTTP, logs, exceptions, dumps and frames over MCP. Debug builds only.",
     "version": "0.0.13",
     "repository": {
         "url": "https://github.com/anilcancakir/crumbs",
