@@ -8,6 +8,10 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+---
+
+## [0.0.13] - 2026-11-14
+
 ### Changed
 
 - **Breaking, nothing is migrated automatically.** In a consumer project: (1) swap the dependencies with `flutter pub remove fluttersdk_telescope fluttersdk_artisan && flutter pub add crumbs dowel` and rename the imports (`package:fluttersdk_telescope/telescope.dart` is `package:crumbs/crumbs.dart`) and the `Telescope*` identifiers; (2) follow the dowel 0.0.21 migration (move `.artisan/` to `.dowel/`, delete `.dowel/plugins.json` and `.dowel/installed/fluttersdk_telescope.json`), delete `bin/dispatcher.dart`, `bin/fsa`, `lib/app/_plugins.g.dart` and `lib/app/commands/_index.g.dart` (the installers keep a file that exists, and the old ones import `fluttersdk_artisan`, so `./bin/dowel` would not build), replace `package:fluttersdk_artisan/artisan.dart` with `package:dowel/dowel.dart` and `Artisan*` with `Dowel*` in your own commands, run `dart run crumbs crumbs:install` again, then `dart run dowel commands:refresh` to register your commands in the new index; (3) rename `telescope_*` to `crumbs_*` in any saved MCP allow list, prompt or script (a Claude Code allow-list entry `mcp__fluttersdk__telescope_*` becomes `mcp__dowel__crumbs_*`, since the server key is now `dowel`), `telescope:*` to `crumbs:*` in CLI calls and `TELESCOPE_DISABLE` to `CRUMBS_DISABLE` in a build that must not register the extensions; (4) delete the stale `fluttersdk` server entry from `.mcp.json` (dowel leaves entries an earlier release wrote) and reconnect the MCP client; (5) in a Magic app, until a `magic_devtools` release built on crumbs ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty; then upgrade `magic_devtools` and rerun `dart run crumbs crumbs:install` (see the installer entry below).
