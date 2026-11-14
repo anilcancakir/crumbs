@@ -1,170 +1,98 @@
-# Crumbs MCP Setup
+# MCP Setup
 
-`crumbs` extends the dowel MCP server with 10 runtime-inspection tools
-(`crumbs_*`). This page covers everything needed to make those tools appear in Claude Code,
-Cursor, or any other MCP-compatible client.
+Make the `crumbs_*` tools appear in Claude Code, Cursor or any other MCP client: install crumbs, write the `dowel` entry in `.mcp.json`, reconnect, and optionally filter the tools.
 
-**Prerequisite:** no prior dowel setup is required. Crumbs's `crumbs:install` command
-scaffolds the dowel harness on first run, and `dowel` is pulled in transitively
-through crumbs's pubspec.
+- [Quick Reference](#quick-reference)
+- [Install crumbs](#install-crumbs)
+- [Write the MCP entry](#write-the-mcp-entry)
+- [Clients](#clients)
+- [Start the app and verify](#start-and-verify)
+- [Filter crumbs tools](#filter-crumbs-tools)
+- [Related Documentation](#related-documentation)
 
----
+<a name="quick-reference"></a>
+## Quick Reference
 
-## Step 1: Add the dependency
+| Step | Command |
+|:-----|:--------|
+| 1. Install | `flutter pub add crumbs`, then `dart run crumbs crumbs:install` |
+| 2. Write the entry | `dart run crumbs mcp:install` |
+| 3. Reconnect | `/mcp reconnect dowel` in Claude Code |
+| 4. Start the app | `./bin/dowel start --device=chrome`, or the `dowel_start` tool |
+| 5. Verify | Call `crumbs_tail` with `{"limit": 5}` |
 
-Add `crumbs` to your `pubspec.yaml` under `dependencies` (not `dev_dependencies`,
-because `CrumbsPlugin` is imported by `lib/main.dart`):
-
-```yaml
-# pubspec.yaml
-dependencies:
-  crumbs: ^0.0.4
-```
-
-Run `dart pub get` after editing.
-
-### Step 1a: bootstrap with `crumbs:install` (optional but recommended)
-
-If you only want the MCP tools, jump to Step 2. If you also want the 11 CLI commands wired
-to the dowel dispatcher, run the one-shot bootstrap now; it scaffolds `bin/dispatcher.dart`,
-registers the plugin, and patches `lib/main.dart` in one go:
+<a name="install-crumbs"></a>
+## Install crumbs
 
 ```bash
+flutter pub add crumbs
 dart run crumbs crumbs:install
 ```
 
-After install, the consumer's fast-cli is available at `./bin/dowel` (native AOT, ~110ms warm).
+`crumbs` goes under `dependencies`, not `dev_dependencies`, because `lib/main.dart` imports it. The installer scaffolds the dowel harness, registers `CrumbsDowelProvider` through `lib/app/_plugins.g.dart` and installs crumbs in `lib/main.dart`; see [Installation](../getting-started/installation.md) for the manual route.
 
----
+<a name="write-the-mcp-entry"></a>
+## Write the MCP entry
 
-## Step 2: Install the Flutter-side plugin
+The `crumbs_*` tools ride on the dowel MCP server, so there is no separate crumbs entry: the server key is `dowel`.
 
-Inside `lib/main.dart`, install `CrumbsPlugin` before `runApp`, gated at the call site so the
-entire subsystem tree-shakes out of release builds. `crumbs:install` writes `kDebugMode`; the
-snippet below uses `!kReleaseMode`, which also keeps crumbs in profile builds (see
-[Call-site guard](../watchers/index.md#call-site-guard)). When using the Magic framework, place
-the call before `Magic.init()` so the Http facade is wired in time:
-
-```dart
-import 'package:flutter/foundation.dart';
-import 'package:crumbs/crumbs.dart';
-import 'package:magic_devtools/crumbs.dart'; // magic_devtools dev_dependency (Magic-stack apps only)
-
-Future<void> main() async {
-  if (!kReleaseMode) {
-    CrumbsPlugin.install();
-  }
-  await Magic.init(...);
-  if (!kReleaseMode) {
-    // Optional: when using the Magic framework, register its adapters and watchers.
-    // Call MagicCrumbsIntegration.install() after Magic.init(). Ships in the
-    // magic_devtools dev_dependency (import 'package:magic_devtools/crumbs.dart').
-    MagicCrumbsIntegration.install();
-  }
-  runApp(MagicApplication());
-}
+```bash
+dart run crumbs mcp:install
 ```
 
-`CrumbsPlugin.install()` registers all `ext.crumbs.*` VM Service extensions and starts the
-ring buffers. Extensions are registered via `registerExtensionIdempotent` (from dowel), so hot
-restarts are safe.
+The command writes the `dowel` entry into `.mcp.json` at the project root, keeps any other entry, and replaces its own on a rerun:
 
----
-
-## Step 3: Register CrumbsDowelProvider in bin/dispatcher.dart
-
-If you ran Step 1a (`crumbs:install`), the provider is registered automatically via
-`lib/app/_plugins.g.dart` (the codegen barrel auto-discovered by `bin/dispatcher.dart`); skip
-to Step 4.
-
-For manual wiring, open `bin/dispatcher.dart` and add `FluttersdkCrumbsDowelProvider()`
-to the `baseProviders` list:
-
-```dart
-import 'package:dowel/dowel.dart';
-import 'package:crumbs/cli.dart';  // FluttersdkCrumbsDowelProvider typedef
-
-Future<void> main(List<String> args) async {
-  exit(await runDowel(
-    args,
-    baseProviders: [
-      FluttersdkCrumbsDowelProvider(),
-      // ...other providers (TapirDowelProvider, etc.)
-    ],
-  ));
-}
-```
-
-The `cli.dart` barrel exports `FluttersdkCrumbsDowelProvider` (a typedef alias for
-`CrumbsDowelProvider`) so consumer-side auto-discovery can use a stable name.
-
----
-
-## Step 4: Ensure the dowel MCP server entry is present
-
-The crumbs tools surface through dowel's MCP server. The `.mcp.json` entry must point at
-`dart run dowel:mcp` (not a separate crumbs entry). If you ran
-`dart run dowel mcp:install` during dowel setup, the entry is already in place:
+| Scaffold state | Entry |
+|:---------------|:------|
+| `./bin/dowel` exists, POSIX host | `./bin/dowel mcp:serve` |
+| No `./bin/dowel`, or a Windows host | `dart run crumbs mcp:serve` |
 
 ```json
 {
   "mcpServers": {
-    "fluttersdk": {
-      "command": "dart",
-      "args": ["run", "dowel:mcp"],
+    "dowel": {
+      "command": "./bin/dowel",
+      "args": ["mcp:serve"],
       "cwd": "."
     }
   }
 }
 ```
 
-The `cwd` field must resolve to the directory containing `pubspec.yaml` and `bin/dispatcher.dart`.
-The server reads both at startup: `pubspec.yaml` for the project root detection and
-`bin/dispatcher.dart` (via the registered providers) for the plugin tool catalog.
+`cwd` must resolve to the project root, the directory with `pubspec.yaml` and `bin/dispatcher.dart`.
 
----
+<a name="clients"></a>
+## Clients
 
-## Step 5: Reconnect the MCP server
+A client reads its server list at startup and does not reload a changed entry on its own.
 
-After editing `bin/dispatcher.dart` or `.mcp.json`, the running MCP server process must be
-restarted for the new tools to appear in the catalog:
+| Client | Install or reload |
+|:-------|:------------------|
+| Claude Code | Reads `.mcp.json` from the project, or `claude mcp add dowel -- ./bin/dowel mcp:serve`; run `/mcp reconnect dowel` after a change |
+| Cursor | `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (user); reload the MCP panel |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json`; reload the MCP panel |
+| Claude Desktop | `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`); quit and relaunch |
 
-**Claude Code:**
-
-```
-/mcp reconnect fluttersdk
-```
-
-**Cursor / Windsurf:** Reload the MCP panel or restart the IDE session.
-
-**Claude Desktop:** Fully quit and relaunch.
-
----
-
-## Step 6: Start the Flutter app and verify
-
-Start the app via dowel so the state file is written:
+<a name="start-and-verify"></a>
+## Start the app and verify
 
 ```bash
-./bin/dowel start              # web (chrome, default)
-./bin/dowel start --device=macos  # desktop
+./bin/dowel start                 # chrome, the default device
+./bin/dowel start --device=macos  # a desktop build
 ```
 
-Then ask the agent to check crumbs connectivity:
+Then ask the agent for a small read:
 
+```text
+crumbs_tail {"limit": 5}
 ```
-crumbs_tail limit=5
-```
 
-A successful response returns a JSON array of recent log records. An empty array means the app is
-running but no logs have been emitted yet. An error response means the VM Service URI in
-`~/.dowel/state.json` is stale; run `./bin/dowel stop && ./bin/dowel start` to refresh it.
+A working setup answers `{"messages": [...], "cursor": ...}`; an empty `messages` list means the app runs but has logged nothing yet. An error that says no session is recorded means the app was not started through dowel; one that names a missing `ext.crumbs.*` method means `CrumbsPlugin.install()` did not run in this build. Restart the app with `./bin/dowel restart` when the session is stale.
 
----
+<a name="filter-crumbs-tools"></a>
+## Filter crumbs tools
 
-## Filtering crumbs tools
-
-To hide specific crumbs tools from the agent's catalog, add deny rules to `.dowel/mcp.json`:
+To hide some crumbs tools from the agent, add deny rules to `.dowel/mcp.json` in the project root:
 
 ```json
 {
@@ -179,7 +107,7 @@ To hide specific crumbs tools from the agent's catalog, add deny rules to `.dowe
 }
 ```
 
-To expose only crumbs tools (hiding substrate and tapir tools):
+To serve only the crumbs tools, hiding the substrate and every other plugin:
 
 ```json
 {
@@ -194,16 +122,12 @@ To expose only crumbs tools (hiding substrate and tapir tools):
 }
 ```
 
-After editing `.dowel/mcp.json`, run `/mcp reconnect fluttersdk` in Claude Code to reload the
-filter. See the [dowel filter reference](https://anilcancakir.com/dowel/docs/mcp/tool-reference#filter-configuration)
-for the full three-layer precedence rules (file, env vars, CLI flags).
+Reconnect the client after editing the file. The [dowel filter reference](https://anilcancakir.com/dowel/docs/mcp/tool-reference#filter-configuration) covers the environment variables, the CLI flags and how the three layers combine.
 
----
+<a name="related-documentation"></a>
+## Related Documentation
 
-## Related
-
-- [dowel MCP setup](https://anilcancakir.com/dowel/docs/mcp/setup): full client matrix (Cursor, Claude
-  Desktop, VS Code, Windsurf, JetBrains, Cline, OpenCode, Gemini CLI).
-- [Overview](overview.md): how the 10 tools surface through `CrumbsDowelProvider` and route
-  through the VM Service.
-- [Tool reference](tool-reference.md): per-tool input schema, output shape, and example invocations.
+- [MCP overview](overview.md): how the tools reach the running app.
+- [Tool reference](tool-reference.md): every tool's input schema and output shape.
+- [Installation](../getting-started/installation.md): the installer and the manual wiring.
+- [dowel MCP setup](https://anilcancakir.com/dowel/docs/mcp/setup): the client matrix of the substrate.

@@ -1,169 +1,97 @@
-# Crumbs MCP Integration Overview
+# MCP Overview
 
-<a name="toc"></a>
+How the `crumbs_*` MCP tools reach the running app: crumbs contributes them to the dowel MCP server, and each one reads an `ext.crumbs.*` VM Service extension.
 
-- [What Crumbs Contributes](#what-crumbs-contributes)
-- [Substrate Tools vs Plugin Tools](#substrate-vs-plugin)
-- [How the 10 Tools Surface](#how-tools-surface)
-- [VM Service Extension Routing](#vm-service-routing)
-- [Architecture Diagram](#architecture-diagram)
-- [Related](#related)
-
----
+- [What crumbs contributes](#what-crumbs-contributes)
+- [Substrate tools and plugin tools](#substrate-vs-plugin)
+- [How a tool call travels](#how-tools-surface)
+- [Tool to extension routing](#vm-service-routing)
+- [Architecture diagram](#architecture-diagram)
+- [Related Documentation](#related-documentation)
 
 <a name="what-crumbs-contributes"></a>
+## What crumbs contributes
 
-## What Crumbs Contributes
+`crumbs` is a plugin of [dowel](https://pub.dev/packages/dowel). `CrumbsDowelProvider` contributes the `crumbs:*` CLI commands through `commands()` and the `crumbs_*` MCP tools through `mcpTools()`.
 
-`crumbs` is a plugin for `dowel`. It contributes **10 MCP tools** via
-`CrumbsDowelProvider.mcpTools()` and **11 CLI commands** via `CrumbsDowelProvider.commands()`.
+The tools give an agent read access to the ring buffers crumbs keeps inside the running Flutter app: HTTP traffic, log records, uncaught exceptions, in-app events, gate checks, `debugPrint` output, database queries, cache operations and per-frame performance. `crumbs_clear` empties every buffer as a starting point before a repro.
 
-The 10 MCP tools give an LLM agent read-only access to ring buffers that crumbs maintains inside the
-running Flutter app. Each tool reads one buffer type: HTTP traffic, log lines, uncaught exceptions,
-in-app events, Gate authorization checks, `debugPrint` output, database queries, cache operations, and
-per-frame performance. A tenth tool (`crumbs_clear`) wipes all buffers at once as a "set zero" before
-a repro.
-
-The tools share a single design rule: **no side effects on the running app**. Reading a buffer is
-non-destructive; only `crumbs_clear` mutates state, and that mutation is intentional.
-
----
+Reading never changes the app. `crumbs_clear` is the one tool that changes state, and only crumbs's own buffers.
 
 <a name="substrate-vs-plugin"></a>
+## Substrate tools and plugin tools
 
-## Substrate Tools vs Plugin Tools
+The dowel MCP server serves two kinds of tool:
 
-dowel's MCP server distinguishes two categories of tools. Understanding the distinction explains
-why crumbs tools appear or disappear in Claude Code's tool list depending on registration.
+- **Substrate tools** (`dowel_*`) are built into dowel and always registered: `dowel_start`, `dowel_stop`, `dowel_status`, `dowel_logs` and the rest.
+- **Plugin tools** (`crumbs_*`, `tapir_*`) come from packages that extend `DowelServiceProvider`. They appear only when the provider is registered with the server (`crumbs:install` does it through `lib/app/_plugins.g.dart`, and `dart run crumbs mcp:serve` preloads it) and the server has been (re)started. They dispatch through the VM Service, so they need a running app.
 
-**Substrate tools** (`dowel_*` prefix) are built into `dowel` itself. They are always
-registered when the MCP server starts; they require no plugin, no running app (for most of them), and
-no VM Service connection. Examples: `dowel_start`, `dowel_stop`, `dowel_status`, `dowel_logs`.
-
-**Plugin tools** (`crumbs_*` prefix, `tapir_*` prefix, etc.) are contributed by packages that
-extend `DowelServiceProvider`. They surface in the MCP catalog **only when** the plugin's provider
-is registered in the consumer's `bin/dispatcher.dart` (auto-wired by `crumbs:install`) and the MCP server is (re)started. Plugin tools
-always dispatch via the VM Service and therefore require a running Flutter app.
-
-`CrumbsDowelProvider` contributes the `crumbs` plugin tools. Its `providerName`
-is `crumbs`, which is the key used in `.dowel/mcp.json` package filter rules.
-
----
+The provider's `providerName` is `crumbs`, the package name that the `packages` rules of `.dowel/mcp.json` match (see [Filter crumbs tools](setup.md#filter-crumbs-tools)).
 
 <a name="how-tools-surface"></a>
+## How a tool call travels
 
-## How the 10 Tools Surface
-
-The call chain from Claude Code to the Crumbs ring buffer:
-
-1. `CrumbsDowelProvider.mcpTools()` returns a `List<McpToolDescriptor>` with the 10 descriptors.
-2. `McpServer.initialize()` collects descriptors from every registered provider and sends the full
-   catalog to the MCP client (Claude Code) in the `initialize` response.
-3. The agent invokes a tool by name (e.g. `crumbs_tail`) with optional parameters.
-4. `McpServer` looks up the `McpToolDescriptor.extensionMethod` for that tool name (e.g.
-   `ext.crumbs.console`) and dispatches via `VmServiceClient.callServiceExtension`.
-5. The VM Service handler registered by `registerAllCrumbsExtensions()` in the running Flutter app
-   reads the matching `CrumbsStore` ring buffer, applies any `limit` / `level` filter params, and
-   returns a JSON-encoded payload.
-6. `McpServer` wraps the payload in a `CallToolResult` text content block and returns it to the agent.
-
-The pause/resume extensions (`ext.crumbs.pause` / `ext.crumbs.resume`) are registered inside
-the app but intentionally absent from `mcpTools()` in the current release; they are V1.x backlog.
-
----
+1. `CrumbsDowelProvider.mcpTools()` returns one `McpToolDescriptor` per tool, each naming its `extensionMethod`.
+2. The dowel MCP server collects the descriptors of every registered provider and lists them to the client.
+3. The agent calls a tool by name, for example `crumbs_tail`, with optional parameters.
+4. The server dispatches the call to the descriptor's extension, `ext.crumbs.console` for `crumbs_tail`, over the VM Service of the session dowel recorded.
+5. The handler that `CrumbsPlugin.install()` registered in the app reads the matching `CrumbsStore` buffer, applies `limit` (and `level` on the log buffer) and answers JSON.
+6. The server returns that JSON to the agent as the tool result.
 
 <a name="vm-service-routing"></a>
+## Tool to extension routing
 
-## VM Service Extension Routing
+| MCP tool | VM Service extension | Answer key |
+|:---------|:---------------------|:-----------|
+| `crumbs_tail` | `ext.crumbs.console` | `messages`, `cursor` |
+| `crumbs_requests` | `ext.crumbs.requests` | `records` |
+| `crumbs_exceptions` | `ext.crumbs.exceptions` | `exceptions` |
+| `crumbs_events` | `ext.crumbs.events` | `events`, `cursor` |
+| `crumbs_gates` | `ext.crumbs.gates` | `gates` |
+| `crumbs_dumps` | `ext.crumbs.dumps` | `dumps` |
+| `crumbs_queries` | `ext.crumbs.queries` | `queries` |
+| `crumbs_caches` | `ext.crumbs.caches` | `caches` |
+| `crumbs_frames` | `ext.crumbs.frames` | `frames`, `livenessCounter` |
+| `crumbs_clear` | `ext.crumbs.clear` | `cleared` |
 
-Each MCP tool maps to exactly one VM Service extension:
+Four extensions have no MCP tool:
 
-| MCP tool | VM Service extension |
-|---|---|
-| `crumbs_tail` | `ext.crumbs.console` |
-| `crumbs_requests` | `ext.crumbs.requests` |
-| `crumbs_exceptions` | `ext.crumbs.exceptions` |
-| `crumbs_events` | `ext.crumbs.events` |
-| `crumbs_gates` | `ext.crumbs.gates` |
-| `crumbs_dumps` | `ext.crumbs.dumps` |
-| `crumbs_queries` | `ext.crumbs.queries` |
-| `crumbs_caches` | `ext.crumbs.caches` |
-| `crumbs_frames` | `ext.crumbs.frames` |
-| `crumbs_clear` | `ext.crumbs.clear` |
+- `ext.crumbs.files` and `ext.crumbs.file` read the timeline of a running [file sink](../getting-started/file-sink.md); reach them through `crumbs:files`.
+- `ext.crumbs.pause` and `ext.crumbs.resume` stop and restart recording into the store.
 
-Crumbs registers 14 `ext.crumbs.*` extensions; four have no MCP tool. `ext.crumbs.pause` and
-`ext.crumbs.resume` are V1.x backlog. `ext.crumbs.files` and `ext.crumbs.file` read the timeline
-files of a running [file sink](../getting-started/file-sink.md) and are reached through the
-`crumbs:files` CLI command. The `since`, `type`, `logger` and `cursor` parameters of
-`ext.crumbs.console` and `ext.crumbs.events` are likewise CLI and extension surface, see
-[Cursor and filters](cursor-and-filters.md).
-Every extension is registered via `registerExtensionIdempotent` (from `dowel`) so that
-Flutter hot restarts do not throw `ArgumentError` on duplicate registration. `VmServiceClient` inside
-dowel lazy-reconnects on every dispatch call, so `dowel_start` followed immediately by a
-`crumbs_*` call picks up the new VM Service URI automatically from `~/.dowel/state.json`.
+The `since`, `type` and `logger` parameters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events` live on the extensions and the CLI, not on the tool descriptors; see [Cursor and filters](cursor-and-filters.md).
 
----
+Every extension is registered through dowel's `registerExtensionIdempotent`, so a hot restart does not fail on a duplicate registration.
 
 <a name="architecture-diagram"></a>
+## Architecture diagram
 
-## Architecture Diagram
-
-```
-  Claude Code (MCP client)
+```text
+  MCP client (Claude Code, Cursor, ...)
         |
-        | stdio JSON-RPC  (initialize / tools/call)
+        | stdio JSON-RPC (initialize, tools/list, tools/call)
         |
-  dart run dowel:mcp
+  ./bin/dowel mcp:serve   or   dart run crumbs mcp:serve
         |
-   McpServer
-        |
-        +-- substrate tools (dowel_start, dowel_stop, ...)
-        |         |
-        |         v
-        |   DowelRegistry  (in-process command dispatch)
+        +-- dowel_* substrate tools (in-process commands)
         |
         +-- crumbs_* plugin tools
                   |
-                  | VM Service WebSocket
-                  | ws://localhost:PORT/<token>/ws
+                  | VM Service WebSocket of the recorded session
                   |
-             VmServiceClient
+          Flutter app isolate (debug or profile build)
                   |
-                  | ext.crumbs.*
+          ext.crumbs.* handlers
                   |
-          Flutter app isolate (debug mode)
-                  |
-          CrumbsStore (ring buffers)
-          +--------+----------+---------+----------+
-          |        |          |         |          |
-       console  requests  exceptions  events    gates
-          |        |          |         |          |
-       dumps   queries    caches    frames    (+ files / file
-                                              when a file sink runs)
+          CrumbsStore ring buffers
+          (http, logs, exceptions, events, gates, dumps,
+           queries, caches, frame perf, models)
 ```
 
-**Flow summary:**
+<a name="related-documentation"></a>
+## Related Documentation
 
-1. The MCP client connects to the server over stdio and calls `initialize`.
-2. `McpServer` collects `McpToolDescriptor` instances from `CrumbsDowelProvider.mcpTools()` (and
-   any other registered provider) and sends the unified catalog to the client.
-3. On each `crumbs_*` tool call, `McpServer` routes via `VmServiceClient` to the matching
-   `ext.crumbs.*` handler in the running Flutter isolate.
-4. The handler reads the `CrumbsStore` ring buffer, applies filter parameters, and returns JSON.
-5. Results return as `CallToolResult` text content; errors carry `isError: true` with an actionable
-   message.
-
----
-
-<a name="related"></a>
-
-## Related
-
-- [dowel MCP overview](https://anilcancakir.com/dowel/docs/mcp/overview): full substrate tool catalog,
-  state file contract, and dowel's own architecture diagram.
-- [Setup guide](setup.md): how to wire `CrumbsDowelProvider` and enable the 10 tools in Claude
-  Code or Cursor.
-- [Cursor and filters](cursor-and-filters.md): `since`, `type`, `logger` and `cursor` on the console and
-  events extensions, and the `--follow` CLI loop.
-- [Tool reference](tool-reference.md): per-tool input schema, output shape, example invocations, and
-  the VM Service extension each tool routes through.
+- [MCP setup](setup.md): write the `.mcp.json` entry, reconnect a client and filter tools.
+- [Tool reference](tool-reference.md): every tool's input schema and output shape.
+- [Cursor and filters](cursor-and-filters.md): `since`, `type`, `logger` and `cursor` on the console and events extensions.
+- [dowel MCP overview](https://anilcancakir.com/dowel/docs/mcp/overview): the substrate tools and the session file.

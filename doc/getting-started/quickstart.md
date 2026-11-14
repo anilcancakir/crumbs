@@ -1,161 +1,91 @@
 # Quickstart
 
-A 3-step walkthrough taking a fresh Flutter project from zero to a working Crumbs setup
-with runtime buffers populated and the first MCP tool call returning live data.
+Take a fresh Flutter project from zero to an AI agent reading the app's logs, HTTP traffic and exceptions through the `crumbs_*` MCP tools.
 
-Prerequisites: Flutter SDK 3.22+, Dart SDK 3.4+, a Flutter project (any vanilla
-`flutter create` output works). `dowel` is pulled in transitively by
-crumbs; you do not need to install it separately. The `crumbs:install` command
-scaffolds `bin/dispatcher.dart` for you on first run.
+Prerequisites: Dart 3.13 and Flutter 3.47 or newer, and a Flutter project (a plain `flutter create` output works). `dowel` comes with crumbs, and `crumbs:install` scaffolds its harness on the first run.
 
----
+- [Install crumbs](#install-crumbs)
+- [Start the app and generate traffic](#start-the-app)
+- [Read the buffers from the CLI](#read-from-the-cli)
+- [Read the buffers from an agent](#read-from-an-agent)
+- [Related Documentation](#related-documentation)
 
-### 1. Install Crumbs
-
-Add the dependency, then run the one-shot install through crumbs's own bootstrap entry
-point. The install command scaffolds the dowel harness if needed, registers the plugin,
-and patches `lib/main.dart` with the `kDebugMode`-guarded install call:
+<a name="install-crumbs"></a>
+## Install crumbs
 
 ```bash
 flutter pub add crumbs
 dart run crumbs crumbs:install
 ```
 
-The command outputs a summary of every file it touched. For a fresh project the summary
-looks like:
+The installer scaffolds the dowel harness when it is missing, registers crumbs as a dowel plugin and patches `lib/main.dart` with a `kDebugMode` block that installs crumbs with the exception and dump watchers. On a Magic app with a `magic_devtools` release built on crumbs it also wires `MagicCrumbsIntegration.install()` after `Magic.init()`; see [Installation](installation.md#run-the-installer) for every step.
 
-```
-[plugin:install] registered CrumbsDowelProvider
-[main.dart]      injected CrumbsPlugin.install() before framework init
-[main.dart]      injected import 'package:magic_devtools/crumbs.dart';
-[main.dart]      injected MagicCrumbsIntegration.install() after Magic.init() (when magic_devtools is in pubspec)
-crumbs:install done
-```
-
-When the consumer's `pubspec.yaml` lists `magic_devtools:` and `lib/main.dart` contains
-`await Magic.init(`, the install command also injects the `package:magic_devtools/crumbs.dart`
-import and a `MagicCrumbsIntegration.install()` block after `Magic.init()` so all 10 watchers
-activate automatically. `MagicCrumbsIntegration` ships in the `magic_devtools` package (not in
-the `magic` core). On a vanilla Flutter app only the core watchers (`LogWatcher`, plus any you opt
-into manually) are wired.
-
-Verify the provider registered correctly. From now on, the dowel fast-cli at `./bin/dowel`
-(native AOT, ~110ms warm) is the recommended entry point for every subsequent command:
+From here on the fast launcher `./bin/dowel` runs every command; `dart run crumbs <command>` is the slower equivalent that needs no build. Confirm the plugin registered:
 
 ```bash
 ./bin/dowel list
 ```
 
-You should see the `crumbs:` namespace with 11 commands: `crumbs:install`,
-`crumbs:tail`, `crumbs:requests`, `crumbs:queries`, `crumbs:caches`,
-`crumbs:events`, `crumbs:gates`, `crumbs:dumps`, `crumbs:frames`,
-`crumbs:clear`, `crumbs:files`. The same surface is also reachable via the ~3s cold-start fallbacks
-`dart run crumbs list` and `dart run dowel list`.
+The output lists the `crumbs:` namespace.
 
----
-
-### 2. Start the app and generate traffic
-
-Boot the Flutter app via dowel so the VM Service URI is recorded to the state file.
-Dowel resolves the running instance from this file for every subsequent CLI and MCP call.
+<a name="start-the-app"></a>
+## Start the app and generate traffic
 
 ```bash
 ./bin/dowel start --device=chrome
 ```
 
-The command scrapes the VM Service URI from `flutter run` output, normalizes it to a
-WebSocket address, and writes the full process state (PID, URI, device, project root)
-to `~/.dowel/state.json`.
+dowel starts `flutter run`, records the VM Service URI of the session, and every `crumbs:*` command and `crumbs_*` tool dials that session.
 
-With the app running, navigate the UI to generate HTTP traffic, logs, and any exceptions.
-When using the Magic framework, every HTTP call through the `Http` facade, every model save,
-and every cache read goes straight into the Crumbs ring buffers. On a vanilla Flutter app,
-`package:logging` output and `debugPrint` calls fill the log and dump buffers.
-
-You can also exercise the watchers programmatically from the app:
+Use the app. On a vanilla app, `package:logging` records fill the log buffer and `debugPrint` calls the dump buffer; on a Magic app, HTTP calls through the `Http` facade, model saves, cache reads and gate checks land in their buffers too. To produce records on purpose, from anywhere in the app:
 
 ```dart
-// Generates a LogRecordEntry in the console buffer.
-Logger('MyFeature').info('quickstart test log');
+import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 
-// Generates a DumpRecord in the dump buffer.
-debugPrint('quickstart test dump');
+void emitSampleRecords() {
+  Logger('Quickstart').info('quickstart test log'); // a log record
+  debugPrint('quickstart test dump'); // a dump record
+}
 ```
 
----
-
-### 3. Query the buffers from Claude Code (MCP)
-
-Start the dowel MCP server. When your project has `.mcp.json` wired with
-`dart run dowel:mcp` as the entry point (written by
-`dowel mcp:install`), Claude Code launches the server automatically on attach.
-To start it manually:
+<a name="read-from-the-cli"></a>
+## Read the buffers from the CLI
 
 ```bash
-./bin/dowel mcp:serve
+./bin/dowel crumbs:tail --level=INFO
+./bin/dowel crumbs:dumps
+./bin/dowel crumbs:requests --limit=10
+./bin/dowel crumbs:clear
 ```
 
-Inside a Claude Code session, the 10 `crumbs_*` tools are now available. A typical
-inspection flow:
+Each read command prints the newest records, oldest first (`--limit` defaults to 50). `crumbs:clear` empties every buffer, so the next read holds only what happens after it. `crumbs:tail --follow` keeps printing new log lines until you stop it.
 
-```
-[agent] crumbs_tail {}
-```
+<a name="read-from-an-agent"></a>
+## Read the buffers from an agent
 
-Returns the most recent log records from the ring buffer, newest first. Filter by level:
+Write the MCP entry and reconnect the client:
 
-```
-[agent] crumbs_tail { "level": "warning", "limit": 20 }
+```bash
+dart run crumbs mcp:install
 ```
 
-Inspect HTTP traffic:
+In Claude Code, run `/mcp reconnect dowel`; the `crumbs_*` tools appear next to the `dowel_*` tools. A typical inspection:
 
-```
-[agent] crumbs_requests {}
-```
-
-Returns every captured HTTP request with method, URL, status code, duration in ms, request
-headers, and a body snippet. Useful for verifying what the app actually sent to the API.
-
-Check for uncaught exceptions:
-
-```
-[agent] crumbs_exceptions {}
+```text
+crumbs_clear {}
+# exercise the feature
+crumbs_tail {"level": "WARNING", "limit": 20}
+crumbs_requests {}
+crumbs_exceptions {}
 ```
 
-Review DB queries with timings:
+`crumbs_tail` returns log records at or above the level, `crumbs_requests` every captured HTTP request with its status, duration and masked headers, and `crumbs_exceptions` the uncaught errors with their stack traces. Every tool reads an `ext.crumbs.*` extension in the running app; the buffers fill passively, so nothing in the app changes between reads.
 
-```
-[agent] crumbs_queries {}
-```
+<a name="related-documentation"></a>
+## Related Documentation
 
-Clear all buffers before the next test scenario:
-
-```
-[agent] crumbs_clear {}
-```
-
-All 10 tools follow the same pattern: they query the `ext.crumbs.*` VM Service
-extensions registered by `registerAllCrumbsExtensions()` at startup. No source changes
-are needed between queries; the buffers update passively as the app runs.
-
----
-
-## What's next?
-
-- Read the full [Installation](installation) doc for manual wiring options and the
-  `DioHttpAdapter` setup for vanilla Flutter.
-- Browse the watcher catalog at [anilcancakir.com/crumbs/watchers](https://anilcancakir.com/crumbs/docs/watchers)
-  to learn which watchers are opt-in and how chain-preservation works with Sentry and Bugsnag.
-- See the full MCP tool input schemas at [anilcancakir.com/crumbs/mcp](https://anilcancakir.com/crumbs/docs/mcp).
-- Mask secrets in every record with [Redaction](redaction), persist a timeline with the
-  [File sink](file-sink), and follow a buffer with [Cursor and filters](../mcp/cursor-and-filters).
-
----
-
-All three steps above use only the `crumbs ^0.0.4` package and its
-`dowel` dependency. No additional packages are required for the core
-watcher surface. Magic-specific watchers activate automatically when `magic_devtools`
-is in `dev_dependencies` and `MagicCrumbsIntegration.install()` is called after
-`Magic.init()`. `MagicCrumbsIntegration` ships in `magic_devtools`, not in the
-`magic` core package.
+- [Installation](installation.md): manual wiring, the Magic integration and a Dio interceptor.
+- [Watchers](../watchers/index.md): which watchers are opt-in and how they chain to Sentry and Bugsnag.
+- [Tool reference](../mcp/tool-reference.md): every tool's input and output shape.
+- [Redaction](redaction.md), [File sink](file-sink.md) and [Cursor and filters](../mcp/cursor-and-filters.md): mask secrets, keep a timeline on disk, and follow a buffer.

@@ -1,18 +1,10 @@
-# Crumbs MCP Tool Reference
+# MCP Tool Reference
 
-Catalog of every MCP tool contributed by `crumbs` via
-`CrumbsDowelProvider.mcpTools()`. All 10 tools use the `crumbs_` prefix and dispatch
-through `ext.crumbs.*` VM Service extensions registered inside the running Flutter app by
-`registerAllCrumbsExtensions()`.
+Every `crumbs_*` MCP tool: what it reads, its input schema, its output shape and the `ext.crumbs.*` extension it calls in the running app.
 
-**Requires a running app.** Every crumbs tool dispatches via the VM Service. Boot the
-app via the dowel fast-cli (`./bin/dowel start`) or the MCP equivalent (`dowel_start`)
-and confirm `dowel_status` shows a live `vmServiceUri` before invoking these tools.
+Every tool dispatches through the VM Service, so the app must be running under dowel: start it with `./bin/dowel start` or the `dowel_start` tool, and `dowel_status` shows the recorded session.
 
----
-
-## Table of Contents
-
+- [Quick Reference](#quick-reference)
 - [Common conventions](#common-conventions)
 - [crumbs_tail](#crumbs_tail)
 - [crumbs_requests](#crumbs_requests)
@@ -24,30 +16,36 @@ and confirm `dowel_status` shows a live `vmServiceUri` before invoking these too
 - [crumbs_caches](#crumbs_caches)
 - [crumbs_frames](#crumbs_frames)
 - [crumbs_clear](#crumbs_clear)
-- [Related](#related)
+- [Related Documentation](#related-documentation)
 
----
+<a name="quick-reference"></a>
+## Quick Reference
 
-## Common Conventions
+| Tool | Reads | Parameters | Answer key |
+|:-----|:------|:-----------|:-----------|
+| `crumbs_tail` | `package:logging` records | `limit`, `level` | `messages` |
+| `crumbs_requests` | HTTP requests | `limit` | `records` |
+| `crumbs_exceptions` | Uncaught exceptions | `limit` | `exceptions` |
+| `crumbs_events` | In-app events | `limit` | `events` |
+| `crumbs_gates` | Gate checks | `limit` | `gates` |
+| `crumbs_dumps` | `debugPrint` output | `limit` | `dumps` |
+| `crumbs_queries` | DB queries | `limit` | `queries` |
+| `crumbs_caches` | Cache operations | `limit` | `caches` |
+| `crumbs_frames` | Per-frame performance | `limit` | `frames` |
+| `crumbs_clear` | Empties every buffer | none | `cleared` |
 
-All buffer-reading tools (every tool except `crumbs_clear`) share these conventions:
+<a name="common-conventions"></a>
+## Common conventions
 
-- **Newest-first ordering.** The most recent record is always at index 0 of the returned array.
-- **`limit` parameter.** All buffer tools accept an optional `limit: integer` parameter that caps
-  the number of records returned. When omitted, the entire ring buffer is returned (subject to the
-  ring-buffer capacity, 500 records per buffer).
-- **Empty array on empty buffer.** When the buffer holds no records (fresh start or after
-  `crumbs_clear`), the response is `{"records": []}`. This is not an error.
-- **JSON envelope.** Every tool returns a JSON object. The outer shape is always
-  `{"records": [...]}`. Individual record field shapes are documented per tool below.
-- **Redaction.** Log, event, exception and HTTP records are masked at insert when the host registered a
-  `CrumbsRedaction.redactor` (see [Redaction](../getting-started/redaction.md)), and each carries a
-  `redacted` boolean. An unknown log `level` and a zero or negative `limit` return nothing.
-- **Error shape.** On failure (app not running, VM Service unreachable), `McpServer` returns
-  `CallToolResult` with `isError: true` and an actionable plain-text message.
+Every reading tool (all but `crumbs_clear`) follows these rules:
 
----
+- **Oldest first.** Records come back in chronological order: the last entry is the newest.
+- **`limit`.** Optional; keeps the newest N records. Omitted, the whole buffer comes back, up to its capacity (500 records by default, 3600 for frames; see [Buffers](../getting-started/buffers.md)). A zero or negative `limit` returns nothing.
+- **Envelope.** Every tool answers a JSON object whose list sits under the answer key in the table above. An empty buffer, on a fresh start or after `crumbs_clear`, answers an empty list, not an error.
+- **Redaction.** Log, event, exception and HTTP records are masked at insert when the host registered `CrumbsRedaction.redactor` (see [Redaction](../getting-started/redaction.md)), and each carries a `redacted` boolean.
+- **Errors.** When the app is not running or the VM Service cannot be reached, the tool result is an error with a plain-text message that says what to do.
 
+<a name="crumbs_tail"></a>
 ## crumbs_tail
 
 Return recent log records from the running Flutter app.
@@ -103,15 +101,15 @@ descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md
 
 ### Example Invocations
 
-```
+```text
 # Last 10 log lines at any level
-crumbs_tail limit=10
+crumbs_tail {"limit": 10}
 
-# Last 20 WARNING-and-above entries
-crumbs_tail limit=20 level=WARNING
+# Last 20 entries at WARNING or above
+crumbs_tail {"limit": 20, "level": "WARNING"}
 
-# All SEVERE entries in the buffer
-crumbs_tail level=SEVERE
+# Every SEVERE entry in the buffer
+crumbs_tail {"level": "SEVERE"}
 ```
 
 ### Related Tools
@@ -122,13 +120,14 @@ crumbs_tail level=SEVERE
 
 ---
 
+<a name="crumbs_requests"></a>
 ## crumbs_requests
 
 Return recent HTTP request records from the running Flutter app.
 
-Reads the Crumbs HTTP ring buffer populated by the Crumbs Dio interceptor or any
-`CrumbsHttpAdapter` the app installs (e.g. `MagicHttpFacadeAdapter` from the magic package).
-Use this to debug API issues without instrumenting the app or watching network panels in DevTools.
+Reads the HTTP buffer, filled by any `CrumbsHttpAdapter` the app registers (`MagicHttpFacadeAdapter`
+from `magic_devtools` on a Magic app) or by an interceptor that calls `DioHttpAdapter.recordRequest()`.
+Use this to debug API issues without a proxy or the network panel of DevTools.
 
 **VM Service extension:** `ext.crumbs.requests`
 
@@ -153,8 +152,7 @@ Use this to debug API issues without instrumenting the app or watching network p
       "requestHeaders": {
         "Authorization": "********"
       },
-      "requestBody": null,
-      "responseBody": "{\"data\": [...]}",
+      "responseBody": "{\"data\": []}",
       "atUs": 1234567,
       "redacted": false
     }
@@ -184,12 +182,12 @@ Use this to debug API issues without instrumenting the app or watching network p
 
 ### Example Invocations
 
-```
+```text
 # Last 5 HTTP requests
-crumbs_requests limit=5
+crumbs_requests {"limit": 5}
 
-# All requests in the buffer
-crumbs_requests
+# Every request in the buffer
+crumbs_requests {}
 ```
 
 ### Notes
@@ -205,13 +203,15 @@ crumbs_requests
 
 ---
 
+<a name="crumbs_exceptions"></a>
 ## crumbs_exceptions
 
 Return recent uncaught exception records from the running Flutter app.
 
-Reads the Crumbs exception ring buffer populated by the `FlutterError.onError` hook that
-`CrumbsPlugin.install()` chains. Use this when a crash or unhandled `Exception` was thrown and
-you need the stack without scraping `flutter run` stdout.
+Reads the exception buffer, filled by `ExceptionWatcher` through `FlutterError.onError` and
+`PlatformDispatcher.onError`. `CrumbsPlugin.install()` does not register it: `crumbs:install` does,
+and a hand wiring calls `CrumbsPlugin.registerWatcher(ExceptionWatcher())`. Use this when a crash or
+unhandled exception was thrown and you need the stack without scraping `flutter run` output.
 
 **VM Service extension:** `ext.crumbs.exceptions`
 
@@ -225,7 +225,7 @@ you need the stack without scraping `flutter run` stdout.
 
 ```json
 {
-  "records": [
+  "exceptions": [
     {
       "exceptionType": "StateError",
       "message": "Bad state: Stream has already been listened to",
@@ -249,31 +249,31 @@ you need the stack without scraping `flutter run` stdout.
 
 ### Example Invocations
 
-```
+```text
 # Last 3 uncaught exceptions
-crumbs_exceptions limit=3
+crumbs_exceptions {"limit": 3}
 
-# All exceptions in the buffer
-crumbs_exceptions
+# Every exception in the buffer
+crumbs_exceptions {}
 ```
 
 ### Notes
 
-- Only **uncaught** exceptions routed through `FlutterError.onError` are captured. Expected
+- Only **uncaught** errors reach `FlutterError.onError` or `PlatformDispatcher.onError`. Expected
   `try/catch` flows do not surface here.
-- The watcher chain-preserves the previous `FlutterError.onError` handler (e.g. Sentry) so both
-  coexist safely.
+- The watcher chains to the handlers that were set before it (Sentry, Bugsnag), so both keep working.
 - Pair with `crumbs_tail` to see what the app logged in the moments before the crash.
 
 ---
 
+<a name="crumbs_events"></a>
 ## crumbs_events
 
 Return recent in-app event records from the running Flutter app.
 
-Reads the Crumbs events ring buffer populated by `MagicEventWatcher` whenever `Event.dispatch()`
-is called via the Magic `Event` facade. Use this to trace event-driven side effects (cache
-invalidation, broadcast echoes, model lifecycle transitions) without adding `print` statements.
+Reads the event buffer. On a Magic app `MagicEventWatcher` fills it from a curated set of Magic auth,
+database and gate-definition events; any app can add its own through `CrumbsStore.recordEvent`. Use this
+to trace event-driven side effects without adding `print` statements.
 
 **VM Service extension:** `ext.crumbs.events`
 
@@ -319,29 +319,32 @@ descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md
 
 ### Example Invocations
 
-```
+```text
 # Last 10 events
-crumbs_events limit=10
+crumbs_events {"limit": 10}
 
-# All events in the buffer
-crumbs_events
+# Every event in the buffer
+crumbs_events {}
 ```
 
 ### Notes
 
-- Only events dispatched through the Magic `Event` facade are captured. Raw
-  `ChangeNotifier.notifyListeners` calls are invisible to this tool.
-- For Gate authorization checks use `crumbs_gates`; for HTTP traffic use `crumbs_requests`.
+- Only events that reach the buffer are visible: a Magic event outside the watcher's set, or a raw
+  `ChangeNotifier.notifyListeners` call, does not surface here.
+- `MagicEventWatcher` records an empty `payload` for every Magic event; per-event fields are not
+  extracted yet.
+- For gate checks use `crumbs_gates`; for HTTP traffic use `crumbs_requests`.
 
 ---
 
+<a name="crumbs_gates"></a>
 ## crumbs_gates
 
-Return recent Gate authorization check records from the running Flutter app.
+Return recent gate authorization check records from the running Flutter app.
 
-Reads the Crumbs gates ring buffer populated by `MagicGateWatcher` on every
-`Gate.allows` / `Gate.denies` call via the Magic `Gate` facade. Use this to debug authorization
-issues (why a button is hidden, why a route is blocked) without modifying policy classes.
+Reads the gate buffer, filled by `MagicGateWatcher` on every `Gate.allows` and `Gate.denies` call
+through the Magic `Gate` facade. Use this to debug authorization issues (why a button is hidden, why a
+route is blocked) without modifying policy classes.
 
 **VM Service extension:** `ext.crumbs.gates`
 
@@ -355,7 +358,7 @@ issues (why a button is hidden, why a route is blocked) without modifying policy
 
 ```json
 {
-  "records": [
+  "gates": [
     {
       "ability": "monitors.destroy",
       "result": false,
@@ -377,12 +380,12 @@ issues (why a button is hidden, why a route is blocked) without modifying policy
 
 ### Example Invocations
 
-```
+```text
 # Last 20 gate checks
-crumbs_gates limit=20
+crumbs_gates {"limit": 20}
 
-# All gate checks in the buffer
-crumbs_gates
+# Every gate check in the buffer
+crumbs_gates {}
 ```
 
 ### Notes
@@ -393,13 +396,14 @@ crumbs_gates
 
 ---
 
+<a name="crumbs_dumps"></a>
 ## crumbs_dumps
 
 Return recent `debugPrint` output records from the running Flutter app.
 
-Reads the Crumbs dumps ring buffer populated by `DumpWatcher`, which overrides `debugPrint`
-globally. Use this to read `print()` / `debugPrint()` output from within the running app without
-scraping `flutter run` stdout.
+Reads the dump buffer, filled by `DumpWatcher`, which replaces the global `debugPrint` callback and
+chains to the previous one. Use this to read `debugPrint()` output from within the running app without
+scraping `flutter run` output.
 
 **VM Service extension:** `ext.crumbs.dumps`
 
@@ -413,7 +417,7 @@ scraping `flutter run` stdout.
 
 ```json
 {
-  "records": [
+  "dumps": [
     {
       "message": "[MonitorController] reloading monitors...",
       "time": "2026-05-20T14:36:00.200Z",
@@ -431,31 +435,32 @@ scraping `flutter run` stdout.
 
 ### Example Invocations
 
-```
+```text
 # Last 10 debugPrint calls
-crumbs_dumps limit=10
+crumbs_dumps {"limit": 10}
 
-# All dump records in the buffer
-crumbs_dumps
+# Every dump record in the buffer
+crumbs_dumps {}
 ```
 
 ### Notes
 
-- Only output routed through the `debugPrint` global override is captured. `dart:io stdout.write`
-  calls are invisible to this tool.
-- `DumpWatcher` gates on `kDebugMode`: release builds tree-shake it entirely.
+- Only output routed through `debugPrint` is captured. `print()` and `stdout.write` calls are
+  invisible to this tool.
+- `DumpWatcher` installs nothing outside a debug build unless `allowInRelease` is set, so a profile
+  build under `!kReleaseMode` records no dumps.
 - For structured logs use `crumbs_tail`; for crashes use `crumbs_exceptions`.
 
 ---
 
+<a name="crumbs_queries"></a>
 ## crumbs_queries
 
 Return recent database query records from the running Flutter app.
 
-Reads the Crumbs queries ring buffer populated by `MagicQueryWatcher`, which subscribes to
-magic's `QueryExecuted` event dispatched by the Magic QueryBuilder. Each record carries the SQL
-string, bindings, execution time, and connection name. Use this to inspect what queries the app
-dispatched without attaching a separate SQL profiler.
+Reads the query buffer, filled by `MagicQueryWatcher` from the `QueryExecuted` event the Magic query
+builder dispatches after every SQL run. Use this to inspect what queries the app ran without attaching
+a separate SQL profiler.
 
 **VM Service extension:** `ext.crumbs.queries`
 
@@ -469,13 +474,14 @@ dispatched without attaching a separate SQL profiler.
 
 ```json
 {
-  "records": [
+  "queries": [
     {
       "sql": "SELECT * FROM monitors WHERE team_id = ? LIMIT 50",
       "bindings": ["team-abc"],
       "timeMs": 4,
       "connectionName": "default",
-      "time": "2026-05-20T14:37:00.100Z"
+      "time": "2026-05-20T14:37:00.100Z",
+      "atUs": 1234567
     }
   ]
 }
@@ -483,20 +489,23 @@ dispatched without attaching a separate SQL profiler.
 
 | Field | Type | Always present | Description |
 |---|---|---|---|
-| `sql` | string | yes | SQL string the QueryBuilder dispatched to the underlying driver |
+| `sql` | string | yes | SQL string the query builder dispatched to the driver |
 | `bindings` | array | yes | Positional or named query bindings |
-| `timeMs` | integer | yes | Execution time in milliseconds reported by magic's QueryBuilder |
-| `connectionName` | string | yes | Connection name; `"default"` when the consumer did not name it |
+| `timeMs` | integer | yes | Execution time in milliseconds reported by the query builder |
+| `connectionName` | string | yes | Connection name; `"default"` when the app did not name it |
 | `time` | string | yes | ISO 8601 UTC timestamp |
+| `atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now` |
+| `interactionId` | string | no | Correlates this record to others captured during the same interaction |
+| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window` |
 
 ### Example Invocations
 
-```
+```text
 # Last 5 queries
-crumbs_queries limit=5
+crumbs_queries {"limit": 5}
 
-# All queries in the buffer
-crumbs_queries
+# Every query in the buffer
+crumbs_queries {}
 ```
 
 ### Notes
@@ -508,14 +517,14 @@ crumbs_queries
 
 ---
 
+<a name="crumbs_caches"></a>
 ## crumbs_caches
 
-Return recent Magic Cache operation records from the running Flutter app.
+Return recent Magic cache operation records from the running Flutter app.
 
-Reads the Crumbs caches ring buffer populated by `MagicCacheWatcher`, which subscribes to
-magic's `CacheHit` / `CacheMiss` / `CachePut` / `CacheForget` / `CacheFlush` events. Each record
-carries timestamp, operation tag, cache key, and optional TTL. Use this to inspect cache traffic
-without instrumenting the consumer code.
+Reads the cache buffer, filled by `MagicCacheWatcher` from Magic's `CacheHit`, `CacheMiss`,
+`CachePut`, `CacheForget` and `CacheFlush` events. Use this to inspect cache traffic without
+instrumenting the app.
 
 **VM Service extension:** `ext.crumbs.caches`
 
@@ -529,12 +538,13 @@ without instrumenting the consumer code.
 
 ```json
 {
-  "records": [
+  "caches": [
     {
-      "operation": "miss",
+      "operation": "put",
       "key": "monitors.team-abc",
       "time": "2026-05-20T14:38:00.300Z",
-      "ttlMs": 300000
+      "ttlMs": 300000,
+      "atUs": 1234567
     }
   ]
 }
@@ -543,18 +553,21 @@ without instrumenting the consumer code.
 | Field | Type | Always present | Description |
 |---|---|---|---|
 | `operation` | string | yes | One of: `hit`, `miss`, `put`, `forget`, `flush` |
-| `key` | string | yes | Cache key string |
+| `key` | string | yes | Cache key string (`*` for a flush) |
 | `time` | string | yes | ISO 8601 UTC timestamp |
-| `ttlMs` | integer | no | TTL in milliseconds, when the operation included a TTL |
+| `ttlMs` | integer | no | TTL in milliseconds, when the operation carried one |
+| `atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now` |
+| `interactionId` | string | no | Correlates this record to others captured during the same interaction |
+| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window` |
 
 ### Example Invocations
 
-```
+```text
 # Last 20 cache operations
-crumbs_caches limit=20
+crumbs_caches {"limit": 20}
 
-# All cache operations in the buffer
-crumbs_caches
+# Every cache operation in the buffer
+crumbs_caches {}
 ```
 
 ### Notes
@@ -565,11 +578,12 @@ crumbs_caches
 
 ---
 
+<a name="crumbs_frames"></a>
 ## crumbs_frames
 
 Return recent per-frame performance records from the running Flutter app.
 
-Reads the Crumbs frame-perf ring buffer populated by `FramePerfWatcher`, which joins
+Reads the frame buffer, filled by `FramePerfWatcher`, which joins
 `SchedulerBinding` frame timings with a per-frame `FlutterTimeline` block-attribution drain. Each
 record carries frame number, build/raster/vsync-overhead/total-span durations in microseconds, a
 timestamp, and a `blocks` map of named spans to their aggregated duration and call count. Use this
@@ -624,12 +638,12 @@ to attribute jank to a specific widget or layout phase after driving an interact
 
 ### Example Invocations
 
-```
+```text
 # Last 100 frames
-crumbs_frames limit=100
+crumbs_frames {"limit": 100}
 
-# All frames in the buffer
-crumbs_frames
+# Every frame in the buffer
+crumbs_frames {}
 ```
 
 ### Notes
@@ -641,15 +655,14 @@ crumbs_frames
 
 ---
 
+<a name="crumbs_clear"></a>
 ## crumbs_clear
 
-Clear every Crumbs ring buffer.
+Clear every crumbs ring buffer.
 
-Wipes all ring buffers in one call so the next `crumbs_tail` / `crumbs_requests` /
-`crumbs_exceptions` / `crumbs_events` / `crumbs_gates` / `crumbs_dumps` /
-`crumbs_queries` / `crumbs_caches` / `crumbs_frames` returns only records produced
-**after** this clear. Useful as a "set zero" before reproducing a bug or capturing the output of a
-specific user action.
+Empties every buffer in one call, so the next read of any `crumbs_*` tool returns only records
+produced **after** this clear. Use it as a starting point before reproducing a bug or capturing the
+output of one user action.
 
 **VM Service extension:** `ext.crumbs.clear`
 
@@ -671,33 +684,29 @@ No parameters.
 
 ### Example Invocations
 
-```
-# Clear all buffers before a repro
-crumbs_clear
-
-# Common pattern: clear, perform the action, then read
-crumbs_clear
-# ... trigger the user action ...
-crumbs_requests limit=20
-crumbs_tail limit=50
+```text
+# Clear, perform the action, then read
+crumbs_clear {}
+# the user action runs
+crumbs_requests {"limit": 20}
+crumbs_tail {"limit": 50}
 ```
 
 ### Notes
 
-- Idempotent: safe to call when buffers are already empty.
-- Does NOT affect the live `package:logging` stream; only the captured ring buffers.
-- The `ext.crumbs.pause` and `ext.crumbs.resume` extensions exist in the running app but
-  are not exposed as MCP tools in the current release (V1.x backlog).
+- Idempotent: safe to call when the buffers are already empty.
+- Does not touch the live `package:logging` stream or any other sink (Sentry, Bugsnag); only the
+  buffers crumbs keeps.
+- `ext.crumbs.pause` and `ext.crumbs.resume`, which stop and restart recording, have no MCP tool.
 
 ---
 
-## Related
+<a name="related-documentation"></a>
+## Related Documentation
 
 - [Cursor and filters](cursor-and-filters.md): `since`, `type`, `logger` and `cursor` on the console and
   events extensions.
-- [Overview](overview.md): how the 10 tools surface through `CrumbsDowelProvider` and route
-  through the VM Service.
-- [Setup guide](setup.md): install crumbs, register `CrumbsDowelProvider`, and connect
-  Claude Code.
-- [dowel MCP tool reference](https://anilcancakir.com/dowel/docs/mcp/tool-reference): the 10 substrate
-  tools (`dowel_start`, `dowel_stop`, `dowel_tinker`, etc.) and filter configuration.
+- [MCP overview](overview.md): how the tools reach the running app through `CrumbsDowelProvider`.
+- [MCP setup](setup.md): write the `.mcp.json` entry and connect a client.
+- [dowel MCP tool reference](https://anilcancakir.com/dowel/docs/mcp/tool-reference): the `dowel_*`
+  substrate tools (`dowel_start`, `dowel_stop`, `dowel_status`) and filter configuration.

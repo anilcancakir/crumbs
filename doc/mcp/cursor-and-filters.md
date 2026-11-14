@@ -1,11 +1,17 @@
 # Cursor and filters
 
-`ext.crumbs.console` (log records) and `ext.crumbs.events` (event records) accept filters and answer
-a `cursor`, so a reader can follow a buffer without re-reading it or skipping a record. The parameters
-are part of the VM Service extension and the CLI. The MCP descriptors for `crumbs_tail` and
-`crumbs_events` still declare only `limit` (and `level` on tail); an MCP agent that needs the cursor
-reads the extension through the CLI (`crumbs:tail --json`, `crumbs:events --json`).
+Follow the log and event buffers without re-reading them or skipping a record: the filters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events`, the matching CLI flags, and the `followCursor` loop.
 
+The parameters belong to the VM Service extensions and the CLI. The MCP descriptors of `crumbs_tail` and `crumbs_events` declare only `limit` (and `level` on `crumbs_tail`); an agent that needs the cursor reads through the CLI (`crumbs:tail --json`, `crumbs:events --json`).
+
+- [Extension parameters](#extension-parameters)
+- [Which records limit keeps](#which-records-limit-keeps)
+- [The cursor](#the-cursor)
+- [CLI](#cli)
+- [followCursor](#followcursor)
+- [Related Documentation](#related-documentation)
+
+<a name="extension-parameters"></a>
 ## Extension parameters
 
 All values are strings on the wire, as with every VM Service extension.
@@ -22,7 +28,8 @@ A `since` that is not an integer is refused with `invalidParams` (`since must be
 microseconds.`) rather than read as "from the start", so a typo cannot return the whole buffer as if it
 were new.
 
-## Which records `limit` keeps
+<a name="which-records-limit-keeps"></a>
+## Which records limit keeps
 
 The filters run first, then `limit`:
 
@@ -32,7 +39,8 @@ The filters run first, then `limit`:
 
 Records come back oldest first either way.
 
-## The `cursor`
+<a name="the-cursor"></a>
+## The cursor
 
 Both answers carry `cursor`: the largest `atUs` among the returned records, else the `since` you passed,
 else null. Pass it back as `since` and the next answer holds only newer records.
@@ -47,8 +55,9 @@ else null. Pass it back as `since` and the next answer holds only newer records.
 ```
 
 `ext.crumbs.console` answers its records under `messages`, `ext.crumbs.events` under `events`.
-Every other read extension keeps its existing envelope and takes `limit` only.
+Every other read extension keeps its own envelope and takes `limit` only.
 
+<a name="cli"></a>
 ## CLI
 
 `crumbs:tail` and `crumbs:events` expose the same parameters as flags:
@@ -73,7 +82,8 @@ empty-buffer hint; with `--json` or `--follow` it prints nothing.
 ./bin/dowel crumbs:events --type=Auth --since=81234567
 ```
 
-## `followCursor`
+<a name="followcursor"></a>
+## followCursor
 
 The loop behind `--follow` is a pure Dart function, exported from `package:crumbs/cli.dart`
 so a command that runs under `dart run` can build on it:
@@ -81,15 +91,19 @@ so a command that runs under `dart run` can build on it:
 ```dart
 import 'package:crumbs/cli.dart' show followCursor;
 
-await followCursor(
-  since: null,
-  interval: const Duration(seconds: 1),
-  read: (int? since) async {
-    final response = await fetch(since); // call the extension with `since`
-    handle(response);
-    return response['cursor'] as int?;   // the next cursor
-  },
-);
+/// [fetch] calls the extension with `since`; [handle] prints the answer. Both are the caller's.
+Future<void> follow(
+  Future<Map<String, dynamic>> Function(int? since) fetch,
+  void Function(Map<String, dynamic> response) handle,
+) =>
+    followCursor(
+      interval: const Duration(seconds: 1),
+      read: (int? since) async {
+        final response = await fetch(since);
+        handle(response);
+        return response['cursor'] as int?; // the next cursor
+      },
+    );
 ```
 
 | Parameter | Default | Meaning |
@@ -99,3 +113,10 @@ await followCursor(
 | `interval` | 1 second | Wait between rounds. |
 | `delay` | real clock | Replaceable wait, so a test runs the loop without a clock. |
 | `shouldStop` | never | Asked after each read; the loop ends when it returns true. By default it ends only when the process does. |
+
+<a name="related-documentation"></a>
+## Related Documentation
+
+- [Tool reference](tool-reference.md): the `crumbs_tail` and `crumbs_events` answers the cursor belongs to.
+- [Buffers](../getting-started/buffers.md): the `atUs` clock and how `limit` and `minLevel` behave in the store.
+- [File sink](../getting-started/file-sink.md): a timeline on disk for reads that must outlive the app.

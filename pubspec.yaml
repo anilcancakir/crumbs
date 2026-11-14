@@ -1,15 +1,12 @@
 name: crumbs
-description: "Passive runtime inspector for Flutter. Captures HTTP, logs, exceptions, DB queries, and Magic events via VM Service extensions. CLI tail and MCP tools for Claude Code."
+description: "Inspect a running Flutter app from an AI agent or the CLI: HTTP traffic, logs, exceptions, queries and events captured in memory, read over MCP."
 version: 0.0.12
 homepage: https://anilcancakir.com/crumbs
 repository: https://github.com/anilcancakir/crumbs
 issue_tracker: https://github.com/anilcancakir/crumbs/issues
 
-# pub.dev search topics (max 5, lowercase + hyphens, regex ^[a-z][a-z0-9-]{0,31}$).
-# Order = priority. `mcp-server` + `ai-agents` are blue-ocean (2 packages each
-# as of 2026-05); `inspector` + `observability` are mid-traffic perfect-fit;
-# `debugging` is the high-volume catch-all. Skip `flutter` (near-zero signal)
-# and `vm-service` (zero traffic). See marketing dossier for full analysis.
+# pub.dev search topics: at most 5, existing topics only, ordered by priority.
+# `flutter` adds nothing: pub.dev derives the sdk:flutter tag itself.
 topics:
   - mcp-server
   - ai-agents

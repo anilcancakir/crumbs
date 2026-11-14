@@ -1,82 +1,79 @@
 # Getting Started
 
-Everything you need to add `crumbs` to your project, wire the watchers,
-and start inspecting runtime state from the CLI or an MCP-connected AI agent.
+What crumbs captures, what it needs, and where to start: installation, the quickstart, and the host features for redaction, the file sink and buffers.
 
+- [Pick your path](#pick-your-path)
+- [What crumbs is](#what-crumbs-is)
+- [Requirements](#requirements)
+- [What gets captured](#what-gets-captured)
+- [Host features](#host-features)
+- [Related Documentation](#related-documentation)
+
+<a name="pick-your-path"></a>
 ## Pick your path
 
-- [**Installation**](installation): Add crumbs to a Flutter project step by step.
-- [**Quickstart**](quickstart): 3-step end-to-end walkthrough from install to first MCP tool call.
+| You want to | Read |
+|:------------|:-----|
+| Add crumbs to a Flutter app | [Installation](installation.md) |
+| Go from install to a first MCP tool call | [Quickstart](quickstart.md) |
+| Keep secrets out of the buffers | [Redaction](redaction.md) |
+| Keep a timeline on disk | [File sink](file-sink.md) |
+| Size the buffers | [Buffers](buffers.md) |
 
-## What is crumbs?
+<a name="what-crumbs-is"></a>
+## What crumbs is
 
-Crumbs is a passive runtime inspector for Flutter apps. It registers a set of watchers and VM
-Service extensions at startup, captures every HTTP request, log line, exception, `debugPrint` call,
-DB query, and Magic-framework lifecycle event into ring buffers, then surfaces those buffers through
-CLI commands and MCP tools without ever modifying app behavior.
-
-One `crumbs:install` command wires everything end-to-end. Crumbs ships its own
-bootstrap CLI entry point so the command works from a fresh consumer without any prior
-`dowel` wiring:
+crumbs is a passive runtime inspector for Flutter apps. Watchers and HTTP adapters record what the app does into in-memory ring buffers, and `ext.crumbs.*` VM Service extensions serve those buffers to `crumbs:*` CLI commands and `crumbs_*` MCP tools on [dowel](https://pub.dev/packages/dowel). It never changes app behaviour; it only records.
 
 ```bash
 flutter pub add crumbs
 dart run crumbs crumbs:install
 ```
 
-The command scaffolds the consumer dowel harness if it is missing, runs
-`plugin:install crumbs`, and patches `lib/main.dart` so
-`CrumbsPlugin.install()` runs at startup inside a `kDebugMode` guard. Release builds
-tree-shake the entire subsystem; there is zero production overhead. The guard belongs to the call
-site: `kDebugMode` is what the installer writes, and `!kReleaseMode` is the guard to use when profile
-builds should carry crumbs too (see [Call-site guard](../watchers/index.md#call-site-guard)).
+`crumbs:install` scaffolds the dowel harness when it is missing, registers the plugin and patches `lib/main.dart` so `CrumbsPlugin.install()` runs at startup inside a `kDebugMode` guard. The guard belongs to the call site: `kDebugMode` is what the installer writes, and `!kReleaseMode` also keeps crumbs in profile builds (see [Call-site guard](../watchers/index.md#call-site-guard)). A release build tree-shakes crumbs either way.
 
-After install, the dowel native AOT launcher at `./bin/dowel` gives ~110ms warm startup
-for every subsequent crumbs command (`./bin/dowel crumbs:tail`, etc.).
-
+<a name="requirements"></a>
 ## Requirements
 
-| Dependency | Minimum Version | Notes |
-|:-----------|:----------------|:------|
-| Dart SDK | `>= 3.4.0` | Required. |
-| Flutter SDK | `>= 3.22.0` | Required. Crumbs needs the Flutter runtime for VM Service extensions. |
-| dowel | `^0.0.20` | Pulled in transitively by crumbs; the install command and MCP tools work without prior setup. |
-| Magic stack | optional | Enables 6 additional watchers: HTTP facade, models, cache, events, gates, queries. |
+| Dependency | Minimum | Notes |
+|:-----------|:--------|:------|
+| Dart SDK | `3.13` | |
+| Flutter SDK | `3.47` | The VM Service extensions need the Flutter runtime. |
+| dowel | `^0.0.21` | Pulled in by crumbs; `crumbs:install` sets up the rest. |
+| Magic stack | optional | `MagicCrumbsIntegration` from a `magic_devtools` release built on crumbs adds HTTP, model, cache, event, gate and query capture. |
 
-Crumbs is a development package: it must never run in a release build. A `kDebugMode` or
-`!kReleaseMode` guard at the consumer install site is load-bearing, because all release-mode
-tree-shaking depends on it. Crumbs itself installs no guard.
-
+<a name="what-gets-captured"></a>
 ## What gets captured
 
-Out of the box after `crumbs:install`, Crumbs captures:
+After `crumbs:install` on any Flutter app:
 
-- **Logs**: all `package:logging` records via `LogWatcher` (auto-installed).
-- **Exceptions**: uncaught errors via `ExceptionWatcher` (opt-in, chain-preserves Sentry/Bugsnag).
-- **debugPrint output**: via `DumpWatcher` (opt-in, chain-preserves prior override).
+- **Logs**: every `package:logging` record, through `LogWatcher` (installed by `CrumbsPlugin.install()`).
+- **Exceptions**: uncaught errors, through `ExceptionWatcher`, chained to any handler already set (Sentry, Bugsnag).
+- **`debugPrint` output**: through `DumpWatcher`, chained to the previous override.
 
-With the Magic stack (`MagicCrumbsIntegration.install()` from `magic_devtools`):
+With the Magic stack (`MagicCrumbsIntegration.install()` after `Magic.init()`):
 
 - **HTTP traffic** through the Magic `Http` facade.
-- **Model lifecycle**: create, save, delete events on Magic Eloquent models.
-- **Cache operations**: hit, miss, put, forget, flush via the `Cache` facade.
-- **In-app events** dispatched through `Event.dispatch`.
-- **Gate checks**: every `Gate.allows` / `Gate.denies` call with result + user id.
-- **DB queries**: SQL, bindings, and execution time via the magic database connector.
+- **Model lifecycle**: created, saved and deleted events on Magic models.
+- **Cache operations**: hit, miss, put, forget and flush through the `Cache` facade.
+- **In-app events**: a curated set of Magic auth, database and gate-definition events.
+- **Gate checks**: every `Gate.allows` and `Gate.denies` result with the user id.
+- **DB queries**: SQL, bindings and execution time through the Magic query builder.
 
+`FramePerfWatcher` (frame timings) and a Dio interceptor (HTTP on a vanilla app) are opt-in on any app; see [Watchers](../watchers/index.md).
+
+<a name="host-features"></a>
 ## Host features
 
-- [**Redaction**](redaction): the credential lists and `CrumbsRedaction.redactor`, the host hook that
-  masks every log, event, exception and HTTP record at insert.
-- [**File sink**](file-sink): `CrumbsFileSink`, a rotating JSONL timeline on disk that writes only
-  redacted records, read back through `crumbs:files`.
-- [**Buffers**](buffers): per-kind capacity with `CrumbsStore.setCapacity`, the `atUs` clock, and how
-  `limit` and `minLevel` behave.
-- [**Cursor and filters**](../mcp/cursor-and-filters): `since`, `type`, `logger` and `cursor` on the read
-  extensions, and `--json` / `--follow` on the CLI.
+- [Redaction](redaction.md): the credential lists and `CrumbsRedaction.redactor`, the host hook that masks every log, event, exception and HTTP record at insert.
+- [File sink](file-sink.md): `CrumbsFileSink`, a rotating JSONL timeline on disk that writes only redacted records, read back through `crumbs:files`.
+- [Buffers](buffers.md): per-kind capacity with `CrumbsStore.setCapacity`, the `atUs` clock, and how `limit` and `minLevel` behave.
+- [Cursor and filters](../mcp/cursor-and-filters.md): `since`, `type`, `logger` and `cursor` on the read extensions, and `--json` and `--follow` on the CLI.
 
-## Next steps
+<a name="related-documentation"></a>
+## Related Documentation
 
-- New here? Start with [Installation](installation).
-- Already installed? Run the [Quickstart](quickstart).
-- Full reference at [anilcancakir.com/crumbs](https://anilcancakir.com/crumbs).
+- [Installation](installation.md): the installer, manual wiring and the dowel provider.
+- [Quickstart](quickstart.md): install, start the app and make the first MCP tool call.
+- [Watchers](../watchers/index.md): every watcher and adapter, and the call-site guard.
+- [MCP overview](../mcp/overview.md): how the `crumbs_*` tools reach the running app.
