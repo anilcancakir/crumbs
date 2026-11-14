@@ -7,7 +7,7 @@ Flutter package `crumbs`, a plugin of `dowel`: a passive runtime inspector that 
 ## Commands
 
 | Command | When |
-|---|---|
+|:---|:---|
 | `flutter analyze --no-fatal-infos` | Zero issues. |
 | `dart format --output=none --set-exit-if-changed .` | Zero diff. |
 | `flutter test --exclude-tags=integration` | The suite. Line coverage stays at or above 80%, the CI floor: lift it with a test, never by excluding code. |
@@ -49,7 +49,7 @@ These change only with a coordinated bump in `magic_devtools`, which is meant to
 ## Key Gotchas
 
 | Mistake | Fix |
-|---|---|
+|:---|:---|
 | A `crumbs:*` command from a git worktree that has not run `dowel start` | Run `dart run crumbs start` from the worktree's `example/` (or pass `--state=<path>`) first. Otherwise dowel refuses ("belongs to another project"), because the recorded app root is `<main>/example`; a recorded root that contained the worktree would pass the check and drive the main checkout's app, reporting success. |
 | A relative path in `pubspec_overrides.yaml` | Absolute paths only: `.worktreeinclude` copies the file into `.claude/worktrees/<slug>`, where `../dowel` resolves wrong. |
 | Importing `package:flutter/material.dart` in `lib/` | Deprecated from Flutter 3.50 (`material_ui` replaces it); `lib/` uses `foundation.dart` and `scheduler.dart`. |
