@@ -48,5 +48,5 @@ post_install:
 
     4. Verify the MCP surface:
 
-         dart run dowel mcp:install    # add fluttersdk MCP server entry to .mcp.json
+         dart run dowel mcp:install    # add the dowel MCP server entry to .mcp.json
          # then restart Claude Code; /mcp lists the crumbs_* tools.

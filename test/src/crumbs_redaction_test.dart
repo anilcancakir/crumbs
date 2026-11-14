@@ -363,8 +363,8 @@ void main() {
         );
 
         expect(CrumbsRedaction.redactLogRecord(log), same(log));
-        expect(CrumbsRedaction.redactExceptionRecord(exception),
-            same(exception));
+        expect(
+            CrumbsRedaction.redactExceptionRecord(exception), same(exception));
       });
 
       test('drops a record when the redactor throws', () {
@@ -431,8 +431,7 @@ void main() {
             stackTrace: 's',
           ),
         )!;
-        final ExceptionRecord exception =
-            CrumbsRedaction.redactExceptionRecord(
+        final ExceptionRecord exception = CrumbsRedaction.redactExceptionRecord(
           ExceptionRecord(
             exceptionType: 't',
             message: 'm',
@@ -478,12 +477,9 @@ void main() {
 
         CrumbsRedaction.resetForTesting();
 
-        expect(
-            CrumbsRedaction.hiddenRequestHeaders, isNot(contains('x-auth')));
-        expect(
-            CrumbsRedaction.hiddenRequestHeaders, contains('authorization'));
-        expect(
-            CrumbsRedaction.hiddenRequestParameters, isNot(contains('pin')));
+        expect(CrumbsRedaction.hiddenRequestHeaders, isNot(contains('x-auth')));
+        expect(CrumbsRedaction.hiddenRequestHeaders, contains('authorization'));
+        expect(CrumbsRedaction.hiddenRequestParameters, isNot(contains('pin')));
         expect(
           CrumbsRedaction.hiddenResponseParameters,
           isNot(contains('backup_key')),
@@ -497,8 +493,7 @@ void main() {
 
         CrumbsStore.resetForTesting();
 
-        expect(
-            CrumbsRedaction.hiddenRequestHeaders, isNot(contains('x-auth')));
+        expect(CrumbsRedaction.hiddenRequestHeaders, isNot(contains('x-auth')));
       });
     });
   });

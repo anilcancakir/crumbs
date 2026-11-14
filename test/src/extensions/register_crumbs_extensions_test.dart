@@ -96,8 +96,7 @@ void main() {
         );
       }
 
-      final result =
-          await eventsHandler('ext.crumbs.events', {'limit': '3'});
+      final result = await eventsHandler('ext.crumbs.events', {'limit': '3'});
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       final events = decoded['events'] as List<dynamic>;
 
@@ -382,8 +381,7 @@ void main() {
         );
       }
 
-      final result =
-          await consoleHandler('ext.crumbs.console', {'limit': '3'});
+      final result = await consoleHandler('ext.crumbs.console', {'limit': '3'});
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       final messages = decoded['messages'] as List<dynamic>;
 
@@ -671,8 +669,7 @@ void main() {
         );
       }
 
-      final result =
-          await queriesHandler('ext.crumbs.queries', {'limit': '2'});
+      final result = await queriesHandler('ext.crumbs.queries', {'limit': '2'});
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       final records = decoded['queries'] as List<dynamic>;
       expect(records, hasLength(2));
@@ -696,8 +693,7 @@ void main() {
       expect(decoded.containsKey('caches'), isTrue);
     });
 
-    test('returns records seeded via CrumbsStore.recordMagicCache',
-        () async {
+    test('returns records seeded via CrumbsStore.recordMagicCache', () async {
       CrumbsStore.recordMagicCache(
         MagicCacheRecord(
           operation: 'put',
@@ -727,8 +723,7 @@ void main() {
         );
       }
 
-      final result =
-          await cachesHandler('ext.crumbs.caches', {'limit': '2'});
+      final result = await cachesHandler('ext.crumbs.caches', {'limit': '2'});
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       final records = decoded['caches'] as List<dynamic>;
       expect(records, hasLength(2));
@@ -790,8 +785,7 @@ void main() {
         );
       }
 
-      final result =
-          await framesHandler('ext.crumbs.frames', {'limit': '2'});
+      final result = await framesHandler('ext.crumbs.frames', {'limit': '2'});
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       final frames = decoded['frames'] as List<dynamic>;
 

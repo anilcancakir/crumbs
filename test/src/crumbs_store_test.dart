@@ -166,8 +166,7 @@ void main() {
 
     test('masks an http record after its key redaction ran', () async {
       CrumbsRedaction.redactor = redactor;
-      final Future<HttpRequestRecord> emitted =
-          CrumbsStore.onHttpRecord.first;
+      final Future<HttpRequestRecord> emitted = CrumbsStore.onHttpRecord.first;
 
       CrumbsStore.recordHttp(
         _httpWith(

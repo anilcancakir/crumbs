@@ -183,8 +183,7 @@ class CrumbsStore {
   /// dropped when the redactor throws.
   static void recordException(ExceptionRecord r) {
     if (_paused) return;
-    final ExceptionRecord? redacted =
-        CrumbsRedaction.redactExceptionRecord(r);
+    final ExceptionRecord? redacted = CrumbsRedaction.redactExceptionRecord(r);
     if (redacted == null) return;
     _exceptions.addLast(redacted);
     while (_exceptions.length > _capacityOf(CrumbsKind.exceptions)) {

@@ -55,8 +55,7 @@ void main() {
       expect(byName['crumbs_tail'], equals('ext.crumbs.console'));
       expect(byName['crumbs_requests'], equals('ext.crumbs.requests'));
       expect(byName['crumbs_clear'], equals('ext.crumbs.clear'));
-      expect(
-          byName['crumbs_exceptions'], equals('ext.crumbs.exceptions'));
+      expect(byName['crumbs_exceptions'], equals('ext.crumbs.exceptions'));
       expect(byName['crumbs_events'], equals('ext.crumbs.events'));
       expect(byName['crumbs_gates'], equals('ext.crumbs.gates'));
       expect(byName['crumbs_dumps'], equals('ext.crumbs.dumps'));

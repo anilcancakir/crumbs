@@ -75,8 +75,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('recording', () {
-      test('FlutterError.reportError path records into CrumbsStore',
-          () async {
+      test('FlutterError.reportError path records into CrumbsStore', () async {
         watcher.install();
 
         final recorded = <ExceptionRecord>[];
