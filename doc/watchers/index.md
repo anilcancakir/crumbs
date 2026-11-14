@@ -35,7 +35,7 @@ Each unit implements one of two contracts: `CrumbsWatcher` (hook and event captu
 <a name="call-site-guard"></a>
 ## Call-site guard
 
-`CrumbsPlugin.install()` installs no mode guard of its own. The app gates the whole crumbs install at the call site, and `kDebugMode` and `!kReleaseMode` both tree-shake it from a release build:
+`CrumbsPlugin.install()` installs no mode guard of its own. The app gates the whole crumbs install at the call site, and `!kReleaseMode` tree-shakes it from a release build:
 
 ```dart
 if (!kReleaseMode) {
@@ -44,10 +44,11 @@ if (!kReleaseMode) {
 }
 ```
 
-- `kDebugMode` is what `crumbs:install` writes into `lib/main.dart`. Debug builds carry crumbs; profile and release builds do not.
-- `!kReleaseMode` also keeps crumbs in profile builds. Use it when you measure performance: debug frame timings do not describe a shipped app, so a frame measurement needs a profile build. Keep the guard at the call site, never inside a helper, or the call stays live in release and the tree-shake is lost.
+- `!kReleaseMode` is what `crumbs:install` writes into `lib/main.dart`. Debug and profile builds carry crumbs; a release build does not.
+- Profile builds matter when you measure performance: debug frame timings do not describe a shipped app, so a frame measurement needs a profile build. Keep the guard at the call site, never inside a helper, or the call stays live in release and the tree-shake is lost.
+- An app wired by an earlier crumbs with a `kDebugMode` guard keeps working, and `crumbs:install` leaves that block as it is. Switch it to `!kReleaseMode` to get frame-performance data in profile builds.
 
-The snippets on this page use `kDebugMode`; either guard works in each of them. Individual watchers need no guard of their own, except that `DumpWatcher` has an internal `kDebugMode` check (see below) and so captures nothing in a profile build unless `allowInRelease` is set.
+The snippets on this page use `!kReleaseMode`. Individual watchers need no guard of their own, except that `DumpWatcher` has an internal `kDebugMode` check (see below) and so captures nothing in a profile build unless `allowInRelease` is set.
 
 `--dart-define=CRUMBS_DISABLE=1` (or `true`, `yes`) turns the whole install off in a build that must not expose the extensions: `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` each return without installing anything, so no watcher replaces a global hook to fill a buffer nobody can read.
 
@@ -112,7 +113,7 @@ To coexist with Sentry, initialise Sentry first: the watcher wraps the handlers 
 ```dart
 // sentryDsn is the host's; SentryFlutter.init sets both error hooks.
 await SentryFlutter.init((options) => options.dsn = sentryDsn);
-if (kDebugMode) {
+if (!kReleaseMode) {
   CrumbsPlugin.install();
   CrumbsPlugin.registerWatcher(ExceptionWatcher()); // wraps Sentry's handlers; Sentry still fires
 }
@@ -133,7 +134,7 @@ Replaces the global `debugPrint` callback with an interceptor that records a `Du
 `install()` is a no-op outside a debug build unless `allowInRelease` is set to `true` before it runs. `allowInRelease` is read at runtime, so the watcher's code still ships in a release build that references it; keeping it out of release is the job of the call-site guard around `registerWatcher`.
 
 ```dart
-if (kDebugMode) {
+if (!kReleaseMode) {
   CrumbsPlugin.install();
   CrumbsPlugin.registerWatcher(DumpWatcher());
 }
@@ -253,7 +254,7 @@ These watchers ship in `magic_devtools`, not in `crumbs` and not in `magic` core
 ```dart
 import 'package:magic_devtools/crumbs.dart';
 
-if (kDebugMode) {
+if (!kReleaseMode) {
   MagicCrumbsIntegration.install(); // after Magic.init()
 }
 ```

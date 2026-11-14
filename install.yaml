@@ -24,7 +24,7 @@ post_install:
   message: |
     crumbs plugin:installed. Bootstrap workflow:
 
-    1. In your consumer's lib/main.dart, gated under `if (kDebugMode)`:
+    1. In your consumer's lib/main.dart, gated under `if (!kReleaseMode)`:
 
          CrumbsPlugin.install();                       // before runApp() (or before Magic.init() for the Magic stack)
          CrumbsPlugin.registerWatcher(ExceptionWatcher());

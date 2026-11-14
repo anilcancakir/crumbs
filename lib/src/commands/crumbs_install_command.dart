@@ -20,7 +20,7 @@ import 'package:dowel/dowel.dart';
 ///      consumer can complete the chain on a clean checkout where dowel has
 ///      not been compiled yet.
 ///   3. Inject the runtime wiring into `lib/main.dart` via
-///      [MainDartEditor]: imports plus the `kDebugMode`-gated
+///      [MainDartEditor]: imports plus the `!kReleaseMode`-gated
 ///      [CrumbsPlugin.install] + [ExceptionWatcher] + [DumpWatcher]
 ///      block before `runApp(`. When the consumer's pubspec lists `magic_devtools`
 ///      as a dependency, `lib/main.dart` contains an `await Magic.init(`
@@ -138,9 +138,9 @@ class CrumbsInstallCommand extends DowelCommand {
   /// Step 3 ; idempotent inject of crumbs runtime wiring into
   /// `lib/main.dart`. Three sub-steps:
   ///
-  ///   3a. Add the two required imports (kDebugMode + crumbs barrel).
+  ///   3a. Add the two required imports (kReleaseMode + crumbs barrel).
   ///   3b. Inject `WidgetsFlutterBinding.ensureInitialized()` (skip when
-  ///       already present) + the `kDebugMode`-gated crumbs block before
+  ///       already present) + the `!kReleaseMode`-gated crumbs block before
   ///       the canonical install anchor: `await Magic.init(` on Magic-stack
   ///       apps (so ExceptionWatcher captures Magic boot errors), otherwise
   ///       `runApp(` for vanilla Flutter apps. A file that already calls
@@ -153,7 +153,8 @@ class CrumbsInstallCommand extends DowelCommand {
 
     // An app already calling CrumbsPlugin.install() is wired whatever the
     // shape of its block; a second block would chain the watchers and record
-    // every exception and debugPrint twice.
+    // every exception and debugPrint twice. That covers an app wired by an
+    // earlier crumbs behind a `kDebugMode` guard: its block stays as it is.
     //
     // A magic_devtools release that predates crumbs has no `crumbs.dart`; its
     // import would leave a lib/main.dart that does not compile. An app already
@@ -173,13 +174,13 @@ class CrumbsInstallCommand extends DowelCommand {
     // 3a. Imports first. ConfigEditor.addImportToFile (delegated by
     //     MainDartEditor.addImport) skips only an exact duplicate, so a file
     //     that already imports foundation.dart in full would gain a redundant
-    //     `show kDebugMode` import, which the analyzer flags as
+    //     `show kReleaseMode` import, which the analyzer flags as
     //     unnecessary_import.
     if ((wiresCrumbs || wiresMagic) &&
         !_fullFoundationImport.hasMatch(original)) {
       MainDartEditor.addImport(
         mainDartPath,
-        "import 'package:flutter/foundation.dart' show kDebugMode;",
+        "import 'package:flutter/foundation.dart' show kReleaseMode;",
       );
     }
     if (wiresCrumbs) {
@@ -218,7 +219,7 @@ class CrumbsInstallCommand extends DowelCommand {
         source: source,
         anchor: anchor,
         snippet:
-            '  if (kDebugMode) {\n'
+            '  if (!kReleaseMode) {\n'
             '    CrumbsPlugin.install();\n'
             '    CrumbsPlugin.registerWatcher(ExceptionWatcher());\n'
             '    CrumbsPlugin.registerWatcher(DumpWatcher());\n'
@@ -254,7 +255,7 @@ class CrumbsInstallCommand extends DowelCommand {
       try {
         MainDartEditor.injectAfterMagicInit(
           mainDartPath,
-          '  if (kDebugMode) {\n'
+          '  if (!kReleaseMode) {\n'
           '    MagicCrumbsIntegration.install();\n'
           '  }\n',
         );
@@ -360,7 +361,7 @@ class CrumbsInstallCommand extends DowelCommand {
   }
 
   /// An import of `package:flutter/foundation.dart` with no prefix and no
-  /// `show` or `hide`, which already brings `kDebugMode` into scope.
+  /// `show` or `hide`, which already brings `kReleaseMode` into scope.
   static final RegExp _fullFoundationImport = RegExp(
     r'''^\s*import\s+['"]package:flutter/foundation\.dart['"]\s*;''',
     multiLine: true,

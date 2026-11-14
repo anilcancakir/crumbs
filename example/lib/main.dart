@@ -6,7 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  if (kDebugMode) {
+  if (!kReleaseMode) {
     // 1. Install core watcher (LogWatcher + VM extensions auto-registered).
     CrumbsPlugin.install();
     // 2. Opt-in exception + dump watchers.

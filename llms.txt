@@ -2,7 +2,7 @@
 
 > Read what a running Flutter app captured, from an LLM agent or a CI script: HTTP traffic, logs, exceptions, debug dumps, in-app events, gate checks, database queries, cache operations and frame timings. Records sit in in-memory ring buffers, with an optional redacted JSONL timeline on disk, and are served as `crumbs_*` MCP tools and `crumbs:*` CLI commands on the `dowel` substrate.
 
-**Stack**: Dart >=3.13, Flutter >=3.47. A `dowel` plugin: `CrumbsDowelProvider` adds the `crumbs:*` commands and `crumbs_*` MCP tools, which call `ext.crumbs.*` VM Service extensions inside the app. Production dependencies: the Flutter SDK, `dowel`, `logging`, `meta`. Crumbs adds no build-mode guard of its own, so guard the install with `if (kDebugMode)` (`crumbs:install` writes it): anyone who reaches the VM Service of a build that carries crumbs can read every buffer.
+**Stack**: Dart >=3.13, Flutter >=3.47. A `dowel` plugin: `CrumbsDowelProvider` adds the `crumbs:*` commands and `crumbs_*` MCP tools, which call `ext.crumbs.*` VM Service extensions inside the app. Production dependencies: the Flutter SDK, `dowel`, `logging`, `meta`. Crumbs adds no build-mode guard of its own, so guard the install with `if (!kReleaseMode)` (`crumbs:install` writes it): anyone who reaches the VM Service of a build that carries crumbs can read every buffer.
 
 **Setup**:
 
@@ -16,13 +16,13 @@ dart run crumbs mcp:install           # the `dowel` entry in .mcp.json; reconnec
 
 ```dart
 import 'package:crumbs/crumbs.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/widgets.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (kDebugMode) {
+  if (!kReleaseMode) {
     CrumbsPlugin.install();
     CrumbsPlugin.registerWatcher(ExceptionWatcher());
     CrumbsPlugin.registerWatcher(DumpWatcher());
@@ -47,7 +47,7 @@ void main() {
 
 ## Platforms
 
-Any Flutter target that exposes a VM Service in a debug or profile build: Android, iOS, web, macOS, Windows and Linux. `crumbs:install` guards with `kDebugMode`, so profile and release builds drop crumbs; write `!kReleaseMode` by hand to keep profile builds. `CrumbsFileSink` writes through `dart:io`, so the timeline on disk needs a native target.
+Any Flutter target that exposes a VM Service in a debug or profile build: Android, iOS, web, macOS, Windows and Linux. `crumbs:install` guards with `!kReleaseMode`, so debug and profile builds carry crumbs and a release build drops it. `CrumbsFileSink` writes through `dart:io`, so the timeline on disk needs a native target.
 
 ## Rules for agents
 

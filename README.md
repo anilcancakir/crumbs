@@ -31,7 +31,7 @@ crumbs is a passive inspector: it records what the app does and drives nothing. 
 |---|---|
 | Package | [`crumbs`](https://pub.dev/packages/crumbs) |
 | Install | `flutter pub add crumbs`, then `dart run crumbs crumbs:install` |
-| Import | `package:crumbs/crumbs.dart` (`CrumbsPlugin.install()`, behind `if (kDebugMode)` or `if (!kReleaseMode)`) |
+| Import | `package:crumbs/crumbs.dart` (`CrumbsPlugin.install()`, behind `if (!kReleaseMode)`) |
 | Entry points | `dart run crumbs <command>`, `./bin/dowel <command>`, `CrumbsPlugin.install()`, `CrumbsPlugin.registerWatcher()`, `CrumbsPlugin.registerHttpAdapter()`, `CrumbsStore`, `CrumbsRedaction`, `CrumbsFileSink`, `CrumbsDowelProvider` (`package:crumbs/cli.dart`), `dart run crumbs mcp:serve` |
 | Platforms | Any Flutter target that exposes a VM Service in a debug or profile build: Android, iOS, web, macOS, Windows, Linux. `CrumbsFileSink` writes through `dart:io`, so the timeline on disk is not available on the web; on a Windows host `mcp:install` writes a `dart run` entry, never `./bin/dowel` |
 | Requires | Dart 3.13, Flutter 3.47; a plugin of [`dowel`](https://pub.dev/packages/dowel) (`^0.0.21`) |
@@ -47,7 +47,7 @@ dart run crumbs start --device=macos   # dowel records the session every crumbs:
 dart run crumbs crumbs:tail
 ```
 
-`crumbs:install` scaffolds the dowel harness when `bin/dispatcher.dart` is missing (including the fast `./bin/dowel` launcher), registers crumbs as a dowel plugin, and patches `lib/main.dart`: the imports, `WidgetsFlutterBinding.ensureInitialized()` when missing, and a `kDebugMode` block that installs crumbs with the exception and dump watchers, placed before `await Magic.init(` on a Magic app and before `runApp(` otherwise. Re-running it changes nothing. Wired by hand, `main.dart` looks like this:
+`crumbs:install` scaffolds the dowel harness when `bin/dispatcher.dart` is missing (including the fast `./bin/dowel` launcher), registers crumbs as a dowel plugin, and patches `lib/main.dart`: the imports, `WidgetsFlutterBinding.ensureInitialized()` when missing, and an `!kReleaseMode` block that installs crumbs with the exception and dump watchers, placed before `await Magic.init(` on a Magic app and before `runApp(` otherwise. Re-running it changes nothing. Wired by hand, `main.dart` looks like this:
 
 ```dart
 import 'package:crumbs/crumbs.dart';
@@ -56,7 +56,7 @@ import 'package:flutter/widgets.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  if (kDebugMode) {
+  if (!kReleaseMode) {
     CrumbsPlugin.install();
     CrumbsPlugin.registerWatcher(ExceptionWatcher());
     CrumbsPlugin.registerWatcher(DumpWatcher());
@@ -65,7 +65,7 @@ void main() {
 }
 ```
 
-The guard belongs to the call site: crumbs installs none of its own. `kDebugMode` is what the installer writes; `!kReleaseMode` also keeps crumbs in a profile build, which a frame measurement needs. Either way a release build tree-shakes crumbs. Without a guard crumbs ships in release, and anyone who reaches that app's VM Service can read every buffer. `--dart-define=CRUMBS_DISABLE=1` makes `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` return without installing anything, in a build that must not expose the extensions. The [`example/`](example/) app wires the core watchers and routes Dio traffic into the HTTP buffer.
+The guard belongs to the call site: crumbs installs none of its own. `!kReleaseMode` is what the installer writes: it keeps crumbs in debug and profile builds, and a frame measurement needs a profile build. A release build tree-shakes crumbs. Without a guard crumbs ships in release, and anyone who reaches that app's VM Service can read every buffer. `--dart-define=CRUMBS_DISABLE=1` makes `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` return without installing anything, in a build that must not expose the extensions. The [`example/`](example/) app wires the core watchers and routes Dio traffic into the HTTP buffer.
 
 On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter and the model, cache, event, gate and query watchers. It exists only in a [`magic_devtools`](https://pub.dev/packages/magic_devtools) release built on crumbs: `crumbs:install` writes those lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
 
@@ -134,7 +134,7 @@ crumbs_queries {}
 
 | Do | Because |
 |---|---|
-| Install crumbs only behind `if (kDebugMode)` or `if (!kReleaseMode)` | Anyone who reaches the VM Service of a build that carries crumbs can read every buffer |
+| Install crumbs only behind `if (!kReleaseMode)` | Anyone who reaches the VM Service of a build that carries crumbs can read every buffer |
 | Start the app with `dart run crumbs start` or `./bin/dowel start`, not `flutter run` | Every `crumbs:*` command and `crumbs_*` tool dials the session dowel records |
 | Call `crumbs_clear` before a repro | A buffer holds the whole run, so an old record reads like a new one |
 | Register `ExceptionWatcher` (and `DumpWatcher`) when wiring by hand | `CrumbsPlugin.install()` installs only `LogWatcher`; an empty exception buffer otherwise proves nothing |

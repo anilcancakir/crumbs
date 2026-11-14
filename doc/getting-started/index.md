@@ -30,7 +30,7 @@ flutter pub add crumbs
 dart run crumbs crumbs:install
 ```
 
-`crumbs:install` scaffolds the dowel harness when it is missing, registers the plugin and patches `lib/main.dart` so `CrumbsPlugin.install()` runs at startup inside a `kDebugMode` guard. The guard belongs to the call site: `kDebugMode` is what the installer writes, and `!kReleaseMode` also keeps crumbs in profile builds (see [Call-site guard](../watchers/index.md#call-site-guard)). A release build tree-shakes crumbs either way.
+`crumbs:install` scaffolds the dowel harness when it is missing, registers the plugin and patches `lib/main.dart` so `CrumbsPlugin.install()` runs at startup inside an `!kReleaseMode` guard. The guard belongs to the call site: `!kReleaseMode` keeps crumbs in debug and profile builds (see [Call-site guard](../watchers/index.md#call-site-guard)), and a release build tree-shakes it.
 
 <a name="requirements"></a>
 ## Requirements

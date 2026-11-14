@@ -41,7 +41,7 @@ These change only with a coordinated bump in `magic_devtools`, which is meant to
 2. `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` signatures.
 3. `CrumbsStore` public statics: `recordX`, `recentX` and `onXRecord` per buffer, `clear`, `clearFramePerf`, `pause`, `resume`, `setCapacity`, `pendingHttpCount`.
 4. `CrumbsRedaction.redactor` semantics and the `redacted` flag, as the Invariants and Decisions of ARCHITECTURE.md state them: key masking covers headers, bodies, URL query parameters, query bindings and gate arguments; free text (a dump message, SQL) is masked only by a configured `redactor`.
-5. The build-mode gates: `DumpWatcher` checks `kDebugMode` unless `allowInRelease`, and nothing else in crumbs checks the build mode; the consumer guards `CrumbsPlugin.install()` (`crumbs:install` writes `if (kDebugMode)`).
+5. The build-mode gates: `DumpWatcher` checks `kDebugMode` unless `allowInRelease`, and nothing else in crumbs checks the build mode; the consumer guards `CrumbsPlugin.install()` (`crumbs:install` writes `if (!kReleaseMode)`, debug and profile builds, like tapir and `magic_devtools`).
 6. The MCP tool names and their `extensionMethod` strings, the answer keys (`requests`, `messages`, `exceptions` and the rest) and the `since` and `cursor` semantics; `test/crumbs_dowel_provider_mcp_tools_test.dart` holds the names and `extensionMethod` strings.
 7. `install.yaml`: load-bearing for `plugin:install crumbs`; keep `plugin_name` and the `post_install` message.
 8. No production dependency beyond the Flutter SDK, `dowel`, `logging` and `meta`; `example/` may add its own (Dio).

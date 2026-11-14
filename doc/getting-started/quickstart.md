@@ -18,7 +18,7 @@ flutter pub add crumbs
 dart run crumbs crumbs:install
 ```
 
-The installer scaffolds the dowel harness when it is missing, registers crumbs as a dowel plugin and patches `lib/main.dart` with a `kDebugMode` block that installs crumbs with the exception and dump watchers. On a Magic app with a `magic_devtools` release built on crumbs it also wires `MagicCrumbsIntegration.install()` after `Magic.init()`; see [Installation](installation.md#run-the-installer) for every step.
+The installer scaffolds the dowel harness when it is missing, registers crumbs as a dowel plugin and patches `lib/main.dart` with an `!kReleaseMode` block that installs crumbs with the exception and dump watchers. On a Magic app with a `magic_devtools` release built on crumbs it also wires `MagicCrumbsIntegration.install()` after `Magic.init()`; see [Installation](installation.md#run-the-installer) for every step.
 
 From here on the fast launcher `./bin/dowel` runs every command; `dart run crumbs <command>` is the slower equivalent that needs no build. Confirm the plugin registered:
 

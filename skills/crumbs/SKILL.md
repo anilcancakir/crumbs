@@ -25,10 +25,10 @@ dart run crumbs mcp:install           # writes the `dowel` entry into .mcp.json
 ./bin/dowel crumbs:tail               # "No log records." on a fresh start is not an error
 ```
 
-`crumbs:install` puts this block before `runApp(` (before `await Magic.init(` on a Magic app, so boot errors are caught), behind `if (kDebugMode)`, so profile and release builds drop crumbs:
+`crumbs:install` puts this block before `runApp(` (before `await Magic.init(` on a Magic app, so boot errors are caught), behind `if (!kReleaseMode)`, so debug and profile builds carry crumbs and a release build drops it:
 
 ```dart
-if (kDebugMode) {
+if (!kReleaseMode) {
   CrumbsPlugin.install();
   CrumbsPlugin.registerWatcher(ExceptionWatcher());
   CrumbsPlugin.registerWatcher(DumpWatcher());
