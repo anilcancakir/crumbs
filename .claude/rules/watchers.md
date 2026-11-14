@@ -10,19 +10,15 @@ paths:
 
 ## Contract
 
-A watcher implements `CrumbsWatcher` (`name`, `install()`, `uninstall()`); an HTTP adapter implements `CrumbsHttpAdapter`, the same plus `pendingCount`. Both are frozen (CLAUDE.md Off-limits): the Magic watchers and `MagicHttpFacadeAdapter` in `magic_devtools` implement them. A class that `implements` the adapter contract writes `int get pendingCount => 0;` itself, since `implements` inherits no body.
+A class that `implements` the `CrumbsHttpAdapter` contract writes `int get pendingCount => 0;` itself, since `implements` inherits no body.
 
 ## Idempotency
 
-`install()` twice installs once; `uninstall()` before `install()` does nothing. Track it in an instance field (`_installed`, or the subscription in `LogWatcher`), not a static, so test instances stay independent. `FramePerfWatcher` is the exception: a static guard keeps a second registered instance inert, because two would advance `livenessCounter` twice per frame and hide a stalled engine.
+`install()` twice installs once; `uninstall()` before `install()` does nothing. Track it in an instance field (`_installed`, or the subscription in `LogWatcher`), not a static, so test instances stay independent. `FramePerfWatcher` is the exception: a static guard keeps a second registered instance inert.
 
 ## Chain-preserve
 
-A watcher that replaces a global hook (`FlutterError.onError`, `PlatformDispatcher.instance.onError`, `debugPrint`) saves the previous value, calls it after recording, and restores exactly that value in `uninstall()`; that is how Sentry and Bugsnag keep working beside crumbs. `ExceptionWatcher`'s `PlatformDispatcher` handler returns the previous handler's verdict, `true` when there is none. Use numbered step comments for the save, replace and restore steps. A hook that appends (`SchedulerBinding.addTimingsCallback`, `Logger.root.onRecord`) has nothing to chain; remove exactly the callback you added.
-
-## Build mode
-
-`DumpWatcher.install()` returns at once unless `kDebugMode` or `allowInRelease`. No other watcher checks the build mode: the consumer's guard around `CrumbsPlugin.install()` is the gate. Keep both as they are.
+A watcher that replaces a global hook (`FlutterError.onError`, `PlatformDispatcher.instance.onError`, `debugPrint`) saves the previous value, calls it after recording, and restores exactly that value in `uninstall()`. `ExceptionWatcher`'s `PlatformDispatcher` handler returns the previous handler's verdict, `true` when there is none. A hook that appends (`SchedulerBinding.addTimingsCallback`, `Logger.root.onRecord`) has nothing to chain; remove exactly the callback you added.
 
 ## Recording
 
