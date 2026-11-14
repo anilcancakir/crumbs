@@ -10,7 +10,7 @@ Flutter package `crumbs`, a plugin of `dowel`: a passive runtime inspector that 
 |---|---|
 | `flutter analyze --no-fatal-infos` | Zero issues. |
 | `dart format --output=none --set-exit-if-changed .` | Zero diff. |
-| `flutter test --exclude-tags=integration` | The suite. |
+| `flutter test --exclude-tags=integration` | The suite. Line coverage stays at or above 80%, the CI floor: lift it with a test, never by excluding code. |
 | `python3 tool/check-docs.py` | Docs gate (the `Internal Links` check): 0 issues. |
 | `flutter pub publish --dry-run` | Archive check, as `publish.yml` runs it at release. |
 

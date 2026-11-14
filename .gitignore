@@ -55,3 +55,4 @@ CLAUDE.local.md
 
 # Local sibling-package path wiring (dev only)
 pubspec_overrides.yaml
+.claude/hooks/format-changed.sh
