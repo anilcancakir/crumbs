@@ -7,8 +7,10 @@ A vanilla Flutter app that demonstrates every core crumbs capture surface: HTTP 
 ```bash
 cd example
 flutter pub get
-flutter run -d chrome    # or -d macos, -d linux, etc.
+dart run crumbs start --device=chrome    # or macos, linux, a device id
 ```
+
+`dart run crumbs start` launches the app and records the session that every `crumbs:*` command dials; a plain `flutter run` leaves the commands nothing to connect to. `dart run crumbs stop` ends it.
 
 ## Sections
 
@@ -21,7 +23,7 @@ flutter run -d chrome    # or -d macos, -d linux, etc.
 
 ## Manual QA checklist
 
-- Boot the app via `flutter run -d chrome`.
+- Boot the app via `dart run crumbs start --device=chrome`.
 - Tap each button at least once.
 - Confirm the matching live-tail panel updates within ~1 second.
 - Verify the status bar chip counters (HTTP / Log / Exception / Dump) increment per buffer.
@@ -31,8 +33,8 @@ flutter run -d chrome    # or -d macos, -d linux, etc.
 
 ## Path dependency note
 
-This example depends on the parent crumbs package via `path: ../`. Source edits to the parent require nothing more than a hot restart in the running example app. Downstream consumers that install from pub.dev use the hosted `^0.0.1` constraint instead.
+This example depends on the parent crumbs package via `path: ../`. Source edits to the parent require nothing more than a hot restart in the running example app. Downstream consumers that install from pub.dev use the hosted `^0.0.13` constraint instead.
 
 ## License
 
-[MIT](../LICENSE) — same license as the parent `crumbs` package.
+[MIT](../LICENSE): same license as the parent `crumbs` package.

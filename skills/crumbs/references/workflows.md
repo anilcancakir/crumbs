@@ -35,7 +35,7 @@ The fault already happened, so do not clear.
 1. crumbs_exceptions { limit: 5 }       the newest is last: read exceptionType, message, stackTrace
 2. crumbs_tail { limit: 100 }           the log lines before it, by time
 3. crumbs_requests { limit: 20 }        a 4xx or 5xx just before the throw is the usual cause
-4. crumbs_gates { limit: 10 }           on a Magic app, a denied ability before an authorization error
+4. crumbs_gates { limit: 10 }           on a Magic app, a denied ability before an authorisation error
 ```
 
 Exception records carry no `atUs`; line them up by `time`. To reproduce it cleanly afterwards, run the verify loop above.
@@ -47,7 +47,7 @@ With `MagicCrumbsIntegration` installed, one action fans out across buffers:
 ```text
 1. crumbs_clear
 2. the action: a model save, a sign-in, a form submit
-3. crumbs_events { limit: 20 }      what was dispatched, model events included
+3. crumbs_events { limit: 20 }      auth, database and gate-definition events (model events go to the model buffer, which no tool serves)
 4. crumbs_queries { limit: 20 }     what reached the local database
 5. crumbs_requests { limit: 20 }    what reached the API
 6. crumbs_gates { limit: 10 }       what was allowed or denied

@@ -75,7 +75,7 @@ descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md
       "levelValue": 900,
       "message": "Monitor check timed out after 30s",
       "loggerName": "MonitorController",
-      "time": "2026-05-20T14:32:10.123Z",
+      "time": "2026-05-20T14:32:10.123",
       "atUs": 81234567,
       "redacted": false,
       "error": "TimeoutException: ...",
@@ -92,7 +92,7 @@ descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md
 | `levelValue` | integer | yes | Numeric level value from `package:logging` |
 | `message` | string | yes | Log message string |
 | `loggerName` | string | yes | Name of the `Logger` instance that emitted the record |
-| `time` | string | yes | ISO 8601 UTC timestamp |
+| `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `atUs` | integer | yes | Monotonic microseconds from `FlutterTimeline.now`, the same clock as event records |
 | `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
 | `error` | string | no | Error object stringified, when one was attached |
@@ -148,7 +148,7 @@ Use this to debug API issues without a proxy or the network panel of DevTools.
       "statusCode": 200,
       "durationMs": 142,
       "isError": false,
-      "timestamp": "2026-05-20T14:32:11.456Z",
+      "timestamp": "2026-05-20T14:32:11.456",
       "requestHeaders": {
         "Authorization": "********"
       },
@@ -167,7 +167,7 @@ Use this to debug API issues without a proxy or the network panel of DevTools.
 | `statusCode` | integer | yes | HTTP status code; 0 when the call failed before a response |
 | `durationMs` | integer | yes | Round-trip time in milliseconds |
 | `isError` | boolean | yes | True when the adapter classified the call as failed |
-| `timestamp` | string | yes | ISO 8601 UTC timestamp of when the request was recorded |
+| `timestamp` | string | yes | ISO 8601 device-local wall clock of when the request was recorded, no offset; join on `atUs` |
 | `requestHeaders` | object | no | Request headers as a `Map<String, String>`; credential headers read `********` (see Notes) |
 | `requestBody` | string | no | Request body as a string, when present and readable; credential keys of a JSON body read `********` |
 | `responseBody` | string | no | Response body snippet, when present; credential keys of a JSON body read `********` |
@@ -229,7 +229,7 @@ unhandled exception was thrown and you need the stack without scraping `flutter 
     {
       "exceptionType": "StateError",
       "message": "Bad state: Stream has already been listened to",
-      "time": "2026-05-20T14:33:00.789Z",
+      "time": "2026-05-20T14:33:00.789",
       "stackTrace": "#0 _StreamController._subscribe ...",
       "isolate": "main",
       "redacted": false
@@ -242,7 +242,7 @@ unhandled exception was thrown and you need the stack without scraping `flutter 
 |---|---|---|---|
 | `exceptionType` | string | yes | Runtime type name of the exception object |
 | `message` | string | yes | Exception message string |
-| `time` | string | yes | ISO 8601 UTC timestamp |
+| `time` | string | yes | ISO 8601 device-local wall clock, no offset; this record has no `atUs` |
 | `stackTrace` | string | no | Full stack trace, when available |
 | `isolate` | string | no | Isolate name where the exception was caught |
 | `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
@@ -297,7 +297,7 @@ descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md
         "monitorId": "abc-123",
         "status": "up"
       },
-      "time": "2026-05-20T14:34:00.001Z",
+      "time": "2026-05-20T14:34:00.001",
       "listenerCount": 3,
       "atUs": 81234567,
       "redacted": false
@@ -311,7 +311,7 @@ descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md
 |---|---|---|---|
 | `eventType` | string | yes | Runtime class name of the dispatched event |
 | `payload` | object | yes | JSON snapshot of the event payload. A value `jsonEncode` cannot write is stored as its `toString()` |
-| `time` | string | yes | ISO 8601 UTC timestamp |
+| `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `listenerCount` | integer | no | Number of listeners notified at dispatch time, when available |
 | `atUs` | integer | yes | Monotonic microseconds from `FlutterTimeline.now` |
 | `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
@@ -340,10 +340,10 @@ crumbs_events {}
 <a name="crumbs_gates"></a>
 ## crumbs_gates
 
-Return recent gate authorization check records from the running Flutter app.
+Return recent gate authorisation check records from the running Flutter app.
 
 Reads the gate buffer, filled by `MagicGateWatcher` on every `Gate.allows` and `Gate.denies` call
-through the Magic `Gate` facade. Use this to debug authorization issues (why a button is hidden, why a
+through the Magic `Gate` facade. Use this to debug authorisation issues (why a button is hidden, why a
 route is blocked) without modifying policy classes.
 
 **VM Service extension:** `ext.crumbs.gates`
@@ -363,7 +363,7 @@ route is blocked) without modifying policy classes.
       "ability": "monitors.destroy",
       "result": false,
       "arguments": ["Monitor"],
-      "time": "2026-05-20T14:35:00.010Z",
+      "time": "2026-05-20T14:35:00.010",
       "userId": "user-42"
     }
   ]
@@ -374,8 +374,8 @@ route is blocked) without modifying policy classes.
 |---|---|---|---|
 | `ability` | string | yes | Ability name passed to `Gate.allows` / `Gate.denies` |
 | `result` | boolean | yes | `true` when the gate allowed the action; `false` when denied |
-| `arguments` | array | yes | List of argument values (class name strings or serialized primitives) |
-| `time` | string | yes | ISO 8601 UTC timestamp |
+| `arguments` | array | yes | List of argument values (class name strings or serialised primitives) |
+| `time` | string | yes | ISO 8601 device-local wall clock, no offset; this record has no `atUs` |
 | `userId` | string | no | Authenticated user ID at check time, when available |
 
 ### Example Invocations
@@ -420,7 +420,7 @@ scraping `flutter run` output.
   "dumps": [
     {
       "message": "[MonitorController] reloading monitors...",
-      "time": "2026-05-20T14:36:00.200Z",
+      "time": "2026-05-20T14:36:00.200",
       "wrapWidth": 80
     }
   ]
@@ -430,7 +430,7 @@ scraping `flutter run` output.
 | Field | Type | Always present | Description |
 |---|---|---|---|
 | `message` | string | yes | Full message string passed to `debugPrint` |
-| `time` | string | yes | ISO 8601 UTC timestamp |
+| `time` | string | yes | ISO 8601 device-local wall clock, no offset; this record has no `atUs` |
 | `wrapWidth` | integer | no | Wrap width passed to the original `debugPrint` call, when provided |
 
 ### Example Invocations
@@ -480,7 +480,7 @@ a separate SQL profiler.
       "bindings": ["team-abc"],
       "timeMs": 4,
       "connectionName": "default",
-      "time": "2026-05-20T14:37:00.100Z",
+      "time": "2026-05-20T14:37:00.100",
       "atUs": 1234567
     }
   ]
@@ -493,7 +493,7 @@ a separate SQL profiler.
 | `bindings` | array | yes | Positional or named query bindings |
 | `timeMs` | integer | yes | Execution time in milliseconds reported by the query builder |
 | `connectionName` | string | yes | Connection name; `"default"` when the app did not name it |
-| `time` | string | yes | ISO 8601 UTC timestamp |
+| `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now` |
 | `interactionId` | string | no | Correlates this record to others captured during the same interaction |
 | `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window` |
@@ -542,7 +542,7 @@ instrumenting the app.
     {
       "operation": "put",
       "key": "monitors.team-abc",
-      "time": "2026-05-20T14:38:00.300Z",
+      "time": "2026-05-20T14:38:00.300",
       "ttlMs": 300000,
       "atUs": 1234567
     }
@@ -554,7 +554,7 @@ instrumenting the app.
 |---|---|---|---|
 | `operation` | string | yes | One of: `hit`, `miss`, `put`, `forget`, `flush` |
 | `key` | string | yes | Cache key string (`*` for a flush) |
-| `time` | string | yes | ISO 8601 UTC timestamp |
+| `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `ttlMs` | integer | no | TTL in milliseconds, when the operation carried one |
 | `atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now` |
 | `interactionId` | string | no | Correlates this record to others captured during the same interaction |
@@ -608,7 +608,7 @@ to attribute jank to a specific widget or layout phase after driving an interact
       "rasterMicros": 2100,
       "vsyncOverheadMicros": 300,
       "totalSpanMicros": 3800,
-      "time": "2026-05-20T14:38:00.300Z",
+      "time": "2026-05-20T14:38:00.300",
       "blocks": {
         "Widget.build": { "micros": 600, "selfMicros": 400, "count": 5 }
       },
@@ -628,7 +628,7 @@ to attribute jank to a specific widget or layout phase after driving an interact
 | `frames[].rasterMicros` | integer | yes | Raster phase duration in microseconds |
 | `frames[].vsyncOverheadMicros` | integer | yes | Vsync overhead in microseconds |
 | `frames[].totalSpanMicros` | integer | yes | Total frame span in microseconds |
-| `frames[].time` | string | yes | ISO 8601 UTC timestamp |
+| `frames[].time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `frames[].blocks` | object | yes | Named span to `{micros, selfMicros, count}`; empty when no measurement session is collecting. `micros` is inclusive of nested children, `selfMicros` is exclusive (`micros` minus directly nested children's combined duration) |
 | `frames[].vsyncStartUs` | integer | no | Vsync signal timestamp from `FrameTiming.timestampInMicroseconds(FramePhase.vsyncStart)`. Clock parity with `atUs` is NOT proven; treat a comparison as needing a live-engine run, not a unit-test guarantee |
 | `frames[].atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at record construction |

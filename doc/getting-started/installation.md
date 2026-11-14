@@ -34,7 +34,7 @@ The recommended path is one command, `dart run crumbs crumbs:install`, which pat
 |:-----------|:--------|:------|
 | Dart | `3.13` | |
 | Flutter | `3.47` | |
-| dowel | `^0.0.21` | A dependency of crumbs; add it as a direct dependency (`dart pub add dowel`) when the app runs its own dowel commands. |
+| dowel | `^0.0.21` | A dependency of crumbs. When `crumbs:install` scaffolds the harness, dowel's `install` step adds `dowel: any` to the app's `pubspec.yaml`, because the generated barrels import it. |
 
 <a name="run-the-installer"></a>
 ## Run the installer
@@ -50,7 +50,7 @@ dart run crumbs crumbs:install
 2. It runs `dart run crumbs plugin:install crumbs`, which records crumbs in `.dowel/plugins.json` and regenerates `lib/app/_plugins.g.dart`.
 3. It patches `lib/main.dart`: the `kDebugMode` and `package:crumbs/crumbs.dart` imports, `WidgetsFlutterBinding.ensureInitialized()` when missing, and a `kDebugMode` block with `CrumbsPlugin.install()` and the exception and dump watchers. The block lands before `await Magic.init(` on a Magic app, so `ExceptionWatcher` sees boot errors, and before `runApp(` otherwise. Without a `lib/main.dart` the step is skipped with a message.
 
-On a Magic app whose `pubspec.yaml` lists `magic_devtools`, step 3 also adds `import 'package:magic_devtools/crumbs.dart';` and a `kDebugMode` block with `MagicCrumbsIntegration.install()` after `Magic.init()`. That library exists only in a `magic_devtools` release built on crumbs, so the installer writes these lines only when the resolved `magic_devtools` ships it; with an older release it warns and leaves the Magic lines out.
+On a Magic app whose `pubspec.yaml` lists `magic_devtools`, step 3 also adds `import 'package:magic_devtools/crumbs.dart';` and a `kDebugMode` block with `MagicCrumbsIntegration.install()` after `Magic.init()`. That library exists only in a `magic_devtools` release built on crumbs, so the installer writes these lines only when the resolved `magic_devtools` ships it; with an older release it warns and leaves the Magic lines out. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
 
 Every step is idempotent: re-running `crumbs:install` changes nothing.
 

@@ -2,7 +2,7 @@
 
 Follow the log and event buffers without re-reading them or skipping a record: the filters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events`, the matching CLI flags, and the `followCursor` loop.
 
-The parameters belong to the VM Service extensions and the CLI. The MCP descriptors of `crumbs_tail` and `crumbs_events` declare only `limit` (and `level` on `crumbs_tail`); an agent that needs the cursor reads through the CLI (`crumbs:tail --json`, `crumbs:events --json`).
+The parameters belong to the VM Service extensions and the CLI. The MCP descriptors of `crumbs_tail` and `crumbs_events` declare only `limit` (and `level` on `crumbs_tail`), but dowel's MCP server forwards a call's arguments unchanged, so `since`, `logger` and `type` work over MCP too and the answer carries the same `cursor`.
 
 - [Extension parameters](#extension-parameters)
 - [Which records limit keeps](#which-records-limit-keeps)

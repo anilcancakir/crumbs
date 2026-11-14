@@ -88,7 +88,7 @@ These units ship in `crumbs` and depend on no application framework.
 
 Subscribes to `Logger.root.onRecord` from `package:logging`. Every record that reaches the root logger, at any level, becomes a `LogRecordEntry` (stamped with a monotonic `atUs`) and goes to the store, through `CrumbsRedaction.redactor` when the host set one.
 
-Install sets `hierarchicalLoggingEnabled` to `true` so named child loggers (`Logger('http')`, `Logger('auth')`) reach the root. A second install while the subscription is live is a no-op. An app that does not use `package:logging` simply produces no records; adding it later needs no crumbs change. `CrumbsPlugin.install()` offers no way to leave `LogWatcher` out. `Logger.root.level` still decides which records are emitted at all, so set it to `Level.ALL` to capture fine-grained levels.
+Install sets `hierarchicalLoggingEnabled` to `true` so named child loggers (`Logger('http')`, `Logger('auth')`) reach the root, and sets `Logger.root.level` to `Level.ALL` so fine-grained levels are emitted too. A second install while the subscription is live is a no-op. An app that does not use `package:logging` simply produces no records; adding it later needs no crumbs change. `CrumbsPlugin.install()` offers no way to leave `LogWatcher` out. A level the app sets on `Logger.root` after the install still decides which records are emitted at all.
 
 ### ExceptionWatcher
 
@@ -259,7 +259,7 @@ if (kDebugMode) {
 }
 ```
 
-`package:magic_devtools/crumbs.dart` exists only in a `magic_devtools` release built on crumbs. `crumbs:install` writes these lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
+`package:magic_devtools/crumbs.dart` exists only in a `magic_devtools` release built on crumbs. `crumbs:install` writes these lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
 
 | Watcher | Name | Subscribes to | Record |
 |:--------|:-----|:--------------|:-------|

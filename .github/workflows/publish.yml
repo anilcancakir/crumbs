@@ -36,7 +36,7 @@ jobs:
 
       # The tag, pubspec.yaml and the MCP registry manifest must name one
       # version, or pub.dev and the registry would each carry a different one.
-      # The MCP handshake string is checked by a unit test. The skill keeps its
+      # The skill keeps its
       # own version, independent of the package (REPO_SPEC section 3).
       - name: Check version stamps
         env:

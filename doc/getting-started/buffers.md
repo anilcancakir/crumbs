@@ -42,7 +42,7 @@ CrumbsStore.setCapacity(7200, kind: CrumbsKind.framePerf);
 <a name="monotonic-timestamps"></a>
 ## Monotonic timestamps
 
-`LogRecordEntry` and `EventRecord` carry `atUs`, stamped at construction from `FlutterTimeline.now` and serialized in `toJson`, so a log line orders against an event whatever the wall clock did. `time` stays the wall-clock field for display. `atUs` is also the cursor that `ext.crumbs.console` and `ext.crumbs.events` page on (see [Cursor and filters](../mcp/cursor-and-filters.md)).
+`LogRecordEntry` and `EventRecord` carry `atUs`, stamped at construction from `FlutterTimeline.now` and serialised in `toJson`, so a log line orders against an event whatever the wall clock did. `time` stays the wall-clock field for display. `atUs` is also the cursor that `ext.crumbs.console` and `ext.crumbs.events` page on (see [Cursor and filters](../mcp/cursor-and-filters.md)).
 
 <a name="reading-with-limit-and-minlevel"></a>
 ## Reading with limit and minLevel

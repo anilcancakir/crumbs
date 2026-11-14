@@ -15,7 +15,7 @@ Consumers guard `CrumbsPlugin.install()` themselves (`crumbs:install` writes `if
 | `dart format --output=none --set-exit-if-changed .` | Zero diff. |
 | `flutter test --exclude-tags=integration` | The suite; CI adds `--coverage --timeout=30s` and an 80% line floor. |
 | `python3 tool/check-docs.py` | Docs gate (the `Internal Links` check): 0 issues. |
-| `dart pub publish --dry-run` | Archive check, as CI runs it. |
+| `dart pub publish --dry-run` | Archive check, as `publish.yml` runs it at release. |
 
 A live check drives `example/` (`cd example && dart run crumbs start --device=macos`, then `crumbs:*`, then `stop`).
 
@@ -72,12 +72,12 @@ These change only with a coordinated bump in `magic_devtools`, which builds on t
 
 ## Release
 
-1. A `release: X.Y.Z` PR bumps the stamps and promotes `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` with its footer link. Stamps: `pubspec.yaml`, `server.json` (guarded by `test/server_json_version_test.dart`), `example/pubspec.yaml` and `example/pubspec.lock`, and the skill's `version:` and stamp comment in `skills/crumbs/SKILL.md`, moved by hand. Grep the old version before opening it.
+1. A `release: X.Y.Z` PR bumps the stamps and promotes `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`. Stamps: `pubspec.yaml`, `server.json` (guarded by `test/server_json_version_test.dart`), `example/pubspec.yaml` and `example/pubspec.lock`, and the skill's `version:` and stamp comment in `skills/crumbs/SKILL.md`, moved by hand. Grep the old version before opening it.
 2. After it merges, tag the merge commit with the bare version: `git tag X.Y.Z && git push origin X.Y.Z`. `publish.yml` validates, publishes to pub.dev, creates the GitHub Release from the CHANGELOG section and syncs the skill to the registry.
 
 ## CI
 
-The required checks on a pull request are `Lint & Test` (format, analyze, tests with coverage and the 80% floor, the publish dry run), `Changelog` (a PR that changes `lib/`, `bin/` or `install.yaml` changes `CHANGELOG.md`) and `Internal Links` (`python3 tool/check-docs.py`). `publish.yml` runs on a version tag.
+The required checks on a pull request are `Lint & Test` (format, analyze, tests with coverage and the 80% floor), `Changelog` (a PR that changes `lib/`, `bin/` or `install.yaml` changes `CHANGELOG.md`) and `Internal Links` (`python3 tool/check-docs.py`). `publish.yml` runs on a version tag.
 
 ## Style
 

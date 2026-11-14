@@ -54,12 +54,12 @@ The provider's `providerName` is `crumbs`, the package name that the `packages` 
 | `crumbs_frames` | `ext.crumbs.frames` | `frames`, `livenessCounter` |
 | `crumbs_clear` | `ext.crumbs.clear` | `cleared` |
 
-Four extensions have no MCP tool:
+These extensions have no MCP tool:
 
 - `ext.crumbs.files` and `ext.crumbs.file` read the timeline of a running [file sink](../getting-started/file-sink.md); reach them through `crumbs:files`.
 - `ext.crumbs.pause` and `ext.crumbs.resume` stop and restart recording into the store.
 
-The `since`, `type` and `logger` parameters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events` live on the extensions and the CLI, not on the tool descriptors; see [Cursor and filters](cursor-and-filters.md).
+The `since`, `type` and `logger` parameters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events` live on the extensions and the CLI; the tool descriptors leave them out, but dowel forwards them over MCP unchanged. See [Cursor and filters](cursor-and-filters.md).
 
 Every extension is registered through dowel's `registerExtensionIdempotent`, so a hot restart does not fail on a duplicate registration.
 
