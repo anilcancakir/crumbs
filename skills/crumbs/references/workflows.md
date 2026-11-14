@@ -1,338 +1,149 @@
 # Workflows
 
-Composed loops that combine `crumbs_*` tools (and pair with tapir
-where useful) for the most common agent tasks. Read top to bottom; the
-order goes from highest-frequency to specialised.
+Longer flows built from the rules in `SKILL.md`. Each assumes the app runs under dowel with crumbs installed.
 
 ## Contents
 
-- [1. Zero, repro, inspect](#1-zero-repro-inspect)
-- [2. Crash hunt](#2-crash-hunt)
-- [3. Magic facade trace](#3-magic-facade-trace)
-- [4. Log filtering by minimum level](#4-log-filtering-by-minimum-level)
-- [5. Tapir pairing for state verification](#5-tapir-pairing-for-state-verification)
-- [6. Long-running app: when to clear vs not](#6-long-running-app-when-to-clear-vs-not)
-- [7. Working around the cache no-op](#7-working-around-the-cache-no-op)
-- [8. Reading Magic model lifecycle via events](#8-reading-magic-model-lifecycle-via-events)
-- [9. Network-idle without crumbs](#9-network-idle-without-crumbs)
-- [10. Sentry / Bugsnag coexistence](#10-sentry--bugsnag-coexistence)
-- [11. Follow a buffer with a cursor](#11-follow-a-buffer-with-a-cursor)
-- [12. Read the timeline on disk](#12-read-the-timeline-on-disk)
+- [Verify a change](#verify-a-change)
+- [Hunt a crash](#hunt-a-crash)
+- [Trace a Magic action](#trace-a-magic-action)
+- [Narrow the log](#narrow-the-log)
+- [Follow a buffer with the cursor](#follow-a-buffer-with-the-cursor)
+- [Read the timeline on disk](#read-the-timeline-on-disk)
+- [Capture HTTP in an app without Magic](#capture-http-in-an-app-without-magic)
+- [Turn on redaction and the timeline](#turn-on-redaction-and-the-timeline)
+- [Coexist with Sentry or Bugsnag](#coexist-with-sentry-or-bugsnag)
 
----
+## Verify a change
 
-## 1. Zero, repro, inspect
-
-Default loop. Use whenever the question is "did action X cause effect
-Y?".
-
+```text
+1. crumbs_clear                                 zero point, so startup noise is gone
+2. drive the change with tapir                  tapir_tap, tapir_fill, tapir_navigate
+3. tapir_wait_for { text: "<result text>" }     wait on the screen
+4. crumbs_requests { limit: 10 }                expected method, url and statusCode
+5. crumbs_exceptions                            expect an empty list
+6. crumbs_tail { level: "WARNING" }             expect nothing new
 ```
+
+Report what each read returned. "No exceptions" counts only if `ExceptionWatcher` is registered; "no requests" only if an adapter records.
+
+## Hunt a crash
+
+The fault already happened, so do not clear.
+
+```text
+1. crumbs_exceptions { limit: 5 }       the newest is last: read exceptionType, message, stackTrace
+2. crumbs_tail { limit: 100 }           the log lines before it, by time
+3. crumbs_requests { limit: 20 }        a 4xx or 5xx just before the throw is the usual cause
+4. crumbs_gates { limit: 10 }           on a Magic app, a denied ability before an authorization error
+```
+
+Exception records carry no `atUs`; line them up by `time`. To reproduce it cleanly afterwards, run the verify loop above.
+
+## Trace a Magic action
+
+With `MagicCrumbsIntegration` installed, one action fans out across buffers:
+
+```text
 1. crumbs_clear
-2. <drive the app: tapir_tap / tapir_type / tapir_navigate, or human>
-3. tapir_wait_for_network_idle           // skip when action is local
-4. crumbs_requests { limit: 20 }
-5. crumbs_exceptions
-6. crumbs_tail { limit: 50 }
+2. the action: a model save, a sign-in, a form submit
+3. crumbs_events { limit: 20 }      what was dispatched, model events included
+4. crumbs_queries { limit: 20 }     what reached the local database
+5. crumbs_requests { limit: 20 }    what reached the API
+6. crumbs_gates { limit: 10 }       what was allowed or denied
+7. crumbs_caches { limit: 20 }      hits, misses, puts, forgets
 ```
 
-The clear in step 1 keeps the read scope tight. Without it,
-`crumbs_tail` floods with startup noise (every controller's INFO
-line from `MagicApp.bootstrap()`).
+Join events, queries, requests and caches on `atUs`; gates have only `time`.
 
-`tapir_wait_for_network_idle` (step 3) reads crumbs's
-`MagicHttpFacadeAdapter.pendingCount`. With crumbs unwired, that
-count is always 0 and the wait returns immediately with
-`matched: true`, defeating the purpose. Verify with one
-`crumbs_requests` call first if you suspect a wiring gap.
+## Narrow the log
 
----
+- `crumbs_tail { level: "WARNING" }` keeps WARNING and above; move to `SEVERE` if still noisy. The buffer keeps every level, so a looser read later needs no new capture.
+- `crumbs_tail { logger: "Auth" }` keeps one logger by exact name.
+- `crumbs_dumps` holds `debugPrint` output; it is a separate buffer from the log.
 
-## 2. Crash hunt
+## Follow a buffer with the cursor
 
-When an exception has already fired and you need to reason about it.
-Do not clear; clearing discards evidence.
-
-```
-1. crumbs_exceptions { limit: 5 }
-   Pick the offender. Read its exceptionType + message + stackTrace.
-
-2. crumbs_tail { limit: 100 }
-   Logs around the crash. Look for the breadcrumb just before the
-   throw, usually a WARNING that names the upstream cause.
-
-3. crumbs_requests { limit: 20 }
-   HTTP around the crash. A 5xx response right before the throw is
-   the most common root cause.
-
-4. crumbs_gates { limit: 10 }
-   When the exception type is AuthorizationException, the denying
-   ability + arguments lands here. The gate record is older than the
-   exception by one or two records.
+```bash
+./bin/dowel crumbs:tail --logger=Sync --json --follow           # background; one JSON line per record
+./bin/dowel crumbs:events --type=Auth --json --limit=20          # first page, note the last atUs
+./bin/dowel crumbs:events --type=Auth --json --since=<that atUs> # only what came after
 ```
 
-For a recurring crash, follow with workflow 1 to isolate the trigger:
-clear, reproduce the action you suspect, re-read.
+Over MCP, pass the `cursor` of one answer as `since` on the next: `crumbs_events { type: "Auth", since: <cursor> }`. With `since`, `limit` keeps the oldest records after it, so paging never skips one.
 
----
+## Read the timeline on disk
 
-## 3. Magic facade trace
+When the host runs a `CrumbsFileSink`, redacted log, event and exception records outlive the buffers and the launch:
 
-The canonical "what just happened" view for Magic-stack apps. Combines
-events + queries + requests + gates into one timeline.
-
-```
-1. crumbs_clear
-2. <user action: model save, login, form submit>
-3. crumbs_events   { limit: 10 }     What dispatched.
-4. crumbs_queries  { limit: 20 }     What hit SQLite.
-5. crumbs_requests { limit: 20 }     What hit the API.
-6. crumbs_gates    { limit: 10 }     What was authorized.
+```bash
+./bin/dowel crumbs:files                                         # newest first, earlier launches too
+./bin/dowel crumbs:files --name=<file> -v                        # lines, then "next offset: <n>"
+./bin/dowel crumbs:files --name=<file> --offset=<next offset>    # continue
 ```
 
-Read in order:
+Each line is `{"kind": "log"|"event"|"exception", ...}` followed by the record's keys; join kinds on `atUs` (exceptions have only `time`). "No timeline file sink is running." means the host started none. A sink that runs but writes nothing has no `redactor` set (it writes only `redacted: true` records) or stopped after a failed write.
 
-- **Events** name the intent (`AuthLoginSucceeded`, `ModelSaved`).
-- **Queries** show the persistence side (UPSERT, SELECT for refresh).
-- **Requests** show the API side (POST `/users`, GET `/auth/me`).
-- **Gates** show authorization decisions (the policy checks that
-  guarded the action).
+## Capture HTTP in an app without Magic
 
-Cross-reference by `time` to reconstruct the actual flow:
-
-```
-event AuthLoginSucceeded   2026-05-25T09:14:20.001Z
-gate  users.read=true      2026-05-25T09:14:20.004Z
-query SELECT * FROM users  2026-05-25T09:14:20.007Z (3ms)
-request GET /auth/me       2026-05-25T09:14:20.040Z (200, 142ms)
-```
-
----
-
-## 4. Log filtering by minimum level
-
-`crumbs_tail` accepts a `level` parameter that filters at read time,
-not at capture time. Capture is always at `Level.ALL` (every log line
-is in the buffer); the filter just narrows the response.
-
-```
-crumbs_tail { level: "WARNING", limit: 50 }
-  Returns WARNING + SEVERE + SHOUT only.
-
-crumbs_tail { level: "INFO", limit: 50 }
-  Returns INFO + WARNING + SEVERE + SHOUT (everything except
-  FINE / FINER / FINEST / CONFIG).
-
-crumbs_tail { limit: 50 }
-  No filter: every level, including FINEST / FINER / FINE / CONFIG.
-```
-
-Recovery pattern: hunt with `level: "SEVERE"` first to find the worst,
-then re-query with `level: "WARNING"` to read the breadcrumb context,
-then drop the filter when you need full FINE-level tracing. The buffer
-holds everything; no recapture is needed.
-
-An unknown level name matches nothing (an empty answer), not every
-level: when a filtered read comes back empty, check the spelling before
-concluding the log is clean.
-
-Levels and their values (low to high):
-`FINEST` (300), `FINER` (400), `FINE` (500), `CONFIG` (700),
-`INFO` (800), `WARNING` (900), `SEVERE` (1000), `SHOUT` (1200).
-
----
-
-## 5. Tapir pairing for state verification
-
-Tapir drives, crumbs reads. Two patterns are standard:
-
-**Pattern A: post-gesture verification.**
-
-```
-1. tapir_tap { ref: "e7" }                Pre-action snap minted e7.
-2. tapir_wait_for_network_idle            Block on HTTP completion.
-3. crumbs_requests { limit: 5 }       Was the POST made? Status?
-4. crumbs_exceptions                  Anything throw downstream?
-5. tapir_snap                             Confirm the UI rebuilt.
-```
-
-**Pattern B: form submit with field-level trace.**
-
-```
-1. crumbs_clear
-2. tapir_observe { intent: "login form", roles: "textbox,button" }
-3. tapir_type { ref: "q3", text: "user@example.com" }
-4. tapir_type { ref: "q4", text: "hunter2" }
-5. tapir_tap  { ref: "q5" }
-6. tapir_wait_for_network_idle { idleMs: 800 }
-7. crumbs_requests { limit: 5 }
-8. crumbs_events   { limit: 10 }      AuthLoginSucceeded?
-9. crumbs_gates    { limit: 10 }      What got authorized
-                                          immediately after login?
-```
-
-The clear in step 1 isolates this submit from earlier traffic. Steps
-7-9 read the side effects in order: HTTP first (was the request
-made?), events next (did the auth listener fire?), gates last (what
-abilities did the new session unlock?).
-
----
-
-## 6. Long-running app: when to clear vs not
-
-`crumbs_clear` is cheap (one VM extension call, no app pause), but
-it discards evidence. Rule of thumb:
-
-| Situation | Clear before? |
-|---|---|
-| Reproducing a bug you can trigger on demand | Yes. Tight read scope wins. |
-| Hunting a flaky bug you cannot trigger | No. Wait for the bug, then read the buffer with `limit: <full ring>` (omit to read up to 500). |
-| Investigating a crash that already fired | No. The exception is in the buffer; clearing destroys it. |
-| Tracing a session login at app start | No. The login fires before you can react; read with a high limit instead. |
-| Periodic health check during a long session | Sometimes. Clear every N minutes to keep the working set small, but only when you have a steady-state baseline you do not need to retain. |
-
-The ring buffer caps at 500 records per buffer; older entries evict
-silently. For a busy app, the 500 cap is reached in under a minute;
-clear strategically rather than letting eviction silently consume your
-history.
-
----
-
-## 7. Working around the cache no-op
-
-`MagicCacheWatcher` is wired but `MagicCacheRecord` records never
-arrive in current builds (Magic does not yet dispatch
-`CacheHit / CacheMiss / CachePut / CacheForget / CacheFlush`). The
-buffer is reachable, but always empty.
-
-Workaround for now: inspect cache behaviour through the side channel
-it leaves elsewhere.
-
-- **Cache hit:** no HTTP request, no DB query for the cached
-  resource. `crumbs_requests` and `crumbs_queries` show
-  nothing.
-- **Cache miss:** an HTTP request or DB query fires. Both buffers
-  carry the trace.
-- **Cache invalidation:** a `Cache.forget` or `Cache.flush` is
-  followed by the next read producing an HTTP / DB record.
-
-Stop checking `crumbs_caches` once you confirm it is empty for the
-current Magic version. Move on; revisit when Magic ships the events.
-
----
-
-## 8. Reading Magic model lifecycle via events
-
-The agent cannot reach `MagicModelRecord` directly (no MCP tool).
-`MagicModelWatcher` does populate the events buffer with
-`ModelCreated`, `ModelSaved`, `ModelDeleted` though, so
-`crumbs_events` is the agent-facing path.
-
-```
-1. crumbs_clear
-2. <save a model / delete a model / etc.>
-3. crumbs_events { limit: 20 }
-4. <filter the array on eventType matching /^Model(Created|Saved|Deleted)$/>
-```
-
-The events carry empty `payload` in the current build, but the
-`eventType` + `time` is enough to confirm the lifecycle fired.
-Correlate with `crumbs_queries` for the actual UPSERT / DELETE
-SQL, and with `crumbs_requests` for the API call that mirrored
-the change.
-
----
-
-## 9. Network-idle without crumbs
-
-`tapir_wait_for_network_idle` requires a `CrumbsHttpAdapter` to
-expose `pendingCount`. Without it, tapir returns immediately with
-`matched: true` even when HTTP is in flight, breaking the wait.
-
-Diagnose with one direct call:
-
-```
-crumbs_requests { limit: 1 }
-```
-
-If the response is `{"records": []}` on a known-active app, the
-adapter is the missing piece. Fix by ensuring
-`MagicCrumbsIntegration.install()` (from `magic_devtools`, import
-`package:magic_devtools/crumbs.dart`) runs after `Magic.init()` in
-`lib/main.dart`. For non-Magic apps, register `DioHttpAdapter`
-manually:
+`DioHttpAdapter` installs no interceptor; register it for the name and record from the app's own interceptor:
 
 ```dart
-final dio = Dio();
-CrumbsPlugin.registerHttpAdapter(DioHttpAdapter(dio));
+import 'package:crumbs/crumbs.dart';
+import 'package:dio/dio.dart';
+
+final class CrumbsDioInterceptor extends Interceptor {
+  final Map<RequestOptions, Stopwatch> _clocks = <RequestOptions, Stopwatch>{};
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    _clocks[options] = Stopwatch()..start();
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
+    _record(response.requestOptions, response.statusCode ?? 0);
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    _record(err.requestOptions, err.response?.statusCode ?? 0, failed: true);
+    handler.next(err);
+  }
+
+  void _record(RequestOptions options, int statusCode, {bool failed = false}) {
+    DioHttpAdapter.recordRequest(
+      url: options.uri.toString(),
+      method: options.method,
+      statusCode: statusCode,
+      durationMs: _clocks.remove(options)?.elapsedMilliseconds ?? 0,
+      isError: failed || statusCode >= 400,
+      requestHeaders: <String, String>{
+        for (final MapEntry<String, dynamic> header in options.headers.entries)
+          header.key: '${header.value}',
+      },
+    );
+  }
+}
 ```
 
-Without an adapter, the agent must fall back to polling
-`tapir_snap` for the expected post-action UI state, or to
-`tapir_wait_for { text: "..." }` against a known post-action label.
+Inside the debug guard: `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter());` and `dio.interceptors.add(CrumbsDioInterceptor());`. Headers and bodies are masked at insert. This adapter reports no in-flight count, so `CrumbsStore.pendingHttpCount` stays 0; an adapter that tracks one overrides `pendingCount`.
 
----
+## Turn on redaction and the timeline
 
-## 10. Sentry / Bugsnag coexistence
+The host sets both, inside the debug guard, after `CrumbsPlugin.install()`:
 
-Crumbs's `ExceptionWatcher` and `LogWatcher` chain over any prior
-global handler (`FlutterError.onError`, `Logger.root.onRecord`,
-`debugPrint`). Sentry / Bugsnag installed before crumbs still
-receive every throw and every log; installed after, they receive them
-too as long as they preserve the chain.
-
-The implication for the agent: if Sentry is configured to mute certain
-exceptions, crumbs still captures them (it runs at the
-`FlutterError.onError` hook directly). If a "swallowed" exception is
-not in `crumbs_exceptions`, it was caught in a `try / catch` block
-that never re-threw or logged. Trace the breadcrumb in
-`crumbs_tail` instead.
-
-When `uninstall()` is called on a watcher (rare in V1; mostly for
-test isolation), the previous handler is restored exactly. The chain
-is non-destructive.
-
----
-
-## 11. Follow a buffer with a cursor
-
-`ext.crumbs.console` and `ext.crumbs.events` answer a `cursor`, the
-largest `atUs` returned, so a reader never re-reads or skips a record.
-The CLI wraps it:
-
-```bash
-# Stream one logger as JSON lines until interrupted (run in the background).
-./bin/dowel crumbs:tail --logger=Sync --json --follow
-
-# Page by hand: read, keep the cursor, read again from it.
-./bin/dowel crumbs:events --type=Auth --json --limit=20
-./bin/dowel crumbs:events --type=Auth --json --since=<atUs of the last line>
+```dart
+CrumbsRedaction.hideRequestParameters(<String>['otp']);
+CrumbsRedaction.redactor =
+    (String text) => text.replaceAll(RegExp(r'\b\d{16}\b'), '[card]');
+await CrumbsFileSink.start(directory: timelineDirectory); // an absolute directory the app owns
 ```
 
-With `--since`, `--limit` keeps the OLDEST N after the cursor, so paging
-skips nothing; without it, the newest N of what matched. `--follow` polls
-every second and drops `--limit` after the first read; an empty poll
-prints nothing and keeps the cursor. The MCP tools do not declare
-`since`, `type` or `logger`, so this loop is CLI (or raw VM extension)
-only.
+The redactor must be pure and total: a throw drops the record rather than let it through unmasked. Set it before the records you want on disk are made; a record buffered while it was null stays `redacted: false` and the sink skips it. `start` throws when the directory cannot be created, and on web.
 
----
+## Coexist with Sentry or Bugsnag
 
-## 12. Read the timeline on disk
-
-When the host runs a `CrumbsFileSink`, the redacted log, event and
-exception records outlive the ring buffers and the launch:
-
-```bash
-./bin/dowel crumbs:files                                  # newest first
-./bin/dowel crumbs:files --name=timeline-20261010T091500Z-0.jsonl -v
-./bin/dowel crumbs:files --name=<same file> --offset=<next offset>
-```
-
-Each line is `{"kind": "log"|"event"|"exception", ...}` with `atUs`
-where the record has one; join across kinds on `atUs`. `next offset` (at
-`-v`) is where to continue; at the end of the file no lines print.
-Earlier launches are listed too, so a crash from the last run is still
-readable. If the list is empty or the command answers "No timeline file
-sink is running.", the host has not started a sink; if the sink runs but
-stays empty, the host has set no `CrumbsRedaction.redactor` (the sink
-writes only redacted records) or the sink halted on a write failure.
+`ExceptionWatcher` and `DumpWatcher` save the handler in place when they install and call it after recording, so install the other reporter first: it keeps receiving every error and every `debugPrint`. A reporter installed later must chain to the handler it replaces, or crumbs stops seeing those errors. `ExceptionWatcher` returns the previous `PlatformDispatcher.onError` handler's verdict, so a reporter that marks an error fatal still does. `FramePerfWatcher` adds a timings callback rather than replacing one, so it has nothing to chain.
