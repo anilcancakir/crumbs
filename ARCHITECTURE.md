@@ -51,7 +51,7 @@ In a `magic_devtools` release built on crumbs, `MagicCrumbsIntegration`, `MagicH
 ## Invariants
 
 | Rule | Why | Verify |
-|------|-----|--------|
+|:------|:-----|:--------|
 | Every log, event, exception, HTTP, dump, query and gate record passes `CrumbsRedaction` before it enters a queue or a stream: credential keys are masked always, free text only by the host `redactor`; model and cache records are buffered as given | Buffers are served to agents and written to disk; SECURITY.md states the same two layers | `flutter test test/src/crumbs_store_test.dart --plain-name "masks every text field"`, then `--plain-name "redaction"` |
 | No binding, argument or payload value makes a read or a `recordX` call throw: `NaN`, an infinity and any object `jsonEncode` refuses are stored as text, a throwing `toString` as `<unprintable Type>` | One bad value would fail every read of its buffer until evicted, or throw into the host's code | `flutter test test/src/extensions/register_crumbs_extensions_test.dart --plain-name "non-finite numbers"`, then `test/src/crumbs_store_test.dart --plain-name "unprintable values"` |
 | A record the `redactor` throws on is dropped, never buffered unmasked | Fail closed: a broken redactor must not leak | `flutter test test/src/crumbs_store_test.dart --plain-name "a throwing redactor drops the record from queue and stream"` |
@@ -86,7 +86,7 @@ Timeline on disk:
 ## Decisions
 
 | Decision | Why | Rejected alternatives | Status |
-|----------|-----|-----------------------|--------|
+|:----------|:-----|:-----------------------|:--------|
 | Redact at insert in the store | One pass covers the buffers, the streams and the sink, so nothing unmasked is ever held | Masking in each handler or in the sink: one forgotten path leaks | Active |
 | `redacted` read from a private `Expando` | No caller can build a record that claims to be redacted | A constructor argument | Active |
 | Frame perf has its own capacity (3600) | A useful frame window is an order of magnitude larger than an exception buffer | One shared cap, which would inflate every buffer | Active |
@@ -95,7 +95,7 @@ Timeline on disk:
 ## Change guide
 
 | To change | Touch | Also check |
-|-----------|-------|------------|
+|:-----------|:-------|:------------|
 | A record field | `lib/src/records/<record>.dart` (`toJson`) | `crumbs_redaction.dart` rebuilds log, event, exception, HTTP, dump, query and gate records field by field, so a field it does not copy is lost once a redactor is set; the line format in the matching command |
 | A buffer | `CrumbsKind` and `CrumbsStore` (queue, stream, `recordX`, `recentX`, `clear`, `resetForTesting`), a handler, a command, a descriptor | The provider test; `crumbs_clear` must empty it |
 | A filter or cursor on a read | The handler (reuse `_since`, `_page`, `_cursor`), the command, `followCursor` for `--follow` | `doc/mcp/cursor-and-filters.md` |

@@ -8,6 +8,10 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The tables in the README, `ARCHITECTURE.md` and the skill are left-aligned.** They used the unaligned `|---|` separator; they use `|:---|` like the rest of the docs. (`README.md`, `ARCHITECTURE.md`, `skills/crumbs/`)
+
 ## [1.0.0] - 2026-11-14
 
 ### Added
