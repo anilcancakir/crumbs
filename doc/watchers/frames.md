@@ -13,7 +13,7 @@
 ## Quick Reference
 
 | Field | Value |
-|---|---|
+|:---|:---|
 | Contract | `CrumbsWatcher` |
 | Name | `frame_perf` |
 | Auto-install | No (opt-in via `CrumbsPlugin.registerWatcher(FramePerfWatcher())`) |

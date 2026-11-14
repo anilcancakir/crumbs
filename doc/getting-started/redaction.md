@@ -49,7 +49,7 @@ When it is set, the store runs it at insert over every text field of a log, even
 query and gate record, before the record enters its queue or its stream:
 
 | Record | Text the redactor sees |
-|---|---|
+|:---|:---|
 | `LogRecordEntry` | level, message, logger name, error, stack trace |
 | `ExceptionRecord` | exception type, message, stack trace, isolate |
 | `EventRecord` | event type, interaction fields, and every String value and every map key inside the payload's nested Maps and Lists |
