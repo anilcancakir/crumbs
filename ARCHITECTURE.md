@@ -2,7 +2,7 @@
 
 ## Overview
 
-Crumbs is one pipeline split across two processes. Inside the app (a Flutter debug build), producers (watchers, HTTP adapters, or host code calling `CrumbsStore.recordX`) push records into `CrumbsStore`, which redacts at insert, keeps a bounded queue per buffer and re-emits each record on a broadcast stream. The `ext.crumbs.*` handlers answer reads from the queues, and `CrumbsFileSink` listens on the streams. On the host (the plain Dart VM), the `crumbs:*` commands and dowel's MCP server reach those handlers over the VM Service; nothing flows from the host into the app except reads, `clear`, `pause` and `resume`.
+Crumbs is one pipeline split across two processes. Inside the app (a Flutter build that passes the consumer's guard, debug by default), producers (watchers, HTTP adapters, or host code calling `CrumbsStore.recordX`) push records into `CrumbsStore`, which redacts at insert, keeps a bounded queue per buffer and re-emits each record on a broadcast stream. The `ext.crumbs.*` handlers answer reads from the queues, and `CrumbsFileSink` listens on the streams. On the host (the plain Dart VM), the `crumbs:*` commands and dowel's MCP server reach those handlers over the VM Service; nothing flows from the host into the app except reads, `clear`, `pause` and `resume`.
 
 ```text
 watchers, adapters, host ──recordX──▶ CrumbsStore ──redact──▶ queue + stream

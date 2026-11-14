@@ -15,10 +15,10 @@ paths:
 
 ## Plain Dart VM
 
-Every non-test file this rule covers runs under `dart run` on the plain VM: no `package:flutter`, no `dart:ui`, no import of `lib/crumbs.dart`. Import the `src/` files directly, as `bin/crumbs.dart` does. Check: this prints nothing.
+Every non-test file this rule covers runs under `dart run` on the plain VM: no `package:flutter`, no `dart:ui`, no import of `lib/crumbs.dart`. Import the `src/` files directly, as `bin/crumbs.dart` does. Check: this prints nothing, and `dart run crumbs list` still lists the `crumbs:` commands (the scan sees direct imports only; the plain VM refuses a library that reaches `dart:ui`, so the run covers the transitive ones).
 
 ```bash
-rg -n -e "^import 'package:flutter" -e "^import 'dart:ui" -e "^import .*[/']crumbs\.dart'" bin lib/cli.dart lib/src/commands lib/src/crumbs_dowel_provider.dart lib/src/cursor_follow.dart lib/src/cli_args.dart
+rg -n -e "^import ['\"]package:flutter" -e "^import ['\"]dart:ui" -e "^import .*[/'\"]crumbs\.dart['\"]" bin lib/cli.dart lib/src/commands lib/src/crumbs_dowel_provider.dart lib/src/cursor_follow.dart lib/src/cli_args.dart
 ```
 
 ## Shape

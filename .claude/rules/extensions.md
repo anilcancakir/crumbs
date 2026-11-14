@@ -25,4 +25,4 @@ Signature `Future<ServiceExtensionResponse> Function(String method, Map<String, 
 
 ## The store
 
-Each buffer pairs its ring buffer with one broadcast `StreamController<T>`, evicting from the front past its cap (`_capacityOf(kind)`). Every `recordX` returns at once while paused. A new buffer adds a `CrumbsKind` value, a `clear()` line, a reset in `resetForTesting()` and, to be readable, a handler.
+Each buffer pairs its ring buffer with one broadcast `StreamController<T>`, evicting from the front past its cap (`_capacityOf(kind)`; frame perf evicts against its own `_framePerfCap`). Every `recordX` returns at once while paused. A new buffer adds a `CrumbsKind` value, a `clear()` line, a reset in `resetForTesting()` and, to be readable, a handler.
