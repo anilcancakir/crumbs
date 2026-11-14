@@ -1,37 +1,84 @@
 # crumbs
 
-> Runtime inspector for Flutter and Dart apps. Watch HTTP requests, logs, exceptions, model lifecycle, cache operations, events, authorization gates, and database queries via 10 watchers, 11 CLI commands, and 10 MCP tools.
+> Read what a running Flutter app captured from an LLM agent or a CI script: HTTP traffic, logs, uncaught exceptions, debug dumps, in-app events, gate checks, database queries, cache operations and frame timings, held in in-memory ring buffers with an optional redacted JSONL timeline on disk, served as `crumbs_*` MCP tools and `crumbs:*` CLI commands on the `dowel` substrate. Inspired by Laravel Telescope.
 
-Development-time plugin for Dart 3.4+ Flutter apps (guard install with `kDebugMode` or `!kReleaseMode` at the call site). Surfaces live HTTP, logging, exception, and Magic framework state streams via `crumbs:tail`, `crumbs:requests`, `crumbs:queries`, `crumbs:caches`, `crumbs:frames`, `crumbs:files` CLI commands and 10 MCP tool surfaces for AI coding agents (Claude Code, Cursor, Windsurf).
+**Stack**: Dart >=3.13, Flutter >=3.47. A `dowel` plugin: `CrumbsDowelProvider` adds the `crumbs:*` commands and `crumbs_*` MCP tools, which call `ext.crumbs.*` VM Service extensions inside the app. Production dependencies: `dowel`, `logging`, `meta`. Install only outside release builds.
+
+**Setup**:
+
+```bash
+dart pub add crumbs
+dart run crumbs crumbs:install        # scaffolds ./bin/dowel, registers the plugin, patches lib/main.dart
+dart run crumbs mcp:install           # the `dowel` entry in .mcp.json
+./bin/dowel start --device=chrome     # or macos, linux, windows, a device id
+./bin/dowel crumbs:tail               # "No log records." on a fresh start is not an error
+```
+
+```dart
+import 'package:crumbs/crumbs.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/widgets.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (kDebugMode) {
+    CrumbsPlugin.install();
+    CrumbsPlugin.registerWatcher(ExceptionWatcher());
+    CrumbsPlugin.registerWatcher(DumpWatcher());
+  }
+
+  runApp(const Placeholder()); // your app
+}
+```
+
+## API
+
+- `CrumbsPlugin.install()`: registers the `ext.crumbs.*` extensions and installs `LogWatcher`, which listens on `Logger.root.onRecord` and sets `Logger.root.level` to `Level.ALL`. Idempotent; call it before `runApp` (before `Magic.init` on a Magic app). `--dart-define=CRUMBS_DISABLE=1` skips it.
+- `CrumbsPlugin.registerWatcher(CrumbsWatcher)`: installs a watcher at once. Shipped: `ExceptionWatcher` (chains `FlutterError.onError` and `PlatformDispatcher.instance.onError`), `DumpWatcher` (chains `debugPrint`; a no-op outside debug builds unless `allowInRelease`), `FramePerfWatcher` (frame timings and timeline block attribution).
+- `CrumbsPlugin.registerHttpAdapter(CrumbsHttpAdapter)`: an HTTP capture adapter; `CrumbsStore.pendingHttpCount` sums each adapter's `pendingCount`. `DioHttpAdapter` installs no interceptor: an app's own Dio interceptor calls `DioHttpAdapter.recordRequest(...)`.
+- `CrumbsStore`: the ring buffers. `recordX`, `recentX({limit})`, the `onXRecord` broadcast streams, `setCapacity(cap, kind: CrumbsKind.x)` (500 per buffer by default, frame perf 3600), `clear()`, `pause()`, `resume()`.
+- `CrumbsRedaction`: credential masking of HTTP records (`hideRequestHeaders`, `hideRequestParameters`, `hideResponseParameters`, `redactParameters`, `redactBody`) and the host text hook `redactor`.
+- `CrumbsFileSink.start(directory:, maxFileBytes:, maxFiles:)`: the rotating JSONL timeline of redacted log, event and exception records.
+- `CrumbsDowelProvider` and `followCursor` (`package:crumbs/cli.dart`): the provider dowel loads from `lib/app/_plugins.g.dart`, and the polling loop behind `--follow`.
+- `MagicCrumbsIntegration.install()` (`package:magic_devtools/crumbs.dart`): the Magic HTTP adapter and the model, cache, event, gate and query watchers, after `Magic.init()`. Available only with a `magic_devtools` release built on crumbs; otherwise `crumbs:install` warns and skips it.
+- MCP tools: `crumbs_tail` (logs, reads `ext.crumbs.console`), `crumbs_requests`, `crumbs_exceptions`, `crumbs_dumps`, `crumbs_events`, `crumbs_gates`, `crumbs_queries`, `crumbs_caches`, `crumbs_frames`, `crumbs_clear`.
+- CLI commands mirror the tools by name, except: `crumbs_exceptions` has no command, and `crumbs:install` and `crumbs:files` (the timeline files) have no tool.
+
+## Platforms
+
+Any Flutter target that exposes a VM Service in a debug or profile build: Android, iOS, web, macOS, Windows and Linux. `CrumbsFileSink` writes through `dart:io`, so it needs a native target; on web `start` throws. `crumbs:install` guards with `kDebugMode`, so profile and release builds drop crumbs; write `!kReleaseMode` by hand to keep profile builds.
+
+## Rules for agents
+
+- Crumbs reads, it never drives. Exercise the app first (tapir, a test script or a person), then read what it recorded.
+- An empty buffer is not a quiet app until its producer is known to be registered: logs need `package:logging` calls, exceptions need `ExceptionWatcher`, dumps need `DumpWatcher` in a debug build, HTTP needs an adapter, events, gates, queries and caches need the Magic watchers, frames need `FramePerfWatcher`. The CLI's empty-buffer warning names the missing producer.
+- Records come oldest first, the newest last. Without `since`, `limit` keeps the newest N.
+- Zero the buffers with `crumbs_clear` before a repro; do not clear when chasing a fault that already happened.
+- Page logs and events with the `cursor` each read returns, passed back as `since` (CLI: `--since`, or `--follow` to keep polling). A `since` that is not an integer is refused, never ignored.
+- `********` is crumbs' credential mask, not the app's value. A host `redactor` that throws drops the record, so a missing line after a sensitive log call can mean a failing redactor.
+- Exceptions are uncaught ones only; a swallowed `try`/`catch` shows up only if the code logged it.
+- The model buffer has no extension, tool or command; Magic model events reach `crumbs_events` instead.
 
 ## Docs
-- [Installation](https://anilcancakir.com/crumbs/docs/getting-started/installation.md)
-- [Quickstart](https://anilcancakir.com/crumbs/docs/getting-started/quickstart.md)
-- [Watchers overview](https://anilcancakir.com/crumbs/docs/watchers/index.md)
-- [HTTP watcher](https://anilcancakir.com/crumbs/docs/watchers/http.md)
-- [Log watcher](https://anilcancakir.com/crumbs/docs/watchers/log.md)
-- [Exception watcher](https://anilcancakir.com/crumbs/docs/watchers/exception.md)
-- [Magic Model watcher](https://anilcancakir.com/crumbs/docs/watchers/magic-model.md)
-- [Magic Cache watcher](https://anilcancakir.com/crumbs/docs/watchers/magic-cache.md)
-- [Event watcher](https://anilcancakir.com/crumbs/docs/watchers/event.md)
-- [Gate watcher](https://anilcancakir.com/crumbs/docs/watchers/gate.md)
-- [Dump watcher](https://anilcancakir.com/crumbs/docs/watchers/dump.md)
-- [Query watcher](https://anilcancakir.com/crumbs/docs/watchers/query.md)
-- [Frame performance watcher](https://anilcancakir.com/crumbs/docs/watchers/frames.md)
-- [Redaction](https://anilcancakir.com/crumbs/docs/getting-started/redaction.md)
-- [File sink](https://anilcancakir.com/crumbs/docs/getting-started/file-sink.md)
-- [Buffers](https://anilcancakir.com/crumbs/docs/getting-started/buffers.md)
-- [MCP overview](https://anilcancakir.com/crumbs/docs/mcp/overview.md)
-- [MCP setup](https://anilcancakir.com/crumbs/docs/mcp/setup.md)
-- [MCP tool reference](https://anilcancakir.com/crumbs/docs/mcp/tool-reference.md)
-- [Cursor and filters](https://anilcancakir.com/crumbs/docs/mcp/cursor-and-filters.md)
 
-## Source
-- [GitHub](https://github.com/anilcancakir/crumbs)
-- [pub.dev](https://pub.dev/packages/crumbs)
-- [CHANGELOG](https://github.com/anilcancakir/crumbs/blob/master/CHANGELOG.md)
+- [Getting started](https://anilcancakir.com/crumbs/docs/getting-started/index.md): the overview of adding crumbs and wiring the watchers
+- [Installation](https://anilcancakir.com/crumbs/docs/getting-started/installation.md): requirements, `crumbs:install`, the build-mode guard, MCP wiring
+- [Quickstart](https://anilcancakir.com/crumbs/docs/getting-started/quickstart.md): from a fresh Flutter project to a first captured record
+- [Buffers](https://anilcancakir.com/crumbs/docs/getting-started/buffers.md): the ring buffers, their capacities and eviction
+- [Redaction](https://anilcancakir.com/crumbs/docs/getting-started/redaction.md): credential masking and the host `redactor`
+- [File sink](https://anilcancakir.com/crumbs/docs/getting-started/file-sink.md): the JSONL timeline on disk and how to read it back
+- [Watchers](https://anilcancakir.com/crumbs/docs/watchers/index.md): what each watcher and adapter captures and how to register it
+- [FramePerfWatcher](https://anilcancakir.com/crumbs/docs/watchers/frames.md): frame timings, block attribution and the liveness counter
+- [MCP overview](https://anilcancakir.com/crumbs/docs/mcp/overview.md): how the crumbs tools join dowel's MCP server
+- [MCP setup](https://anilcancakir.com/crumbs/docs/mcp/setup.md): the `.mcp.json` entry and the reconnect
+- [MCP tool reference](https://anilcancakir.com/crumbs/docs/mcp/tool-reference.md): input schema and response for every `crumbs_*` tool
+- [Cursor and filters](https://anilcancakir.com/crumbs/docs/mcp/cursor-and-filters.md): `since`, `cursor`, `logger` and `type` on logs and events
 
-## Optional
-- [README](https://github.com/anilcancakir/crumbs/blob/master/README.md)
-- [LICENSE](https://github.com/anilcancakir/crumbs/blob/master/LICENSE)
-- [Issues](https://github.com/anilcancakir/crumbs/issues)
+## Links
+
+- [README](https://github.com/anilcancakir/crumbs#readme): overview, feature tables and quick start
+- [API reference](https://pub.dev/documentation/crumbs/latest/): generated from the doc comments
+- [Changelog](https://github.com/anilcancakir/crumbs/blob/master/CHANGELOG.md): what changed in each version
+- [Source](https://github.com/anilcancakir/crumbs): issues and pull requests
+- [Agent skill](https://github.com/anilcancakir/crumbs/tree/master/skills/crumbs): install with `npx skills add anilcancakir/crumbs`
