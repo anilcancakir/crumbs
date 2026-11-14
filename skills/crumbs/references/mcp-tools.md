@@ -1,12 +1,12 @@
 # MCP tools reference
 
-Every `crumbs_*` tool `CrumbsDowelProvider.mcpTools()` declares. Each routes to one `ext.crumbs.*` extension through dowel's MCP server, which forwards the call's arguments unchanged, so a parameter the extension reads works even when the schema does not list it.
+Every `crumbs_*` tool `CrumbsDowelProvider.mcpTools()` declares. Each routes to one `ext.crumbs.*` extension through dowel's MCP server, which forwards the call's arguments unchanged.
 
 ## Contents
 
 - [Calling convention](#calling-convention)
 - [Tools](#tools)
-- [Parameters the schemas leave out](#parameters-the-schemas-leave-out)
+- [Cursor, `logger` and `type`](#cursor-logger-and-type)
 - [Errors](#errors)
 - [Empty answers](#empty-answers)
 
@@ -21,14 +21,14 @@ Every `crumbs_*` tool `CrumbsDowelProvider.mcpTools()` declares. Each routes to 
 
 | Tool | Extension | Parameters | Answer |
 |---|---|---|---|
-| `crumbs_tail` | `ext.crumbs.console` | `limit`, `level` | `{messages: [LogRecordEntry], cursor}` |
-| `crumbs_requests` | `ext.crumbs.requests` | `limit` | `{records: [HttpRequestRecord]}` |
+| `crumbs_tail` | `ext.crumbs.console` | `limit`, `level`, `logger`, `since` | `{messages: [LogRecordEntry], cursor}` |
+| `crumbs_requests` | `ext.crumbs.requests` | `limit` | `{requests: [HttpRequestRecord]}` |
 | `crumbs_exceptions` | `ext.crumbs.exceptions` | `limit` | `{exceptions: [ExceptionRecord]}` |
 | `crumbs_dumps` | `ext.crumbs.dumps` | `limit` | `{dumps: [DumpRecord]}` |
-| `crumbs_events` | `ext.crumbs.events` | `limit` | `{events: [EventRecord], cursor}` |
+| `crumbs_events` | `ext.crumbs.events` | `limit`, `type`, `since` | `{events: [EventRecord], cursor}` |
 | `crumbs_gates` | `ext.crumbs.gates` | `limit` | `{gates: [GateRecord]}` |
 | `crumbs_queries` | `ext.crumbs.queries` | `limit` | `{queries: [QueryRecord]}` |
-| `crumbs_caches` | `ext.crumbs.caches` | `limit` | `{caches: [MagicCacheRecord]}` |
+| `crumbs_caches` | `ext.crumbs.caches` | `limit` | `{caches: [CacheRecord]}` |
 | `crumbs_frames` | `ext.crumbs.frames` | `limit` | `{frames: [FramePerfRecord], livenessCounter}` |
 | `crumbs_clear` | `ext.crumbs.clear` | none | `{cleared: true}` |
 
@@ -43,9 +43,9 @@ Record fields are in `records.md`.
 
 The extensions `ext.crumbs.pause`, `ext.crumbs.resume`, `ext.crumbs.files` and `ext.crumbs.file` have no MCP tool. The timeline files are read with `crumbs:files` (see `cli-commands.md`).
 
-## Parameters the schemas leave out
+## Cursor, `logger` and `type`
 
-`ext.crumbs.console` and `ext.crumbs.events` read more than their descriptors declare:
+`crumbs_tail` and `crumbs_events` declare these beside `limit`:
 
 | Parameter | On | Meaning |
 |---|---|---|
@@ -75,9 +75,9 @@ An empty list is a verdict only once its producer is known to be registered:
 | Empty | Check |
 |---|---|
 | `messages` | The app logs through `package:logging`; `level` is a real level name; `logger` is the exact name |
-| `records` | An HTTP adapter is registered and actually records (a bare `DioHttpAdapter` records nothing) |
+| `requests` | An HTTP adapter is registered, or an interceptor calls `CrumbsStore.recordHttp`: crumbs hooks no HTTP client itself |
 | `exceptions` | `ExceptionWatcher` is registered |
 | `dumps` | `DumpWatcher` is registered and the build is debug; the code calls `debugPrint`, not `print` |
 | `events`, `gates`, `queries`, `caches` | `MagicCrumbsIntegration.install()` ran after `Magic.init()`, from a `magic_devtools` release built on crumbs |
 | `frames` | `FramePerfWatcher` is registered; read `livenessCounter` |
-| any | `crumbs_clear` or a hot restart ran since the action; the host called `CrumbsStore.pause()`; a throwing `redactor` dropped the records (logs, events, exceptions, HTTP) |
+| any | `crumbs_clear` or a hot restart ran since the action; the host called `CrumbsStore.pause()`; a throwing `redactor` dropped the records (logs, events, exceptions, HTTP, dumps, queries, gates) |

@@ -78,4 +78,4 @@ if (!kReleaseMode) {
 
 - [Tool reference](../mcp/tool-reference.md#crumbs_frames): the `crumbs_frames` input schema and output shape.
 - [Watchers](index.md): every other watcher and the call-site guard.
-- [Buffers](../getting-started/buffers.md): `setFramePerfCapacity` and the per-kind caps.
+- [Buffers](../getting-started/buffers.md): the per-kind caps, `CrumbsKind.framePerf` included.

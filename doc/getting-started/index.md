@@ -65,7 +65,7 @@ With the Magic stack (`MagicCrumbsIntegration.install()` after `Magic.init()`):
 <a name="host-features"></a>
 ## Host features
 
-- [Redaction](redaction.md): the credential lists and `CrumbsRedaction.redactor`, the host hook that masks every log, event, exception and HTTP record at insert.
+- [Redaction](redaction.md): the credential lists, which mask by key, and `CrumbsRedaction.redactor`, the host hook that masks free text at insert.
 - [File sink](file-sink.md): `CrumbsFileSink`, a rotating JSONL timeline on disk that writes only redacted records, read back through `crumbs:files`.
 - [Buffers](buffers.md): per-kind capacity with `CrumbsStore.setCapacity`, the `atUs` clock, and how `limit` and `minLevel` behave.
 - [Cursor and filters](../mcp/cursor-and-filters.md): `since`, `type`, `logger` and `cursor` on the read extensions, and `--json` and `--follow` on the CLI.

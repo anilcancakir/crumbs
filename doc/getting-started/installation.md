@@ -48,7 +48,7 @@ dart run crumbs crumbs:install
 
 1. When `bin/dispatcher.dart` is missing, it runs `dart run crumbs install`, which scaffolds the dowel harness: `bin/dispatcher.dart`, the fast `./bin/dowel` launcher and the codegen barrels under `lib/app/`. A project that already has the dispatcher skips this step.
 2. It runs `dart run crumbs plugin:install crumbs`, which records crumbs in `.dowel/plugins.json` and regenerates `lib/app/_plugins.g.dart`.
-3. It patches `lib/main.dart`: the `kDebugMode` and `package:crumbs/crumbs.dart` imports, `WidgetsFlutterBinding.ensureInitialized()` when missing, and a `kDebugMode` block with `CrumbsPlugin.install()` and the exception and dump watchers. The block lands before `await Magic.init(` on a Magic app, so `ExceptionWatcher` sees boot errors, and before `runApp(` otherwise. Without a `lib/main.dart` the step is skipped with a message.
+3. It patches `lib/main.dart`: the `kDebugMode` and `package:crumbs/crumbs.dart` imports (no `show kDebugMode` import when the file already imports `package:flutter/foundation.dart` in full), `WidgetsFlutterBinding.ensureInitialized()` when missing, and a `kDebugMode` block with `CrumbsPlugin.install()` and the exception and dump watchers. The block lands before `await Magic.init(` on a Magic app, so `ExceptionWatcher` sees boot errors, and before `runApp(` otherwise. Without a `lib/main.dart` the step is skipped with a message.
 
 On a Magic app whose `pubspec.yaml` lists `magic_devtools`, step 3 also adds `import 'package:magic_devtools/crumbs.dart';` and a `kDebugMode` block with `MagicCrumbsIntegration.install()` after `Magic.init()`. That library exists only in a `magic_devtools` release built on crumbs, so the installer writes these lines only when the resolved `magic_devtools` ships it; with an older release it warns and leaves the Magic lines out. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
 
@@ -125,18 +125,22 @@ class CrumbsDioInterceptor extends Interceptor {
   @override
   void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
     final options = response.requestOptions;
-    DioHttpAdapter.recordRequest(
-      url: options.uri.toString(),
-      method: options.method,
-      statusCode: response.statusCode ?? 0,
-      durationMs: _watches.remove(options)?.elapsedMilliseconds ?? 0,
+    CrumbsStore.recordHttp(
+      HttpRequestRecord(
+        url: options.uri.toString(),
+        method: options.method,
+        statusCode: response.statusCode ?? 0,
+        durationMs: _watches.remove(options)?.elapsedMilliseconds ?? 0,
+        isError: false,
+        timestamp: DateTime.now(),
+      ),
     );
     handler.next(response);
   }
 }
 ```
 
-Add it with `dio.interceptors.add(CrumbsDioInterceptor())`. `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter())` is optional here: `DioHttpAdapter` hooks nothing itself, and `recordRequest` writes to the store either way.
+Add it with `dio.interceptors.add(CrumbsDioInterceptor())`. `CrumbsStore.recordHttp` masks the credentials before it buffers the record, so no `CrumbsHttpAdapter` is needed; write one only to report in-flight requests through `pendingCount`.
 
 <a name="register-with-dowel"></a>
 ## Register with dowel
@@ -202,7 +206,7 @@ Then read the log buffer and list the commands:
 
 | Mistake | Fix |
 |:--------|:----|
-| `CrumbsPlugin.install()` sits outside a guard. | Wrap it in `if (kDebugMode)` or `if (!kReleaseMode)`; crumbs installs no guard of its own. |
+| `CrumbsPlugin.install()` sits outside a guard. | Wrap it in `if (kDebugMode)` or `if (!kReleaseMode)`; crumbs installs no guard of its own. `--dart-define=CRUMBS_DISABLE=1` also stops the install, the watchers and the HTTP adapters of a build that must not expose the extensions. |
 | The guard sits inside a helper function. | Keep it at the call site in `main()`; the tree-shake depends on it. |
 | `crumbs_exceptions` stays empty after a crash. | Register `ExceptionWatcher`: `CrumbsPlugin.install()` installs only `LogWatcher`. |
 | `MagicCrumbsIntegration.install()` runs before `Magic.init()`. | Call it after `Magic.init()`; the HTTP adapter registers nothing while the network driver is unbound. |

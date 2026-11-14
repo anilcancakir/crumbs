@@ -86,7 +86,7 @@ Each line is `{"kind": "log"|"event"|"exception", ...}` followed by the record's
 
 ## Capture HTTP in an app without Magic
 
-`DioHttpAdapter` installs no interceptor; register it for the name and record from the app's own interceptor:
+crumbs hooks no HTTP client: record from the app's own interceptor through `CrumbsStore.recordHttp`, which masks the credentials before it buffers the record:
 
 ```dart
 import 'package:crumbs/crumbs.dart';
@@ -114,22 +114,25 @@ final class CrumbsDioInterceptor extends Interceptor {
   }
 
   void _record(RequestOptions options, int statusCode, {bool failed = false}) {
-    DioHttpAdapter.recordRequest(
-      url: options.uri.toString(),
-      method: options.method,
-      statusCode: statusCode,
-      durationMs: _clocks.remove(options)?.elapsedMilliseconds ?? 0,
-      isError: failed || statusCode >= 400,
-      requestHeaders: <String, String>{
-        for (final MapEntry<String, dynamic> header in options.headers.entries)
-          header.key: '${header.value}',
-      },
+    CrumbsStore.recordHttp(
+      HttpRequestRecord(
+        url: options.uri.toString(),
+        method: options.method,
+        statusCode: statusCode,
+        durationMs: _clocks.remove(options)?.elapsedMilliseconds ?? 0,
+        isError: failed || statusCode >= 400,
+        timestamp: DateTime.now(),
+        requestHeaders: <String, String>{
+          for (final MapEntry<String, dynamic> header in options.headers.entries)
+            header.key: '${header.value}',
+        },
+      ),
     );
   }
 }
 ```
 
-Inside the debug guard: `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter());` and `dio.interceptors.add(CrumbsDioInterceptor());`. Headers and bodies are masked at insert, but the store masks only JSON and form strings: run a body held as a `Map` through `CrumbsRedaction.redactParameters` first, and a string body through `CrumbsRedaction.redactBody` before truncating it, because a cut JSON body no longer parses. This adapter reports no in-flight count, so `CrumbsStore.pendingHttpCount` stays 0; an adapter that tracks one overrides `pendingCount`.
+Inside the debug guard: `dio.interceptors.add(CrumbsDioInterceptor());`. Headers, bodies and the URL query are masked at insert, but the store masks only JSON and form strings: run a body held as a `Map` through `CrumbsRedaction.redactParameters` first, and a string body through `CrumbsRedaction.redactBody` before truncating it, because a cut JSON body no longer parses. No adapter is involved, so `CrumbsStore.pendingHttpCount` stays 0; a `CrumbsHttpAdapter` that tracks in-flight requests (registered with `CrumbsPlugin.registerHttpAdapter`, `pendingCount` implemented) is what feeds it.
 
 ## Turn on redaction and the timeline
 
@@ -142,8 +145,8 @@ CrumbsRedaction.redactor =
 await CrumbsFileSink.start(directory: timelineDirectory); // an absolute directory the app owns
 ```
 
-The redactor must be pure and total: a throw drops the record rather than let it through unmasked. Set it before the records you want on disk are made; a record buffered while it was null stays `redacted: false` and the sink skips it. `start` throws a `FileSystemException` when the directory cannot be created or written. The sink writes through `dart:io`, so it needs a native target; `maxFileBytes` (default 1 MiB) and `maxFiles` (default 8) bound its disk use.
+The redactor must be pure and total: a throw drops the record rather than let it through unmasked. It also covers the free text key masking cannot reach (a log message, a dump, a query's SQL). Set it before the records you want on disk are made; a record buffered while it was null stays `redacted: false` and the sink skips it. `start` throws a `FileSystemException` when the directory cannot be created or written. The sink writes through `dart:io`, so it needs a native target; `maxFileBytes` (default 1 MiB) and `maxFiles` (default 8) bound its disk use.
 
 ## Coexist with Sentry or Bugsnag
 
-`ExceptionWatcher` and `DumpWatcher` save the handler in place when they install and call it after recording, so install the other reporter first: it keeps receiving every error and every `debugPrint`. A reporter installed later must chain to the handler it replaces, or crumbs stops seeing those errors. `ExceptionWatcher` returns the previous `PlatformDispatcher.onError` handler's verdict, so a reporter that marks an error fatal still does. `FramePerfWatcher` adds a timings callback rather than replacing one, so it has nothing to chain.
+`ExceptionWatcher` and `DumpWatcher` save the handler in place when they install and call it after recording, so install the other reporter first: it keeps receiving every error and every `debugPrint`. A reporter installed later must chain to the handler it replaces, or crumbs stops seeing those errors. `ExceptionWatcher` returns the previous `PlatformDispatcher.onError` handler's verdict, so a reporter that marks an error fatal still does, and it calls the previous handler even when recording an error throws (an error whose `toString()` throws). `FramePerfWatcher` adds a timings callback rather than replacing one, so it has nothing to chain.

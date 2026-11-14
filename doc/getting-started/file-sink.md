@@ -54,9 +54,13 @@ Every record from `onLogRecord`, `onEventRecord` and `onExceptionRecord` becomes
 `kind` is `log`, `event` or `exception`; the rest is the record's `toJson()`. Lines are batched and written
 at 64 lines or 500 ms, whichever comes first. A new file starts before a line would pass `maxFileBytes`.
 Files are named `timeline-<launch stamp>-<n>.jsonl`, where the stamp is the UTC launch time
-(`yyyyMMddTHHmmssZ`) and `n` counts rotations within the launch. After each rotation the sink deletes the
+(`yyyyMMddTHHmmssZ`) and `n` numbers the launch's files from 1. After each rotation the sink deletes the
 oldest timeline files in the directory beyond `maxFiles`, earlier launches included. It only ever touches
 names its own pattern produces.
+
+Run one sink per directory. Pruning counts every timeline file in the directory and spares only the file
+this sink is writing, so a second app instance writing to the same directory has its files deleted by this
+sink, and deletes this one's in turn. Give each process its own directory.
 
 The stamp has second precision, so a sink started again within the same second (a restart, or `start()` while
 one runs) names the file of the sink it replaced. The new sink appends to that file and counts its existing
@@ -107,7 +111,7 @@ through the CLI or the VM service directly.
 
 ```bash
 ./bin/dowel crumbs:files                       # list: "<name> <bytes>" per line
-./bin/dowel crumbs:files --name=timeline-20261010T091500Z-0.jsonl
+./bin/dowel crumbs:files --name=timeline-20261010T091500Z-1.jsonl
 ./bin/dowel crumbs:files --name=<file> --offset=<next>
 ```
 

@@ -65,7 +65,7 @@ void main() {
 }
 ```
 
-The guard belongs to the call site: crumbs installs none of its own. `kDebugMode` is what the installer writes; `!kReleaseMode` also keeps crumbs in a profile build, which a frame measurement needs. Either way a release build tree-shakes crumbs. Without a guard crumbs ships in release, and anyone who reaches that app's VM Service can read every buffer. `--dart-define=CRUMBS_DISABLE=1` skips registration in a build that must not expose the extensions. The [`example/`](example/) app wires the core watchers and routes Dio traffic into the HTTP buffer.
+The guard belongs to the call site: crumbs installs none of its own. `kDebugMode` is what the installer writes; `!kReleaseMode` also keeps crumbs in a profile build, which a frame measurement needs. Either way a release build tree-shakes crumbs. Without a guard crumbs ships in release, and anyone who reaches that app's VM Service can read every buffer. `--dart-define=CRUMBS_DISABLE=1` makes `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` return without installing anything, in a build that must not expose the extensions. The [`example/`](example/) app wires the core watchers and routes Dio traffic into the HTTP buffer.
 
 On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter and the model, cache, event, gate and query watchers. It exists only in a [`magic_devtools`](https://pub.dev/packages/magic_devtools) release built on crumbs: `crumbs:install` writes those lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
 
@@ -77,7 +77,7 @@ On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.instal
 | Uncaught exceptions | `ExceptionWatcher` (`FlutterError.onError` and `PlatformDispatcher.onError`, chained to any handler already set, such as Sentry's) | none | `crumbs_exceptions` |
 | `debugPrint` output | `DumpWatcher` (debug builds only unless `allowInRelease` is set) | `crumbs:dumps` | `crumbs_dumps` |
 | Frame timings and build attribution | `FramePerfWatcher` | `crumbs:frames` | `crumbs_frames` |
-| HTTP requests | A `CrumbsHttpAdapter`; with Dio, an interceptor that calls `DioHttpAdapter.recordRequest()`; on Magic, `MagicHttpFacadeAdapter` | `crumbs:requests` | `crumbs_requests` |
+| HTTP requests | The app's own interceptor (Dio, `package:http`) calling `CrumbsStore.recordHttp`, or a `CrumbsHttpAdapter`; on Magic, `MagicHttpFacadeAdapter` | `crumbs:requests` | `crumbs_requests` |
 | In-app events | `MagicEventWatcher` | `crumbs:events` | `crumbs_events` |
 | Gate checks | `MagicGateWatcher` | `crumbs:gates` | `crumbs_gates` |
 | DB queries | `MagicQueryWatcher` | `crumbs:queries` | `crumbs_queries` |
@@ -90,8 +90,8 @@ On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.instal
 
 | Surface | Behaviour |
 |---|---|
-| Credential masking | HTTP records are masked before they are buffered: `Authorization`, `Cookie`, `X-Api-Key` and similar headers, and `password`, `token` style keys in a JSON or form body, read `********`. Extend the lists with `CrumbsRedaction.hideRequestHeaders()`, `hideRequestParameters()` and `hideResponseParameters()` |
-| Text redactor | `CrumbsRedaction.redactor`, a `String Function(String)` you set, runs over every text field of a log, event, exception and HTTP record at insert. A redactor that throws drops the record rather than let it through unmasked; each of those records carries a read-only `redacted` flag |
+| Credential masking | Records are masked by key before they are buffered, with no setup: `Authorization`, `Cookie`, `X-Api-Key` and similar headers, `password`, `token` style keys in a JSON or form body, credential-named parameters in the URL query (`access_token`, `api_key`, the `X-Amz-*` signature of a presigned URL), and the same keys inside the structured bindings of a query and arguments of a gate check, read `********`. Extend the lists with `CrumbsRedaction.hideRequestHeaders()`, `hideRequestParameters()` and `hideResponseParameters()` |
+| Text redactor | `CrumbsRedaction.redactor`, a `String Function(String)` you set, runs at insert over the free text of a log, event, exception, HTTP, dump, query and gate record. Without one, a credential written into a log line, a `debugPrint` or a SQL literal is buffered as written; model attributes and cache records are never masked. A redactor that throws drops the record rather than let it through unmasked; the log, event, exception and HTTP records carry a read-only `redacted` flag |
 | File sink | `CrumbsFileSink.start(directory: ...)` writes a rotating JSONL timeline of log, event and exception records, and writes only records whose `redacted` flag is true. Read it back with `crumbs:files` |
 
 ```dart
@@ -139,9 +139,9 @@ crumbs_queries {}
 | Call `crumbs_clear` before a repro | A buffer holds the whole run, so an old record reads like a new one |
 | Register `ExceptionWatcher` (and `DumpWatcher`) when wiring by hand | `CrumbsPlugin.install()` installs only `LogWatcher`; an empty exception buffer otherwise proves nothing |
 | Read `livenessCounter` with an empty `crumbs_frames` answer | A counter that does not advance means `FramePerfWatcher` is not registered or the engine draws nothing, not a smooth app |
-| Treat `********` in an HTTP record as crumbs's mask | The app sent the real credential; crumbs hid it before buffering |
+| Treat `********` in a record as crumbs's mask | The app sent the real credential; crumbs hid it before buffering |
 | Set `CrumbsRedaction.redactor` before `CrumbsFileSink.start()` | The sink writes only redacted records and counts the rest in `droppedUnredacted` |
-| Page logs and events by passing the `cursor` of one answer back as `since` (CLI: `--since`, or `--json --follow`) | The MCP descriptors declare only `limit` (and `level` on `crumbs_tail`), but dowel forwards every argument, so `since`, `logger` and `type` work over MCP too |
+| Page logs and events by passing the `cursor` of one answer back as `since` (CLI: `--since`, or `--json --follow`) | `crumbs_tail` declares `since` and `logger`, `crumbs_events` declares `since` and `type`, and both answer the `cursor` |
 | Point the MCP client at the `dowel` key and reconnect after `mcp:install` | The tools ride on the dowel server, and clients do not reload an entry on their own |
 
 ## Moving from fluttersdk_telescope
@@ -167,6 +167,8 @@ The old dispatcher and codegen barrels import `fluttersdk_artisan`, and the inst
 | `TELESCOPE_DISABLE` | `CRUMBS_DISABLE` |
 | The `fluttersdk` server key in `.mcp.json` | `dowel` |
 | `package:fluttersdk_artisan/artisan.dart`, `Artisan*` in your own commands | `package:dowel/dowel.dart`, `Dowel*` |
+
+An app that already runs an earlier crumbs release renames a few things when it upgrades. The Magic prefix is gone from the model and cache pair: the store methods are `CrumbsStore.recordModel` and `recordCache`, and the records are `ModelRecord` and `CacheRecord`. The frame buffer capacity is set with `CrumbsStore.setCapacity(n, kind: CrumbsKind.framePerf)`, since the dedicated setter is removed. The bundled Dio adapter is removed too: build an `HttpRequestRecord` in your own interceptor and pass it to `CrumbsStore.recordHttp`. The HTTP read answers under the key `requests`, formerly `records`. `CrumbsWatcher` and `CrumbsHttpAdapter` are `abstract interface class`es, so an adapter or watcher `implements` them, and `pendingCount` has no default body.
 
 The [changelog](https://github.com/anilcancakir/crumbs/blob/master/CHANGELOG.md) lists the rest.
 

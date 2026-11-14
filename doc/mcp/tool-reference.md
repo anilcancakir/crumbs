@@ -23,10 +23,10 @@ Every tool dispatches through the VM Service, so the app must be running under d
 
 | Tool | Reads | Parameters | Answer key |
 |:-----|:------|:-----------|:-----------|
-| `crumbs_tail` | `package:logging` records | `limit`, `level` | `messages` |
-| `crumbs_requests` | HTTP requests | `limit` | `records` |
+| `crumbs_tail` | `package:logging` records | `limit`, `level`, `logger`, `since` | `messages`, `cursor` |
+| `crumbs_requests` | HTTP requests | `limit` | `requests` |
 | `crumbs_exceptions` | Uncaught exceptions | `limit` | `exceptions` |
-| `crumbs_events` | In-app events | `limit` | `events` |
+| `crumbs_events` | In-app events | `limit`, `type`, `since` | `events`, `cursor` |
 | `crumbs_gates` | Gate checks | `limit` | `gates` |
 | `crumbs_dumps` | `debugPrint` output | `limit` | `dumps` |
 | `crumbs_queries` | DB queries | `limit` | `queries` |
@@ -42,7 +42,7 @@ Every reading tool (all but `crumbs_clear`) follows these rules:
 - **Oldest first.** Records come back in chronological order: the last entry is the newest.
 - **`limit`.** Optional; keeps the newest N records. Omitted, the whole buffer comes back, up to its capacity (500 records by default, 3600 for frames; see [Buffers](../getting-started/buffers.md)). A zero or negative `limit` returns nothing.
 - **Envelope.** Every tool answers a JSON object whose list sits under the answer key in the table above. An empty buffer, on a fresh start or after `crumbs_clear`, answers an empty list, not an error.
-- **Redaction.** Log, event, exception and HTTP records are masked at insert when the host registered `CrumbsRedaction.redactor` (see [Redaction](../getting-started/redaction.md)), and each carries a `redacted` boolean.
+- **Redaction.** Credential-named keys are masked at insert whatever the host did: HTTP headers, bodies and URL query parameters, and the structured bindings of a query and arguments of a gate check. Free text (log, exception and dump messages, SQL, event payloads) is masked only when the host registered `CrumbsRedaction.redactor`; log, event, exception and HTTP records then carry `redacted: true`. Model and cache records are not masked. See [Redaction](../getting-started/redaction.md).
 - **Errors.** When the app is not running or the VM Service cannot be reached, the tool result is an error with a plain-text message that says what to do.
 
 <a name="crumbs_tail"></a>
@@ -61,9 +61,11 @@ Use this to inspect what the app logged without scraping `flutter run` stdout vi
 |---|---|---|---|
 | `limit` | integer | no | Maximum number of records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer (cap enforced by ring-buffer size, 500). |
 | `level` | string | no | Minimum log level to include. Common values: `FINE`, `INFO`, `WARNING`, `SEVERE`, `SHOUT`. Omit for all levels. A name that is not a level matches nothing. |
+| `logger` | string | no | Exact logger name to include. Omit for every logger. |
+| `since` | integer | no | Microseconds, exclusive, compared with each record's `atUs`: pass the `cursor` of the previous answer to read only newer records. A value that is not an integer is refused. |
 
-The extension behind this tool also accepts `since` and `logger` and answers a `cursor`; the tool
-descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md).
+With `since`, `limit` keeps the oldest N records after it; the answer's `cursor` is the value to pass
+back. See [Cursor and filters](cursor-and-filters.md).
 
 ### Output Shape
 
@@ -110,6 +112,9 @@ crumbs_tail {"limit": 20, "level": "WARNING"}
 
 # Every SEVERE entry in the buffer
 crumbs_tail {"level": "SEVERE"}
+
+# What one logger wrote after the cursor of the previous read
+crumbs_tail {"logger": "Sync", "since": 81234567}
 ```
 
 ### Related Tools
@@ -126,7 +131,7 @@ crumbs_tail {"level": "SEVERE"}
 Return recent HTTP request records from the running Flutter app.
 
 Reads the HTTP buffer, filled by any `CrumbsHttpAdapter` the app registers (`MagicHttpFacadeAdapter`
-from `magic_devtools` on a Magic app) or by an interceptor that calls `DioHttpAdapter.recordRequest()`.
+from `magic_devtools` on a Magic app) or by an interceptor that calls `CrumbsStore.recordHttp`.
 Use this to debug API issues without a proxy or the network panel of DevTools.
 
 **VM Service extension:** `ext.crumbs.requests`
@@ -141,7 +146,7 @@ Use this to debug API issues without a proxy or the network panel of DevTools.
 
 ```json
 {
-  "records": [
+  "requests": [
     {
       "url": "https://api.example.com/monitors",
       "method": "GET",
@@ -162,7 +167,7 @@ Use this to debug API issues without a proxy or the network panel of DevTools.
 
 | Field | Type | Always present | Description |
 |---|---|---|---|
-| `url` | string | yes | Full request URL |
+| `url` | string | yes | Full request URL; the value of a credential-named query parameter reads `********` |
 | `method` | string | yes | HTTP method (`GET`, `POST`, etc.) |
 | `statusCode` | integer | yes | HTTP status code; 0 when the call failed before a response |
 | `durationMs` | integer | yes | Round-trip time in milliseconds |
@@ -197,7 +202,7 @@ crumbs_requests {}
 - Pair with `crumbs_clear` before a user action to isolate exactly the traffic that action
   produces.
 - Credentials are masked before a record is buffered, the way Laravel Telescope does it: the
-  value of a hidden header or a hidden JSON body key reads `********`, which is crumbs's mask
+  value of a hidden header, a hidden JSON or form body key or a hidden URL query parameter reads `********`, which is crumbs's mask
   and not what the app sent. See [Credential redaction](../watchers/index.md#credential-redaction)
   for the default lists and how to extend them.
 
@@ -282,9 +287,11 @@ to trace event-driven side effects without adding `print` statements.
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `limit` | integer | no | Maximum number of event records to return: the most recent N, in chronological order (oldest of that window first, newest last). Omit for the whole buffer (cap enforced by ring-buffer size, 500). |
+| `type` | string | no | Prefix of the event type to include. Omit for every event. |
+| `since` | integer | no | Microseconds, exclusive, compared with each record's `atUs`: pass the `cursor` of the previous answer to read only newer records. A value that is not an integer is refused. |
 
-The extension behind this tool also accepts `since` and `type` and answers a `cursor`; the tool
-descriptor does not declare them. See [Cursor and filters](cursor-and-filters.md).
+With `since`, `limit` keeps the oldest N records after it; the answer's `cursor` is the value to pass
+back. See [Cursor and filters](cursor-and-filters.md).
 
 ### Output Shape
 
@@ -325,6 +332,9 @@ crumbs_events {"limit": 10}
 
 # Every event in the buffer
 crumbs_events {}
+
+# Auth events after the cursor of the previous read
+crumbs_events {"type": "Auth", "since": 81234567}
 ```
 
 ### Notes
@@ -374,7 +384,7 @@ route is blocked) without modifying policy classes.
 |---|---|---|---|
 | `ability` | string | yes | Ability name passed to `Gate.allows` / `Gate.denies` |
 | `result` | boolean | yes | `true` when the gate allowed the action; `false` when denied |
-| `arguments` | array | yes | List of argument values (class name strings or serialised primitives) |
+| `arguments` | array | yes | List of argument values (class name strings or serialised primitives); a value under a credential-named key reads `********` |
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; this record has no `atUs` |
 | `userId` | string | no | Authenticated user ID at check time, when available |
 
@@ -447,6 +457,7 @@ crumbs_dumps {}
 
 - Only output routed through `debugPrint` is captured. `print()` and `stdout.write` calls are
   invisible to this tool.
+- A dump is free text: a credential in a message is masked only by a host `CrumbsRedaction.redactor`.
 - `DumpWatcher` installs nothing outside a debug build unless `allowInRelease` is set, so a profile
   build under `!kReleaseMode` records no dumps.
 - For structured logs use `crumbs_tail`; for crashes use `crumbs_exceptions`.
@@ -490,7 +501,7 @@ a separate SQL profiler.
 | Field | Type | Always present | Description |
 |---|---|---|---|
 | `sql` | string | yes | SQL string the query builder dispatched to the driver |
-| `bindings` | array | yes | Positional or named query bindings |
+| `bindings` | array | yes | Positional or named query bindings; a value under a credential-named key reads `********` |
 | `timeMs` | integer | yes | Execution time in milliseconds reported by the query builder |
 | `connectionName` | string | yes | Connection name; `"default"` when the app did not name it |
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
@@ -512,6 +523,7 @@ crumbs_queries {}
 
 - Only queries that go through magic's QueryBuilder (dispatching `QueryExecuted` via
   `EventDispatcher`) are recorded. Raw `sqlite3` or direct Dio SQL calls bypass this tool.
+- The SQL is free text: a literal in it is masked only by a host `CrumbsRedaction.redactor`.
 - For Magic Cache traffic use `crumbs_caches`; for HTTP use `crumbs_requests`; for log
   lines use `crumbs_tail`.
 
