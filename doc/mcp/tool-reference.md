@@ -341,8 +341,8 @@ crumbs_events {"type": "Auth", "since": 81234567}
 
 - Only events that reach the buffer are visible: a Magic event outside the watcher's set, or a raw
   `ChangeNotifier.notifyListeners` call, does not surface here.
-- `MagicEventWatcher` records an empty `payload` for every Magic event; per-event fields are not
-  extracted yet.
+- `MagicEventWatcher` records an empty `payload` for every Magic event: the record carries the event
+  type, never the event's own fields.
 - For gate checks use `crumbs_gates`; for HTTP traffic use `crumbs_requests`.
 
 ---

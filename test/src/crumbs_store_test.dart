@@ -1191,6 +1191,47 @@ void main() {
         );
       });
 
+      test('masks every credential key the request list hides in a response '
+          'body, nested and in any case', () {
+        const List<String> credentials = <String>[
+          'password',
+          'api_key',
+          'apikey',
+          'secret',
+          'client_secret',
+          'signature',
+          'sig',
+          'authorization_code',
+          'recovery_code',
+          'x-amz-signature',
+          'x-amz-credential',
+          'x-amz-security-token',
+        ];
+
+        for (final String key in credentials) {
+          CrumbsStore.recordHttp(
+            _httpWith(
+              responseBody: jsonEncode(<String, dynamic>{
+                'user': <String, dynamic>{
+                  'id': 1,
+                  key.toUpperCase(): 'clear-$key',
+                  'keys': <dynamic>[
+                    <String, dynamic>{key: 'clear-$key'},
+                  ],
+                },
+              }),
+            ),
+          );
+        }
+
+        final List<HttpRequestRecord> stored = CrumbsStore.recentHttp();
+        expect(stored, hasLength(credentials.length));
+        for (final HttpRequestRecord record in stored) {
+          expect(record.responseBody, isNot(contains('clear-')));
+          expect(record.responseBody, contains('"id":1'));
+        }
+      });
+
       test('reads the response body against the response list, not the '
           'request list', () {
         CrumbsRedaction.hideRequestParameters(<String>['pin']);

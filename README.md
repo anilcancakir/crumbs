@@ -33,7 +33,7 @@ crumbs is a passive inspector: it records what the app does and drives nothing. 
 | Install | `flutter pub add crumbs`, then `dart run crumbs crumbs:install` |
 | Import | `package:crumbs/crumbs.dart` (`CrumbsPlugin.install()`, behind `if (!kReleaseMode)`) |
 | Entry points | `dart run crumbs <command>`, `./bin/dowel <command>`, `CrumbsPlugin.install()`, `CrumbsPlugin.registerWatcher()`, `CrumbsPlugin.registerHttpAdapter()`, `CrumbsStore`, `CrumbsRedaction`, `CrumbsFileSink`, `CrumbsDowelProvider` (`package:crumbs/cli.dart`), `dart run crumbs mcp:serve` |
-| Platforms | Any Flutter target that exposes a VM Service in a debug or profile build: Android, iOS, web, macOS, Windows, Linux. `CrumbsFileSink` writes through `dart:io`, so the timeline on disk is not available on the web; on a Windows host `mcp:install` writes a `dart run` entry, never `./bin/dowel` |
+| Platforms | Any Flutter target that exposes a VM Service in a debug or profile build: Android, iOS, macOS, Windows, Linux, and web for everything except the file sink: `CrumbsFileSink` imports `dart:io` with no conditional import, so the timeline on disk needs a native target and pub.dev shows no Web tag. On a Windows host `mcp:install` writes a `dart run` entry, never `./bin/dowel` |
 | Requires | Dart 3.13, Flutter 3.47; a plugin of [`dowel`](https://pub.dev/packages/dowel) (`^0.0.21`) |
 | Dependencies | `dowel`, `logging`, `meta`, the Flutter SDK |
 | License | MIT |
@@ -67,7 +67,7 @@ void main() {
 
 The guard belongs to the call site: crumbs installs none of its own. `!kReleaseMode` is what the installer writes: it keeps crumbs in debug and profile builds, and a frame measurement needs a profile build. A release build tree-shakes crumbs. Without a guard crumbs ships in release, and anyone who reaches that app's VM Service can read every buffer. `--dart-define=CRUMBS_DISABLE=1` makes `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` return without installing anything, in a build that must not expose the extensions. The [`example/`](example/) app wires the core watchers and routes Dio traffic into the HTTP buffer.
 
-On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter and the model, cache, event, gate and query watchers. It exists only in a [`magic_devtools`](https://pub.dev/packages/magic_devtools) release built on crumbs: `crumbs:install` writes those lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
+On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter and the model, cache, event, gate and query watchers. [`magic_devtools`](https://pub.dev/packages/magic_devtools) 1.0.0 and later ship the crumbs integration (`package:magic_devtools/crumbs.dart`); with an earlier release the installer warns and skips the Magic wiring.
 
 ## What it captures
 
@@ -90,7 +90,7 @@ On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.instal
 
 | Surface | Behaviour |
 |---|---|
-| Credential masking | Records are masked by key before they are buffered, with no setup: `Authorization`, `Cookie`, `X-Api-Key` and similar headers, `password`, `token` style keys in a JSON or form body, credential-named parameters in the URL query (`access_token`, `api_key`, the `X-Amz-*` signature of a presigned URL), and the same keys inside the Map elements of a query's bindings and a gate check's arguments, read `********` (a positional binding has no key, so only a text redactor can mask it, and it sees the bare value). Extend the lists with `CrumbsRedaction.hideRequestHeaders()`, `hideRequestParameters()` and `hideResponseParameters()` |
+| Credential masking | Records are masked by key before they are buffered, with no setup: `Authorization`, `Cookie`, `X-Api-Key` and similar headers, `password`, `token` style keys in a JSON or form request or response body, credential-named parameters in the URL query (`access_token`, `api_key`, the `X-Amz-*` signature of a presigned URL), and the same keys inside the Map elements of a query's bindings and a gate check's arguments, read `********` (a positional binding has no key, so only a text redactor can mask it, and it sees the bare value). Extend the lists with `CrumbsRedaction.hideRequestHeaders()`, `hideRequestParameters()` and `hideResponseParameters()` |
 | Text redactor | `CrumbsRedaction.redactor`, a `String Function(String)` you set, runs at insert over the free text of a log, event, exception and HTTP record, a dump's message, a query's SQL and bindings, and a gate's arguments and user id. Without one, a credential written into a log line, a `debugPrint` or a SQL literal is buffered as written; model attributes and cache records are never masked. A redactor that throws drops the record rather than let it through unmasked; the log, event, exception and HTTP records carry a read-only `redacted` flag |
 | File sink | `CrumbsFileSink.start(directory: ...)` writes a rotating JSONL timeline of log, event and exception records, and writes only records whose `redacted` flag is true. Read it back with `crumbs:files` |
 
@@ -157,7 +157,7 @@ dart run dowel commands:refresh
 dart run crumbs mcp:install
 ```
 
-The old dispatcher and codegen barrels import `fluttersdk_artisan`, and the installer keeps a file that exists, so they go first. Rename the imports and identifiers below, and in your own commands under `lib/app/commands/` replace `package:fluttersdk_artisan/artisan.dart` with `package:dowel/dowel.dart` and `Artisan*` with `Dowel*` before `commands:refresh`. Delete the `fluttersdk` entry from `.mcp.json` and run `/mcp reconnect dowel`. On a Magic app, `MagicTelescopeIntegration` keeps feeding `fluttersdk_telescope`, not crumbs, until a `magic_devtools` release built on crumbs ships; upgrade to it then and rerun `dart run crumbs crumbs:install`.
+The old dispatcher and codegen barrels import `fluttersdk_artisan`, and the installer keeps a file that exists, so they go first. Rename the imports and identifiers below, and in your own commands under `lib/app/commands/` replace `package:fluttersdk_artisan/artisan.dart` with `package:dowel/dowel.dart` and `Artisan*` with `Dowel*` before `commands:refresh`. Delete the `fluttersdk` entry from `.mcp.json` and run `/mcp reconnect dowel`. On a Magic app, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs: `magic_devtools` 1.0.0 and later ship the crumbs integration, so upgrade to it and rerun `dart run crumbs crumbs:install`.
 
 | Before | After |
 |---|---|

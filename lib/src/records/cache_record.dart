@@ -14,7 +14,8 @@ final class CacheRecord {
     this.linkedBy,
   }) : atUs = atUs ?? FlutterTimeline.now;
 
-  /// 'put' | 'get' | 'forget' | 'hit' | 'miss'
+  /// 'hit' | 'miss' | 'put' | 'forget' | 'flush'; a flush has no key and
+  /// records `*`.
   final String operation;
   final String key;
   final DateTime time;

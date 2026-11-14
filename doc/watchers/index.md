@@ -173,7 +173,7 @@ The HTTP buffer is served to AI agents, so `CrumbsStore.recordHttp` masks creden
 |---|---|---|
 | Request headers | `requestHeaders` | `authorization`, `proxy-authorization`, `cookie`, `set-cookie`, `x-api-key` |
 | Request parameters | keys of a JSON or form `requestBody`, at any depth; the query parameters of the `url`; the keys of the Map elements of a query's `bindings` and a gate check's `arguments` (a positional binding has no key) | `password`, `password_confirmation`, `current_password`, `new_password`, `token`, `access_token`, `refresh_token`, `secret`, `client_secret`, `authorization_code`, `id_token`, `two_factor_token`, `recovery_code`, `api_key`, `apikey`, `signature`, `sig`, `x-amz-signature`, `x-amz-credential`, `x-amz-security-token` |
-| Response parameters | keys of a JSON or form `responseBody`, at any depth | `token`, `access_token`, `refresh_token`, `plain_text_token`, `secret`, `client_secret`, `id_token`, `two_factor_token`, `recovery_codes`, `qr_url`, `qr_svg` |
+| Response parameters | keys of a JSON or form `responseBody`, at any depth | every request parameter name above, plus `plain_text_token`, `recovery_codes`, `qr_url`, `qr_svg` |
 
 Extend a list at install time; an addition merges with the defaults and never replaces them:
 
@@ -259,7 +259,7 @@ if (!kReleaseMode) {
 }
 ```
 
-`package:magic_devtools/crumbs.dart` exists only in a `magic_devtools` release built on crumbs. `crumbs:install` writes these lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
+`magic_devtools` 1.0.0 and later ship the crumbs integration (`package:magic_devtools/crumbs.dart`); with an earlier release the installer warns and skips the Magic wiring. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
 
 | Watcher | Name | Subscribes to | Record |
 |:--------|:-----|:--------------|:-------|

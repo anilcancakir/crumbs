@@ -42,7 +42,7 @@ Exception records carry no `atUs`; line them up by `time`. To reproduce it clean
 
 ## Trace a Magic action
 
-With `MagicCrumbsIntegration` installed (it exists only in a `magic_devtools` release built on crumbs), one action fans out across buffers:
+With `MagicCrumbsIntegration` installed (`magic_devtools` 1.0.0 and later ship it), one action fans out across buffers:
 
 ```text
 1. crumbs_clear

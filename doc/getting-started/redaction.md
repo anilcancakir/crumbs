@@ -13,8 +13,9 @@ How crumbs keeps secrets out of the buffers it serves to AI agents and writes to
 The store masks credential values by key before it buffers a record, always, with no host setup:
 
 - `CrumbsStore.recordHttp`: the request headers `authorization`, `proxy-authorization`, `cookie`,
-  `set-cookie` and `x-api-key`; credential keys in a JSON or form-encoded body (`password`, `token`,
-  `access_token`, ...); and the value of a credential-named query parameter of the URL (`access_token`,
+  `set-cookie` and `x-api-key`; credential keys in a JSON or form-encoded request or response body
+  (`password`, `token`, `access_token`, ...; the response list is the request list plus a few names only
+  a response carries, such as `plain_text_token` and `recovery_codes`); and the value of a credential-named query parameter of the URL (`access_token`,
   `api_key`, the `X-Amz-*` signature of a presigned URL, ...). The rest of the URL stays as captured.
 - `CrumbsStore.recordQuery` and `recordGate`: the same request-parameter names, matched against the keys
   of the Map elements of a query's `bindings` and a gate check's `arguments`. A positional binding (the

@@ -50,22 +50,16 @@ const Set<String> defaultHiddenRequestParameters = <String>{
   'x-amz-security-token',
 };
 
-// Laravel hides nothing in a response by default, but a Sanctum login
-// answers with `token` (`plain_text_token` on the NewAccessToken shape), a
-// two-factor login with `two_factor_token`, an OAuth exchange with
-// `access_token` / `refresh_token` / `id_token`, and a two-factor setup with
-// `recovery_codes` plus the TOTP secret three times (`secret`, and inside
-// `qr_url` and `qr_svg`). A bare list of codes under `data` has no key to
-// match and is not covered.
+// Laravel hides nothing in a response by default, but a response carries the
+// credentials a request sends (a profile or an API-key creation answers with
+// `password`, `api_key`, `signature`), so it starts from every request name.
+// On top of those, a Sanctum login answers with `plain_text_token` (the
+// NewAccessToken shape), and a two-factor setup with `recovery_codes` plus the
+// TOTP secret three times (`secret`, and inside `qr_url` and `qr_svg`). A
+// bare list of codes under `data` has no key to match and is not covered.
 const Set<String> defaultHiddenResponseParameters = <String>{
-  'token',
-  'access_token',
-  'refresh_token',
+  ...defaultHiddenRequestParameters,
   'plain_text_token',
-  'secret',
-  'client_secret',
-  'id_token',
-  'two_factor_token',
   'recovery_codes',
   'qr_url',
   'qr_svg',

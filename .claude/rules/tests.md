@@ -8,7 +8,7 @@ paths:
 
 ## Fakes
 
-Stub by contract inheritance with private fakes inside the test file (`_StubContext extends DowelContext` in the command tests, `_CountingHttpAdapter extends CrumbsHttpAdapter`); move a fake to a shared file only at its third user. A handler test calls the `@visibleForTesting` handler directly and decodes the `ServiceExtensionResponse` JSON. `crumbs:install` is tested through `CrumbsInstallCommand.processRunner` and `wrapperExistsCheck`, restored in `tearDown`, and a temp directory as the working directory.
+Stub by contract inheritance with private fakes inside the test file (`_StubContext extends DowelContext` in the command tests, `_CountingHttpAdapter implements CrumbsHttpAdapter`, since both contracts are `abstract interface class`); move a fake to a shared file only at its third user. A handler test calls the `@visibleForTesting` handler directly and decodes the `ServiceExtensionResponse` JSON. `crumbs:install` is tested through `CrumbsInstallCommand.processRunner` and `wrapperExistsCheck`, restored in `tearDown`, and a temp directory as the working directory.
 
 ## State isolation
 

@@ -22,7 +22,7 @@ watchers, adapters, host ──recordX──▶ CrumbsStore ──redact──�
 
 ### `CrumbsRedaction` (`lib/src/crumbs_redaction.dart`, `lib/src/internal/redaction_lists.dart`)
 
-- Owns: masking by key (HTTP headers, bodies and URL query; the Map elements of a query's bindings and a gate check's arguments, since a positional binding has no key), the host `redactor` over free text (also a gate's user id; never a gate's ability or a query's connection name), the JSON-safe pass over bindings, arguments and payloads, and the only way a record becomes `redacted` (a private `Expando`; only log, event, exception and HTTP records carry the flag).
+- Owns: masking by key (HTTP headers, request and response bodies and URL query, the response list being the request list plus the names only a response carries; the Map elements of a query's bindings and a gate check's arguments, since a positional binding has no key), the host `redactor` over free text (also a gate's user id; never a gate's ability or a query's connection name), the JSON-safe pass over bindings, arguments and payloads, and the only way a record becomes `redacted` (a private `Expando`; only log, event, exception and HTTP records carry the flag).
 - Must not: hold a record; it returns a record, or null when the `redactor` throws.
 - Depends on: the records.
 
