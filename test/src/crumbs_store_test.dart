@@ -12,8 +12,8 @@ import 'package:crumbs/src/records/frame_perf_record.dart';
 import 'package:crumbs/src/records/gate_record.dart';
 import 'package:crumbs/src/records/http_request_record.dart';
 import 'package:crumbs/src/records/log_record_entry.dart';
-import 'package:crumbs/src/records/magic_cache_record.dart';
-import 'package:crumbs/src/records/magic_model_record.dart';
+import 'package:crumbs/src/records/cache_record.dart';
+import 'package:crumbs/src/records/model_record.dart';
 import 'package:crumbs/src/records/query_record.dart';
 import 'package:crumbs/src/crumbs_redaction.dart';
 import 'package:crumbs/src/crumbs_store.dart';
@@ -338,8 +338,8 @@ void main() {
         CrumbsStore.recordHttp(_http(i));
         CrumbsStore.recordLog(_log('info', 'm$i'));
         CrumbsStore.recordException(_exception('e$i'));
-        CrumbsStore.recordMagicModel(_model('User', 'created'));
-        CrumbsStore.recordMagicCache(_cache('k$i'));
+        CrumbsStore.recordModel(_model('User', 'created'));
+        CrumbsStore.recordCache(_cache('k$i'));
         CrumbsStore.recordEvent(_event('E$i'));
         CrumbsStore.recordGate(_gate('g$i', true));
         CrumbsStore.recordDump(_dump('d$i'));
@@ -651,8 +651,8 @@ void main() {
       CrumbsStore.recordHttp(_http(0));
       CrumbsStore.recordLog(_log('info', 'm'));
       CrumbsStore.recordException(_exception('boom'));
-      CrumbsStore.recordMagicModel(_model('User', 'created'));
-      CrumbsStore.recordMagicCache(_cache('k1'));
+      CrumbsStore.recordModel(_model('User', 'created'));
+      CrumbsStore.recordCache(_cache('k1'));
       CrumbsStore.recordEvent(_event('E'));
       CrumbsStore.recordGate(_gate('g', true));
       CrumbsStore.recordDump(_dump('d'));
@@ -687,8 +687,8 @@ void main() {
       CrumbsStore.recordHttp(_http(0));
       CrumbsStore.recordLog(_log('info', 'm'));
       CrumbsStore.recordException(_exception('boom'));
-      CrumbsStore.recordMagicModel(_model('User', 'created'));
-      CrumbsStore.recordMagicCache(_cache('k1'));
+      CrumbsStore.recordModel(_model('User', 'created'));
+      CrumbsStore.recordCache(_cache('k1'));
       CrumbsStore.recordEvent(_event('E'));
       CrumbsStore.recordGate(_gate('g', true));
       CrumbsStore.recordDump(_dump('d'));
@@ -756,10 +756,10 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // recordMagicModel / onModelRecord
+    // recordModel / onModelRecord
     // -------------------------------------------------------------------------
 
-    test('recordMagicModel appends and onModelRecord emits', () async {
+    test('recordModel appends and onModelRecord emits', () async {
       final record = _model('User', 'created');
 
       final future = expectLater(
@@ -767,17 +767,17 @@ void main() {
         emits(same(record)),
       );
 
-      CrumbsStore.recordMagicModel(record);
+      CrumbsStore.recordModel(record);
 
       expect(CrumbsStore.recentModels().single, same(record));
       await future;
     });
 
     // -------------------------------------------------------------------------
-    // recordMagicCache / onCacheRecord
+    // recordCache / onCacheRecord
     // -------------------------------------------------------------------------
 
-    test('recordMagicCache appends and onCacheRecord emits', () async {
+    test('recordCache appends and onCacheRecord emits', () async {
       final record = _cache('k1');
 
       final future = expectLater(
@@ -785,7 +785,7 @@ void main() {
         emits(same(record)),
       );
 
-      CrumbsStore.recordMagicCache(record);
+      CrumbsStore.recordCache(record);
 
       expect(CrumbsStore.recentCaches().single, same(record));
       await future;
@@ -802,8 +802,8 @@ void main() {
         CrumbsStore.recordHttp(_http(i));
         CrumbsStore.recordLog(_log('info', 'm$i'));
         CrumbsStore.recordException(_exception('e$i'));
-        CrumbsStore.recordMagicModel(_model('User', 'created'));
-        CrumbsStore.recordMagicCache(_cache('k$i'));
+        CrumbsStore.recordModel(_model('User', 'created'));
+        CrumbsStore.recordCache(_cache('k$i'));
       }
 
       expect(CrumbsStore.recentHttp(), hasLength(2));
@@ -852,13 +852,13 @@ void main() {
     );
 
     test(
-      'recordMagicModel enforces FIFO: oldest entries evicted, newest retained',
+      'recordModel enforces FIFO: oldest entries evicted, newest retained',
       () {
         CrumbsStore.setCapacity(2);
 
-        CrumbsStore.recordMagicModel(_model('User', 'created'));
-        CrumbsStore.recordMagicModel(_model('Team', 'updated'));
-        CrumbsStore.recordMagicModel(_model('Monitor', 'deleted'));
+        CrumbsStore.recordModel(_model('User', 'created'));
+        CrumbsStore.recordModel(_model('Team', 'updated'));
+        CrumbsStore.recordModel(_model('Monitor', 'deleted'));
 
         final recent = CrumbsStore.recentModels();
         expect(recent.length, equals(2));
@@ -868,13 +868,13 @@ void main() {
     );
 
     test(
-      'recordMagicCache enforces FIFO: oldest entries evicted, newest retained',
+      'recordCache enforces FIFO: oldest entries evicted, newest retained',
       () {
         CrumbsStore.setCapacity(2);
 
-        CrumbsStore.recordMagicCache(_cache('k1'));
-        CrumbsStore.recordMagicCache(_cache('k2'));
-        CrumbsStore.recordMagicCache(_cache('k3'));
+        CrumbsStore.recordCache(_cache('k1'));
+        CrumbsStore.recordCache(_cache('k2'));
+        CrumbsStore.recordCache(_cache('k3'));
 
         final recent = CrumbsStore.recentCaches();
         expect(recent.length, equals(2));
@@ -924,7 +924,7 @@ void main() {
     test('recentModels(limit:) returns at most limit items, newest-last', () {
       final classes = ['User', 'Team', 'Monitor', 'Metric', 'Incident'];
       for (final c in classes) {
-        CrumbsStore.recordMagicModel(_model(c, 'created'));
+        CrumbsStore.recordModel(_model(c, 'created'));
       }
 
       final recent = CrumbsStore.recentModels(limit: 2);
@@ -935,7 +935,7 @@ void main() {
 
     test('recentCaches(limit:) returns at most limit items, newest-last', () {
       for (var i = 0; i < 5; i++) {
-        CrumbsStore.recordMagicCache(_cache('k$i'));
+        CrumbsStore.recordCache(_cache('k$i'));
       }
 
       final recent = CrumbsStore.recentCaches(limit: 3);
@@ -1044,8 +1044,8 @@ void main() {
       CrumbsStore.recordHttp(_http(0));
       CrumbsStore.recordLog(_log('info', 'm'));
       CrumbsStore.recordException(_exception('e'));
-      CrumbsStore.recordMagicModel(_model('User', 'created'));
-      CrumbsStore.recordMagicCache(_cache('k'));
+      CrumbsStore.recordModel(_model('User', 'created'));
+      CrumbsStore.recordCache(_cache('k'));
       CrumbsStore.recordEvent(_event('E'));
       CrumbsStore.recordGate(_gate('g', true));
       CrumbsStore.recordDump(_dump('d'));
@@ -1097,13 +1097,10 @@ void main() {
       expect(CrumbsStore.pendingHttpCount, equals(0));
     });
 
-    test(
-      'returns 0 when the registered adapter does not override pendingCount',
-      () {
-        httpAdapterRegistry.add(_DefaultHttpAdapter());
-        expect(CrumbsStore.pendingHttpCount, equals(0));
-      },
-    );
+    test('returns 0 when the registered adapter tracks nothing in flight', () {
+      httpAdapterRegistry.add(_IdleHttpAdapter());
+      expect(CrumbsStore.pendingHttpCount, equals(0));
+    });
 
     test(
       'delegates to the registered adapter\'s pendingCount when overridden',
@@ -1121,9 +1118,9 @@ void main() {
     test('sums pendingCount across multiple registered adapters', () {
       httpAdapterRegistry.add(_CountingHttpAdapter(3));
       httpAdapterRegistry.add(_CountingHttpAdapter(5));
-      httpAdapterRegistry.add(_DefaultHttpAdapter());
+      httpAdapterRegistry.add(_IdleHttpAdapter());
 
-      // 3 + 5 + 0 (default adapter contributes 0).
+      // 3 + 5 + 0 (the idle adapter contributes 0).
       expect(CrumbsStore.pendingHttpCount, equals(8));
     });
 
@@ -1192,6 +1189,47 @@ void main() {
             },
           }),
         );
+      });
+
+      test('masks every credential key the request list hides in a response '
+          'body, nested and in any case', () {
+        const List<String> credentials = <String>[
+          'password',
+          'api_key',
+          'apikey',
+          'secret',
+          'client_secret',
+          'signature',
+          'sig',
+          'authorization_code',
+          'recovery_code',
+          'x-amz-signature',
+          'x-amz-credential',
+          'x-amz-security-token',
+        ];
+
+        for (final String key in credentials) {
+          CrumbsStore.recordHttp(
+            _httpWith(
+              responseBody: jsonEncode(<String, dynamic>{
+                'user': <String, dynamic>{
+                  'id': 1,
+                  key.toUpperCase(): 'clear-$key',
+                  'keys': <dynamic>[
+                    <String, dynamic>{key: 'clear-$key'},
+                  ],
+                },
+              }),
+            ),
+          );
+        }
+
+        final List<HttpRequestRecord> stored = CrumbsStore.recentHttp();
+        expect(stored, hasLength(credentials.length));
+        for (final HttpRequestRecord record in stored) {
+          expect(record.responseBody, isNot(contains('clear-')));
+          expect(record.responseBody, contains('"id":1'));
+        }
       });
 
       test('reads the response body against the response list, not the '
@@ -1338,16 +1376,382 @@ void main() {
         expect(record.responseBody, equals('{"token":"********"}'));
       });
     });
+
+    group('recordHttp() URL query redaction', () {
+      String storedUrl(String url) {
+        CrumbsStore.recordHttp(_httpWith(url: url));
+        return CrumbsStore.recentHttp().last.url;
+      }
+
+      test('masks a hidden parameter of a callback URL and keeps the rest', () {
+        expect(
+          storedUrl('myapp://callback?access_token=abc&page=2#done'),
+          equals('myapp://callback?access_token=********&page=2#done'),
+        );
+      });
+
+      test('masks the signature and credentials of a presigned URL, matching '
+          'names case-insensitively', () {
+        expect(
+          storedUrl(
+            'https://bucket.s3.amazonaws.com/a%20b.png'
+            '?X-Amz-Algorithm=AWS4-HMAC-SHA256'
+            '&X-Amz-Credential=AKIA%2F20260101'
+            '&X-Amz-Date=20260101T000000Z'
+            '&X-Amz-Security-Token=tok'
+            '&X-Amz-Signature=deadbeef',
+          ),
+          equals(
+            'https://bucket.s3.amazonaws.com/a%20b.png'
+            '?X-Amz-Algorithm=AWS4-HMAC-SHA256'
+            '&X-Amz-Credential=********'
+            '&X-Amz-Date=20260101T000000Z'
+            '&X-Amz-Security-Token=********'
+            '&X-Amz-Signature=********',
+          ),
+        );
+      });
+
+      test('masks the usual credential parameters by default', () {
+        expect(
+          storedUrl(
+            'https://api.test/x?api_key=1&apikey=2&token=3&refresh_token=4'
+            '&id_token=5&signature=6&sig=7&q=keep',
+          ),
+          equals(
+            'https://api.test/x?api_key=********&apikey=********'
+            '&token=********&refresh_token=********&id_token=********'
+            '&signature=********&sig=********&q=keep',
+          ),
+        );
+      });
+
+      test('masks a name added through hideRequestParameters()', () {
+        CrumbsRedaction.hideRequestParameters(<String>['pin']);
+
+        expect(
+          storedUrl('https://api.test/x?PIN=1234'),
+          equals('https://api.test/x?PIN=********'),
+        );
+      });
+
+      test('leaves an empty value, a valueless flag and a malformed escape '
+          'as they were', () {
+        const String url =
+            'https://api.test/x?token=&access_token&q=%zz&to%zzken=1&sig=%zz';
+        expect(
+          storedUrl(url),
+          equals(
+            'https://api.test/x?token=&access_token&q=%zz&to%zzken=1'
+            '&sig=********',
+          ),
+        );
+      });
+
+      test('leaves a URL Uri cannot parse untouched', () {
+        expect(
+          storedUrl('http://[::1?token=abc'),
+          equals('http://[::1?token=abc'),
+        );
+      });
+
+      test('leaves a query inside the fragment untouched', () {
+        expect(
+          storedUrl('https://h.test/p#frag?token=abc'),
+          equals('https://h.test/p#frag?token=abc'),
+        );
+      });
+    });
+
+    group('recordQuery() redaction', () {
+      test('masks a hidden key inside the bindings', () {
+        CrumbsStore.recordQuery(
+          _queryWith(
+            bindings: <Object?>[
+              'a@b.test',
+              <String, Object?>{'password': 'hunter2', 'name': 'Ada'},
+            ],
+          ),
+        );
+
+        expect(
+          CrumbsStore.recentQueries().single.bindings,
+          equals(<Object?>[
+            'a@b.test',
+            <String, Object?>{'password': '********', 'name': 'Ada'},
+          ]),
+        );
+      });
+
+      test('stores a binding jsonEncode cannot write as its toString()', () {
+        final DateTime at = DateTime.utc(2026, 1, 2, 3, 4, 5);
+        CrumbsStore.recordQuery(
+          _queryWith(bindings: <Object?>[at, const _Opaque(), 7, null]),
+        );
+
+        final QueryRecord stored = CrumbsStore.recentQueries().single;
+        expect(
+          stored.bindings,
+          equals(<Object?>[at.toString(), 'opaque', 7, null]),
+        );
+        expect(() => jsonEncode(stored.toJson()), returnsNormally);
+      });
+
+      test(
+        'keeps the bindings list itself when there is nothing to change',
+        () {
+          final List<Object?> bindings = <Object?>['a', 1, true];
+          CrumbsStore.recordQuery(_queryWith(bindings: bindings));
+
+          expect(CrumbsStore.recentQueries().single.bindings, same(bindings));
+        },
+      );
+
+      test('runs the redactor over the SQL and the binding strings', () {
+        CrumbsRedaction.redactor = (String s) => s.replaceAll('p@ss', '***');
+        CrumbsStore.recordQuery(
+          _queryWith(
+            sql: "select * from users where note = 'p@ss'",
+            bindings: <Object?>['p@ss', 1],
+          ),
+        );
+
+        final QueryRecord stored = CrumbsStore.recentQueries().single;
+        expect(stored.sql, equals("select * from users where note = '***'"));
+        expect(stored.bindings, equals(<Object?>['***', 1]));
+      });
+
+      test('keeps the connection name out of the redactor', () {
+        CrumbsRedaction.redactor = (String s) => s.replaceAll('main', '***');
+        CrumbsStore.recordQuery(
+          QueryRecord(
+            sql: 'select 1',
+            bindings: const <Object?>[],
+            timeMs: 1,
+            time: DateTime(2026, 1, 1),
+            connectionName: 'main',
+          ),
+        );
+
+        expect(
+          CrumbsStore.recentQueries().single.connectionName,
+          equals('main'),
+        );
+      });
+
+      test(
+        'a throwing redactor drops the query from queue and stream',
+        () async {
+          CrumbsRedaction.redactor = (String _) => throw StateError('broken');
+          final List<QueryRecord> emitted = <QueryRecord>[];
+          final StreamSubscription<QueryRecord> sub = CrumbsStore.onQueryRecord
+              .listen(emitted.add);
+
+          CrumbsStore.recordQuery(_queryWith());
+          await Future<void>.delayed(Duration.zero);
+          await sub.cancel();
+
+          expect(CrumbsStore.recentQueries(), isEmpty);
+          expect(emitted, isEmpty);
+        },
+      );
+    });
+
+    group('recordGate() redaction', () {
+      test('masks a hidden key inside the arguments and makes them '
+          'JSON-safe', () {
+        final DateTime at = DateTime.utc(2026, 1, 2);
+        CrumbsStore.recordGate(
+          _gateWith(
+            arguments: <Object?>[
+              <String, Object?>{'token': 'abc', 'id': 3},
+              at,
+            ],
+          ),
+        );
+
+        final GateRecord stored = CrumbsStore.recentGates().single;
+        expect(
+          stored.arguments,
+          equals(<Object?>[
+            <String, Object?>{'token': '********', 'id': 3},
+            at.toString(),
+          ]),
+        );
+        expect(() => jsonEncode(stored.toJson()), returnsNormally);
+      });
+
+      test('runs the redactor over the argument strings', () {
+        CrumbsRedaction.redactor = (String s) => s.replaceAll('p@ss', '***');
+        CrumbsStore.recordGate(_gateWith(arguments: <Object?>['p@ss']));
+
+        expect(
+          CrumbsStore.recentGates().single.arguments,
+          equals(<Object?>['***']),
+        );
+      });
+
+      test('a throwing redactor drops the gate check', () {
+        CrumbsRedaction.redactor = (String _) => throw StateError('broken');
+
+        CrumbsStore.recordGate(_gateWith(arguments: <Object?>['x']));
+
+        expect(CrumbsStore.recentGates(), isEmpty);
+      });
+
+      test('runs the redactor over the user id and keeps the ability', () {
+        CrumbsRedaction.redactor = (String s) => s.replaceAll('ada', '***');
+        CrumbsStore.recordGate(
+          GateRecord(
+            ability: 'ada.update',
+            result: true,
+            arguments: const <Object?>[],
+            time: DateTime(2026, 1, 1),
+            userId: 'ada@example.test',
+          ),
+        );
+
+        final GateRecord stored = CrumbsStore.recentGates().single;
+        expect(stored.userId, equals('***@example.test'));
+        expect(stored.ability, equals('ada.update'));
+      });
+    });
+
+    group('unprintable values', () {
+      const String placeholder = '<unprintable _Unprintable>';
+
+      test('a binding whose toString() throws is stored as a placeholder', () {
+        expect(
+          () => CrumbsStore.recordQuery(
+            _queryWith(bindings: <Object?>[const _Unprintable(), 1]),
+          ),
+          returnsNormally,
+        );
+
+        expect(
+          CrumbsStore.recentQueries().single.bindings,
+          equals(<Object?>[placeholder, 1]),
+        );
+      });
+
+      test('a gate argument whose toString() throws is stored as a '
+          'placeholder', () {
+        expect(
+          () => CrumbsStore.recordGate(
+            _gateWith(
+              arguments: <Object?>[
+                <String, Object?>{'model': const _Unprintable()},
+              ],
+            ),
+          ),
+          returnsNormally,
+        );
+
+        expect(
+          CrumbsStore.recentGates().single.arguments,
+          equals(<Object?>[
+            <String, Object?>{'model': placeholder},
+          ]),
+        );
+      });
+
+      test('an event payload value or key whose toString() throws is stored '
+          'as a placeholder', () {
+        expect(
+          () => CrumbsStore.recordEvent(
+            EventRecord(
+              eventType: 'e',
+              payload: <String, dynamic>{
+                'value': const _Unprintable(),
+                'nested': <Object, Object?>{const _Unprintable(): 1},
+              },
+              time: DateTime(2026, 1, 1),
+            ),
+          ),
+          returnsNormally,
+        );
+
+        expect(
+          CrumbsStore.recentEvents().single.payload,
+          equals(<String, dynamic>{
+            'value': placeholder,
+            'nested': <String, Object?>{placeholder: 1},
+          }),
+        );
+      });
+    });
+
+    group('recordDump() redaction', () {
+      test('keeps the message as is while no redactor is registered', () {
+        CrumbsStore.recordDump(_dump('token=abc'));
+
+        expect(CrumbsStore.recentDumps().single.message, equals('token=abc'));
+      });
+
+      test('runs the redactor over the message', () {
+        CrumbsRedaction.redactor = (String s) => s.replaceAll('p@ss', '***');
+
+        CrumbsStore.recordDump(
+          DumpRecord(message: 'x p@ss', time: DateTime(2026), wrapWidth: 80),
+        );
+
+        final DumpRecord stored = CrumbsStore.recentDumps().single;
+        expect(stored.message, equals('x ***'));
+        expect(stored.wrapWidth, equals(80));
+      });
+
+      test('a throwing redactor drops the dump', () {
+        CrumbsRedaction.redactor = (String _) => throw StateError('broken');
+
+        CrumbsStore.recordDump(_dump('x'));
+
+        expect(CrumbsStore.recentDumps(), isEmpty);
+      });
+    });
   });
 }
 
+QueryRecord _queryWith({
+  String sql = 'select 1',
+  List<Object?> bindings = const <Object?>[],
+}) => QueryRecord(
+  sql: sql,
+  bindings: bindings,
+  timeMs: 1,
+  time: DateTime(2026, 1, 1),
+);
+
+GateRecord _gateWith({required List<Object?> arguments}) => GateRecord(
+  ability: 'update',
+  result: true,
+  arguments: arguments,
+  time: DateTime(2026, 1, 1),
+);
+
+/// A binding `jsonEncode` cannot write.
+final class _Opaque {
+  const _Opaque();
+
+  @override
+  String toString() => 'opaque';
+}
+
+/// A value whose `toString()` throws.
+final class _Unprintable {
+  const _Unprintable();
+
+  @override
+  String toString() => throw StateError('boom');
+}
+
 HttpRequestRecord _httpWith({
+  String url = 'https://example.test/login',
   Map<String, String>? requestHeaders,
   String? requestBody,
   String? responseBody,
 }) => HttpRequestRecord(
   method: 'POST',
-  url: 'https://example.test/login',
+  url: url,
   statusCode: 200,
   durationMs: 1,
   isError: false,
@@ -1385,15 +1789,15 @@ ExceptionRecord _exception(String message) => ExceptionRecord(
   time: DateTime(2026, 1, 1),
 );
 
-MagicModelRecord _model(String modelClass, String event) => MagicModelRecord(
+ModelRecord _model(String modelClass, String event) => ModelRecord(
   modelClass: modelClass,
   event: event,
   modelKey: '1',
   time: DateTime(2026, 1, 1),
 );
 
-MagicCacheRecord _cache(String key) =>
-    MagicCacheRecord(operation: 'get', key: key, time: DateTime(2026, 1, 1));
+CacheRecord _cache(String key) =>
+    CacheRecord(operation: 'get', key: key, time: DateTime(2026, 1, 1));
 
 EventRecord _event(String eventType) => EventRecord(
   eventType: eventType,
@@ -1434,7 +1838,7 @@ DumpRecord _dump(String message) =>
 
 /// Fake adapter that overrides `pendingCount` so the delegate path can be
 /// exercised without spinning up Magic's network interceptor.
-class _CountingHttpAdapter extends CrumbsHttpAdapter {
+class _CountingHttpAdapter implements CrumbsHttpAdapter {
   _CountingHttpAdapter(this._count);
 
   int _count;
@@ -1454,11 +1858,11 @@ class _CountingHttpAdapter extends CrumbsHttpAdapter {
   set pendingCount(int value) => _count = value;
 }
 
-/// Adapter that does NOT override `pendingCount`, exercising the abstract
-/// contract's default value (= 0).
-class _DefaultHttpAdapter extends CrumbsHttpAdapter {
+/// Adapter that tracks no in-flight requests, as the contract asks such an
+/// adapter to report 0.
+class _IdleHttpAdapter implements CrumbsHttpAdapter {
   @override
-  String get name => 'default';
+  String get name => 'idle';
 
   @override
   void install() {}
@@ -1466,6 +1870,6 @@ class _DefaultHttpAdapter extends CrumbsHttpAdapter {
   @override
   void uninstall() {}
 
-  // Intentionally does NOT override `pendingCount`, relies on the default
-  // body declared on the abstract contract (returns 0).
+  @override
+  int get pendingCount => 0;
 }

@@ -23,7 +23,7 @@ import 'package:crumbs/src/records/frame_perf_record.dart';
 import 'package:crumbs/src/records/gate_record.dart';
 import 'package:crumbs/src/records/http_request_record.dart';
 import 'package:crumbs/src/records/log_record_entry.dart';
-import 'package:crumbs/src/records/magic_cache_record.dart';
+import 'package:crumbs/src/records/cache_record.dart';
 import 'package:crumbs/src/records/query_record.dart';
 import 'package:crumbs/src/crumbs_file_sink.dart';
 import 'package:crumbs/src/crumbs_redaction.dart';
@@ -272,11 +272,15 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('ext.crumbs.requests handler', () {
-    test('returns a parseable JSON envelope with a records key', () async {
-      final result = await requestsHandler('ext.crumbs.requests', {});
-      final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
-      expect(decoded.containsKey('records'), isTrue);
-    });
+    test(
+      'answers under the requests key, as every read uses its kind',
+      () async {
+        final result = await requestsHandler('ext.crumbs.requests', {});
+        final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
+        expect(decoded.containsKey('requests'), isTrue);
+        expect(decoded.containsKey('records'), isFalse);
+      },
+    );
 
     test('returns records seeded via CrumbsStore.recordHttp', () async {
       CrumbsStore.recordHttp(
@@ -292,7 +296,7 @@ void main() {
 
       final result = await requestsHandler('ext.crumbs.requests', {});
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
-      final records = decoded['records'] as List<dynamic>;
+      final records = decoded['requests'] as List<dynamic>;
 
       expect(records, hasLength(1));
       expect(records.first['url'], equals('https://api.example.com/monitors'));
@@ -316,7 +320,7 @@ void main() {
         'limit': '2',
       });
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
-      final records = decoded['records'] as List<dynamic>;
+      final records = decoded['requests'] as List<dynamic>;
 
       expect(records, hasLength(2));
     });
@@ -324,7 +328,7 @@ void main() {
     test('returns empty list when store has no HTTP records', () async {
       final result = await requestsHandler('ext.crumbs.requests', {});
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
-      final records = decoded['records'] as List<dynamic>;
+      final records = decoded['requests'] as List<dynamic>;
 
       expect(records, isEmpty);
     });
@@ -669,6 +673,24 @@ void main() {
       final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
       expect(decoded['queries'], isEmpty);
     });
+
+    test('answers when a binding is a DateTime, which jsonEncode cannot '
+        'write', () async {
+      final at = DateTime.utc(2026, 1, 2);
+      CrumbsStore.recordQuery(
+        QueryRecord(
+          sql: 'SELECT * FROM monitors WHERE created_at > ?',
+          bindings: <Object?>[at],
+          timeMs: 1,
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+
+      final result = await queriesHandler('ext.crumbs.queries', {});
+      final decoded = jsonDecode(result.result!) as Map<String, dynamic>;
+      final records = decoded['queries'] as List<dynamic>;
+      expect(records.single['bindings'], equals(<Object?>[at.toString()]));
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -682,9 +704,9 @@ void main() {
       expect(decoded.containsKey('caches'), isTrue);
     });
 
-    test('returns records seeded via CrumbsStore.recordMagicCache', () async {
-      CrumbsStore.recordMagicCache(
-        MagicCacheRecord(
+    test('returns records seeded via CrumbsStore.recordCache', () async {
+      CrumbsStore.recordCache(
+        CacheRecord(
           operation: 'put',
           key: 'demo-key',
           time: DateTime(2026, 1, 1),
@@ -703,12 +725,8 @@ void main() {
 
     test('honors limit param when present', () async {
       for (final op in const <String>['put', 'hit', 'miss', 'forget']) {
-        CrumbsStore.recordMagicCache(
-          MagicCacheRecord(
-            operation: op,
-            key: 'k-$op',
-            time: DateTime(2026, 1, 1),
-          ),
+        CrumbsStore.recordCache(
+          CacheRecord(operation: op, key: 'k-$op', time: DateTime(2026, 1, 1)),
         );
       }
 
@@ -1236,6 +1254,108 @@ void main() {
       expect(
         (await decodeFile({'name': name, 'maxBytes': '0'}))['error'],
         isA<String>(),
+      );
+    });
+  });
+
+  group('non-finite numbers', () {
+    test('a query binding of NaN or Infinity reads back as text, and the '
+        'queries handler still answers', () async {
+      CrumbsStore.recordQuery(
+        QueryRecord(
+          sql: 'SELECT ?',
+          bindings: <Object?>[double.nan, double.infinity, 1.5],
+          timeMs: 1,
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+      CrumbsStore.recordQuery(
+        QueryRecord(
+          sql: 'SELECT 1',
+          bindings: const <Object?>[],
+          timeMs: 1,
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+
+      final result = await queriesHandler('ext.crumbs.queries', {});
+      final records =
+          (jsonDecode(result.result!) as Map<String, dynamic>)['queries']
+              as List<dynamic>;
+
+      expect(records, hasLength(2));
+      expect(
+        records.first['bindings'],
+        equals(<Object?>['NaN', 'Infinity', 1.5]),
+      );
+    });
+
+    test('a gate argument of NaN or -Infinity reads back as text, and the '
+        'gates handler still answers', () async {
+      CrumbsStore.recordGate(
+        GateRecord(
+          ability: 'update',
+          result: true,
+          arguments: <Object?>[
+            double.nan,
+            <String, Object?>{'limit': double.negativeInfinity},
+          ],
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+      CrumbsStore.recordGate(
+        GateRecord(
+          ability: 'view',
+          result: true,
+          arguments: const <Object?>[],
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+
+      final result = await gatesHandler('ext.crumbs.gates', {});
+      final records =
+          (jsonDecode(result.result!) as Map<String, dynamic>)['gates']
+              as List<dynamic>;
+
+      expect(records, hasLength(2));
+      expect(
+        records.first['arguments'],
+        equals(<Object?>[
+          'NaN',
+          <String, Object?>{'limit': '-Infinity'},
+        ]),
+      );
+    });
+
+    test('an event payload of NaN or Infinity reads back as text, and the '
+        'events handler still answers', () async {
+      CrumbsStore.recordEvent(
+        EventRecord(
+          eventType: 'player.tick',
+          payload: <String, dynamic>{
+            'ratio': double.nan,
+            'list': <Object?>[double.infinity],
+          },
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+      CrumbsStore.recordEvent(
+        EventRecord(
+          eventType: 'player.stop',
+          payload: <String, dynamic>{},
+          time: DateTime(2026, 1, 1),
+        ),
+      );
+
+      final records = (await decodeEvents({}))['events'] as List<dynamic>;
+
+      expect(records, hasLength(2));
+      expect(
+        records.first['payload'],
+        equals(<String, Object?>{
+          'ratio': 'NaN',
+          'list': <Object?>['Infinity'],
+        }),
       );
     });
   });

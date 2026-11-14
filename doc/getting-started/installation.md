@@ -20,7 +20,7 @@ The recommended path is one command, `dart run crumbs crumbs:install`, which pat
 | Step | Command | Result |
 |:-----|:--------|:-------|
 | 1. Add the package | `flutter pub add crumbs` | `crumbs` is a dependency; `dowel` comes with it. |
-| 2. Wire the app | `dart run crumbs crumbs:install` | The dowel harness exists, crumbs is a registered plugin, and `lib/main.dart` installs crumbs in a `kDebugMode` block. |
+| 2. Wire the app | `dart run crumbs crumbs:install` | The dowel harness exists, crumbs is a registered plugin, and `lib/main.dart` installs crumbs in an `!kReleaseMode` block. |
 | 3. Register the MCP server (optional) | `dart run crumbs mcp:install` | A `dowel` entry in `.mcp.json` at the project root. |
 | 4. Start the app | `dart run crumbs start --device=chrome` | dowel records the session every `crumbs:*` command dials. |
 | 5. Read a buffer | `dart run crumbs crumbs:tail` | The newest log records of the running app. |
@@ -34,7 +34,7 @@ The recommended path is one command, `dart run crumbs crumbs:install`, which pat
 |:-----------|:--------|:------|
 | Dart | `3.13` | |
 | Flutter | `3.47` | |
-| dowel | `^0.0.21` | A dependency of crumbs. When `crumbs:install` scaffolds the harness, dowel's `install` step adds `dowel: any` to the app's `pubspec.yaml`, because the generated barrels import it. |
+| dowel | `^1.0.0` | A dependency of crumbs. When `crumbs:install` scaffolds the harness, dowel's `install` step adds `dowel` to the app's `pubspec.yaml` (keeping a constraint the app already has), because the generated barrels import it. |
 
 <a name="run-the-installer"></a>
 ## Run the installer
@@ -48,11 +48,11 @@ dart run crumbs crumbs:install
 
 1. When `bin/dispatcher.dart` is missing, it runs `dart run crumbs install`, which scaffolds the dowel harness: `bin/dispatcher.dart`, the fast `./bin/dowel` launcher and the codegen barrels under `lib/app/`. A project that already has the dispatcher skips this step.
 2. It runs `dart run crumbs plugin:install crumbs`, which records crumbs in `.dowel/plugins.json` and regenerates `lib/app/_plugins.g.dart`.
-3. It patches `lib/main.dart`: the `kDebugMode` and `package:crumbs/crumbs.dart` imports, `WidgetsFlutterBinding.ensureInitialized()` when missing, and a `kDebugMode` block with `CrumbsPlugin.install()` and the exception and dump watchers. The block lands before `await Magic.init(` on a Magic app, so `ExceptionWatcher` sees boot errors, and before `runApp(` otherwise. Without a `lib/main.dart` the step is skipped with a message.
+3. It patches `lib/main.dart`: the `kReleaseMode` and `package:crumbs/crumbs.dart` imports (no `show kReleaseMode` import when the file already imports `package:flutter/foundation.dart` in full), `WidgetsFlutterBinding.ensureInitialized()` when missing, and an `!kReleaseMode` block with `CrumbsPlugin.install()` and the exception and dump watchers. The block lands before `await Magic.init(` on a Magic app, so `ExceptionWatcher` sees boot errors, and before `runApp(` otherwise. Without a `lib/main.dart` the step is skipped with a message.
 
-On a Magic app whose `pubspec.yaml` lists `magic_devtools`, step 3 also adds `import 'package:magic_devtools/crumbs.dart';` and a `kDebugMode` block with `MagicCrumbsIntegration.install()` after `Magic.init()`. That library exists only in a `magic_devtools` release built on crumbs, so the installer writes these lines only when the resolved `magic_devtools` ships it; with an older release it warns and leaves the Magic lines out. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
+On a Magic app whose `pubspec.yaml` lists `magic_devtools`, step 3 also adds `import 'package:magic_devtools/crumbs.dart';` and an `!kReleaseMode` block with `MagicCrumbsIntegration.install()` after `Magic.init()`. A `magic_devtools` release built on crumbs ships the Magic integration (`package:magic_devtools/crumbs.dart`); the installer wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade.
 
-Every step is idempotent: re-running `crumbs:install` changes nothing.
+Every step is idempotent: re-running `crumbs:install` changes nothing. A `main.dart` wired by an earlier crumbs with a `kDebugMode` guard keeps that block and keeps working, and a Magic block a rerun adds takes the same guard; switch both to `!kReleaseMode` to get frame-performance data in profile builds.
 
 <a name="manual-wiring"></a>
 ## Manual wiring
@@ -67,7 +67,7 @@ import 'package:flutter/widgets.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (kDebugMode) {
+  if (!kReleaseMode) {
     CrumbsPlugin.install(); // LogWatcher and the ext.crumbs.* extensions.
     CrumbsPlugin.registerWatcher(ExceptionWatcher());
     CrumbsPlugin.registerWatcher(DumpWatcher());
@@ -77,7 +77,7 @@ void main() {
 }
 ```
 
-`kDebugMode` keeps crumbs in debug builds only; `!kReleaseMode` keeps it in profile builds too, which a frame measurement needs. Both tree-shake a release build; see [Call-site guard](../watchers/index.md#call-site-guard). `CrumbsPlugin.install()` is idempotent, so a hot restart registers each extension once.
+`!kReleaseMode` keeps crumbs in debug and profile builds, and a frame measurement needs a profile build. It tree-shakes a release build; see [Call-site guard](../watchers/index.md#call-site-guard). `CrumbsPlugin.install()` is idempotent, so a hot restart registers each extension once.
 
 On a Magic app, install crumbs before `Magic.init()` and the Magic integration after it, because the integration resolves the Http facade and the event dispatcher from the container:
 
@@ -91,7 +91,7 @@ import 'package:magic_devtools/crumbs.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (kDebugMode) {
+  if (!kReleaseMode) {
     CrumbsPlugin.install();
     CrumbsPlugin.registerWatcher(ExceptionWatcher());
     CrumbsPlugin.registerWatcher(DumpWatcher());
@@ -99,7 +99,7 @@ Future<void> main() async {
 
   await Magic.init(configFactories: appConfigFactories); // The host's config list.
 
-  if (kDebugMode) {
+  if (!kReleaseMode) {
     MagicCrumbsIntegration.install();
   }
 
@@ -125,18 +125,22 @@ class CrumbsDioInterceptor extends Interceptor {
   @override
   void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
     final options = response.requestOptions;
-    DioHttpAdapter.recordRequest(
-      url: options.uri.toString(),
-      method: options.method,
-      statusCode: response.statusCode ?? 0,
-      durationMs: _watches.remove(options)?.elapsedMilliseconds ?? 0,
+    CrumbsStore.recordHttp(
+      HttpRequestRecord(
+        url: options.uri.toString(),
+        method: options.method,
+        statusCode: response.statusCode ?? 0,
+        durationMs: _watches.remove(options)?.elapsedMilliseconds ?? 0,
+        isError: false,
+        timestamp: DateTime.now(),
+      ),
     );
     handler.next(response);
   }
 }
 ```
 
-Add it with `dio.interceptors.add(CrumbsDioInterceptor())`. `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter())` is optional here: `DioHttpAdapter` hooks nothing itself, and `recordRequest` writes to the store either way.
+Add it with `dio.interceptors.add(CrumbsDioInterceptor())`. `CrumbsStore.recordHttp` masks the credentials before it buffers the record, so no `CrumbsHttpAdapter` is needed; write one only to report in-flight requests through `pendingCount`.
 
 <a name="register-with-dowel"></a>
 ## Register with dowel
@@ -202,7 +206,7 @@ Then read the log buffer and list the commands:
 
 | Mistake | Fix |
 |:--------|:----|
-| `CrumbsPlugin.install()` sits outside a guard. | Wrap it in `if (kDebugMode)` or `if (!kReleaseMode)`; crumbs installs no guard of its own. |
+| `CrumbsPlugin.install()` sits outside a guard. | Wrap it in `if (!kReleaseMode)`; crumbs installs no guard of its own. `--dart-define=CRUMBS_DISABLE=1` also stops the install, the watchers and the HTTP adapters of a build that must not expose the extensions. |
 | The guard sits inside a helper function. | Keep it at the call site in `main()`; the tree-shake depends on it. |
 | `crumbs_exceptions` stays empty after a crash. | Register `ExceptionWatcher`: `CrumbsPlugin.install()` installs only `LogWatcher`. |
 | `MagicCrumbsIntegration.install()` runs before `Magic.init()`. | Call it after `Magic.init()`; the HTTP adapter registers nothing while the network driver is unbound. |

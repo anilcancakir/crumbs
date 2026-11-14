@@ -12,8 +12,8 @@ import 'records/frame_perf_record.dart';
 import 'records/gate_record.dart';
 import 'records/http_request_record.dart';
 import 'records/log_record_entry.dart';
-import 'records/magic_cache_record.dart';
-import 'records/magic_model_record.dart';
+import 'records/cache_record.dart';
+import 'records/model_record.dart';
 import 'records/query_record.dart';
 import 'crumbs_redaction.dart';
 
@@ -39,8 +39,10 @@ enum CrumbsKind {
 /// has its own capacity (default 3600) rather than sharing [_cap]; see its
 /// field docblock.
 ///
-/// The log, event, exception and HTTP buffers hold records already run
-/// through [CrumbsRedaction.redactor] when one is registered.
+/// The log, event, exception, HTTP, dump, query and gate buffers hold
+/// records already run through [CrumbsRedaction] at insert: credentials
+/// masked by key where a record has keys, and every text run through the
+/// [CrumbsRedaction.redactor] when one is registered.
 ///
 /// Singleton accessed via static methods. Hot-restart resets the buffers
 /// naturally (statics re-run their initializers).
@@ -67,8 +69,8 @@ class CrumbsStore {
   static final Queue<HttpRequestRecord> _http = Queue<HttpRequestRecord>();
   static final Queue<LogRecordEntry> _logs = Queue<LogRecordEntry>();
   static final Queue<ExceptionRecord> _exceptions = Queue<ExceptionRecord>();
-  static final Queue<MagicModelRecord> _models = Queue<MagicModelRecord>();
-  static final Queue<MagicCacheRecord> _caches = Queue<MagicCacheRecord>();
+  static final Queue<ModelRecord> _models = Queue<ModelRecord>();
+  static final Queue<CacheRecord> _caches = Queue<CacheRecord>();
   static final Queue<EventRecord> _events = Queue<EventRecord>();
   static final Queue<GateRecord> _gates = Queue<GateRecord>();
   static final Queue<DumpRecord> _dumps = Queue<DumpRecord>();
@@ -81,10 +83,10 @@ class CrumbsStore {
       StreamController<LogRecordEntry>.broadcast();
   static final StreamController<ExceptionRecord> _exceptionStream =
       StreamController<ExceptionRecord>.broadcast();
-  static final StreamController<MagicModelRecord> _modelStream =
-      StreamController<MagicModelRecord>.broadcast();
-  static final StreamController<MagicCacheRecord> _cacheStream =
-      StreamController<MagicCacheRecord>.broadcast();
+  static final StreamController<ModelRecord> _modelStream =
+      StreamController<ModelRecord>.broadcast();
+  static final StreamController<CacheRecord> _cacheStream =
+      StreamController<CacheRecord>.broadcast();
   static final StreamController<EventRecord> _eventStream =
       StreamController<EventRecord>.broadcast();
   static final StreamController<GateRecord> _gateStream =
@@ -97,7 +99,8 @@ class CrumbsStore {
       StreamController<FramePerfRecord>.broadcast();
 
   /// Set the capacity of every buffer but frame perf (default 500), or of
-  /// the one buffer [kind] names.
+  /// the one buffer [kind] names; [CrumbsKind.framePerf] sets the frame
+  /// buffer's own capacity (default 3600, see [_framePerfCap] for why).
   ///
   /// A [kind] cap wins over the shared one whichever was set last, and the
   /// shared call leaves it alone. A cap below the current length trims on
@@ -111,11 +114,6 @@ class CrumbsStore {
       _kindCaps[kind] = cap;
     }
   }
-
-  /// Set the frame-perf buffer's own capacity (default 3600). Independent
-  /// of the shared [setCapacity]; see [_framePerfCap] for why.
-  static void setFramePerfCapacity(int cap) =>
-      setCapacity(cap, kind: CrumbsKind.framePerf);
 
   static int _capacityOf(CrumbsKind kind) => _kindCaps[kind] ?? _cap;
 
@@ -192,7 +190,9 @@ class CrumbsStore {
     _exceptionStream.add(redacted);
   }
 
-  static void recordMagicModel(MagicModelRecord r) {
+  /// Buffer [r] and emit it on [onModelRecord]; its attributes are stored as
+  /// given, masked by neither key nor redactor.
+  static void recordModel(ModelRecord r) {
     if (_paused) return;
     _models.addLast(r);
     while (_models.length > _capacityOf(CrumbsKind.models)) {
@@ -201,7 +201,9 @@ class CrumbsStore {
     _modelStream.add(r);
   }
 
-  static void recordMagicCache(MagicCacheRecord r) {
+  /// Buffer [r] and emit it on [onCacheRecord]; its value is stored as given,
+  /// masked by neither key nor redactor.
+  static void recordCache(CacheRecord r) {
     if (_paused) return;
     _caches.addLast(r);
     while (_caches.length > _capacityOf(CrumbsKind.caches)) {
@@ -225,33 +227,52 @@ class CrumbsStore {
     _eventStream.add(redacted);
   }
 
+  /// Buffer [r] and emit it on [onGateRecord], with its arguments masked by
+  /// key and made JSON-safe, and its arguments and user id run through the
+  /// registered [CrumbsRedaction.redactor] (if any) first; dropped when the
+  /// redactor throws. See [CrumbsRedaction.redactGateRecord].
   static void recordGate(GateRecord r) {
     if (_paused) return;
-    _gates.addLast(r);
+    final GateRecord? redacted = CrumbsRedaction.redactGateRecord(r);
+    if (redacted == null) return;
+    _gates.addLast(redacted);
     while (_gates.length > _capacityOf(CrumbsKind.gates)) {
       _gates.removeFirst();
     }
-    _gateStream.add(r);
+    _gateStream.add(redacted);
   }
 
+  /// Buffer [r] and emit it on [onDumpRecord], after the registered
+  /// [CrumbsRedaction.redactor] (if any) ran over its message; dropped when
+  /// the redactor throws.
   static void recordDump(DumpRecord r) {
     if (_paused) return;
-    _dumps.addLast(r);
+    final DumpRecord? redacted = CrumbsRedaction.redactDumpRecord(r);
+    if (redacted == null) return;
+    _dumps.addLast(redacted);
     while (_dumps.length > _capacityOf(CrumbsKind.dumps)) {
       _dumps.removeFirst();
     }
-    _dumpStream.add(r);
+    _dumpStream.add(redacted);
   }
 
+  /// Buffer [r] and emit it on [onQueryRecord], with its bindings masked by
+  /// key and made JSON-safe, and its SQL and bindings run through the
+  /// registered [CrumbsRedaction.redactor] (if any) first; dropped when the
+  /// redactor throws. See [CrumbsRedaction.redactQueryRecord].
   static void recordQuery(QueryRecord r) {
     if (_paused) return;
-    _queries.addLast(r);
+    final QueryRecord? redacted = CrumbsRedaction.redactQueryRecord(r);
+    if (redacted == null) return;
+    _queries.addLast(redacted);
     while (_queries.length > _capacityOf(CrumbsKind.queries)) {
       _queries.removeFirst();
     }
-    _queryStream.add(r);
+    _queryStream.add(redacted);
   }
 
+  /// Buffer [r] against the frame-perf capacity and emit it on
+  /// [onFramePerfRecord].
   static void recordFramePerf(FramePerfRecord r) {
     if (_paused) return;
     _framePerf.addLast(r);
@@ -261,8 +282,13 @@ class CrumbsStore {
     _framePerfStream.add(r);
   }
 
+  /// The buffered HTTP records, oldest first; [limit] keeps the newest N.
   static List<HttpRequestRecord> recentHttp({int? limit}) =>
       _recent(_http, limit);
+
+  /// The buffered log records at or above [minLevel] (a `package:logging`
+  /// level name; any other name matches nothing), oldest first; [limit]
+  /// keeps the newest N.
   static List<LogRecordEntry> recentLogs({int? limit, String? minLevel}) {
     final filtered = minLevel == null
         ? _logs.toList()
@@ -270,18 +296,33 @@ class CrumbsStore {
     return _trim(filtered, limit);
   }
 
+  /// The buffered exception records, oldest first; [limit] keeps the newest N.
   static List<ExceptionRecord> recentExceptions({int? limit}) =>
       _recent(_exceptions, limit);
-  static List<MagicModelRecord> recentModels({int? limit}) =>
+
+  /// The buffered model records, oldest first; [limit] keeps the newest N.
+  static List<ModelRecord> recentModels({int? limit}) =>
       _recent(_models, limit);
-  static List<MagicCacheRecord> recentCaches({int? limit}) =>
+
+  /// The buffered cache records, oldest first; [limit] keeps the newest N.
+  static List<CacheRecord> recentCaches({int? limit}) =>
       _recent(_caches, limit);
+
+  /// The buffered event records, oldest first; [limit] keeps the newest N.
   static List<EventRecord> recentEvents({int? limit}) =>
       _recent(_events, limit);
+
+  /// The buffered gate records, oldest first; [limit] keeps the newest N.
   static List<GateRecord> recentGates({int? limit}) => _recent(_gates, limit);
+
+  /// The buffered dump records, oldest first; [limit] keeps the newest N.
   static List<DumpRecord> recentDumps({int? limit}) => _recent(_dumps, limit);
+
+  /// The buffered query records, oldest first; [limit] keeps the newest N.
   static List<QueryRecord> recentQueries({int? limit}) =>
       _recent(_queries, limit);
+
+  /// The buffered frame records, oldest first; [limit] keeps the newest N.
   static List<FramePerfRecord> recentFramePerf({int? limit}) =>
       _recent(_framePerf, limit);
 
@@ -316,8 +357,7 @@ class CrumbsStore {
   ///
   /// Sums [CrumbsHttpAdapter.pendingCount] across the live adapter
   /// registry populated by [CrumbsPlugin.registerHttpAdapter]. Returns 0
-  /// when no adapter is registered OR when no registered adapter overrides
-  /// the default [CrumbsHttpAdapter.pendingCount] (default body returns 0).
+  /// when no adapter is registered or every registered adapter reports 0.
   ///
   /// Read-only sync getter; safe to call from poll loops (no locks, no IO).
   /// Consumed by `ext.tapir.wait_for_network_idle` to detect a network-idle
@@ -330,16 +370,38 @@ class CrumbsStore {
     return total;
   }
 
+  /// Each HTTP record as it is buffered, after redaction; a broadcast stream.
   static Stream<HttpRequestRecord> get onHttpRecord => _httpStream.stream;
+
+  /// Each log record as it is buffered, after redaction; a broadcast stream.
   static Stream<LogRecordEntry> get onLogRecord => _logStream.stream;
+
+  /// Each exception record as it is buffered, after redaction; a broadcast
+  /// stream.
   static Stream<ExceptionRecord> get onExceptionRecord =>
       _exceptionStream.stream;
-  static Stream<MagicModelRecord> get onModelRecord => _modelStream.stream;
-  static Stream<MagicCacheRecord> get onCacheRecord => _cacheStream.stream;
+
+  /// Each model record as it is buffered; a broadcast stream.
+  static Stream<ModelRecord> get onModelRecord => _modelStream.stream;
+
+  /// Each cache record as it is buffered; a broadcast stream.
+  static Stream<CacheRecord> get onCacheRecord => _cacheStream.stream;
+
+  /// Each event record as it is buffered, after redaction; a broadcast
+  /// stream.
   static Stream<EventRecord> get onEventRecord => _eventStream.stream;
+
+  /// Each gate record as it is buffered, after redaction; a broadcast stream.
   static Stream<GateRecord> get onGateRecord => _gateStream.stream;
+
+  /// Each dump record as it is buffered, after redaction; a broadcast stream.
   static Stream<DumpRecord> get onDumpRecord => _dumpStream.stream;
+
+  /// Each query record as it is buffered, after redaction; a broadcast
+  /// stream.
   static Stream<QueryRecord> get onQueryRecord => _queryStream.stream;
+
+  /// Each frame record as it is buffered; a broadcast stream.
   static Stream<FramePerfRecord> get onFramePerfRecord =>
       _framePerfStream.stream;
 

@@ -2,7 +2,7 @@
 
 Every watcher and HTTP adapter that feeds crumbs: what each captures, how it is installed, and the guard and chaining rules they share.
 
-Each unit implements one of two contracts: `CrumbsWatcher` (hook and event capture) or `CrumbsHttpAdapter` (HTTP capture). Both feed a ring buffer in `CrumbsStore`, which a VM Service extension serves to the CLI and the MCP tools.
+Each unit implements one of two contracts: `CrumbsWatcher` (hook and event capture) or `CrumbsHttpAdapter` (HTTP capture). Both are `abstract interface class`es: a collector from another package implements them, and extending them is not possible. The shipped watchers (`ExceptionWatcher`, `LogWatcher`, `DumpWatcher`, `FramePerfWatcher`) are `final class`: write your own `CrumbsWatcher` rather than subclass one. Both feed a ring buffer in `CrumbsStore`, which a VM Service extension serves to the CLI and the MCP tools. An app that records HTTP from its own interceptor needs no adapter: it calls `CrumbsStore.recordHttp` (see [HTTP adapters](#http-adapters)).
 
 - [Quick Reference](#quick-reference)
 - [Call-site guard](#call-site-guard)
@@ -23,7 +23,6 @@ Each unit implements one of two contracts: `CrumbsWatcher` (hook and event captu
 | `ExceptionWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `exceptions` | `crumbs_exceptions` |
 | `DumpWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `dumps` | `crumbs:dumps`, `crumbs_dumps` |
 | `FramePerfWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `framePerf` | `crumbs:frames`, `crumbs_frames` |
-| `DioHttpAdapter` | `CrumbsHttpAdapter` | Your Dio interceptor, through `DioHttpAdapter.recordRequest()` | `http` | `crumbs:requests`, `crumbs_requests` |
 | `MagicHttpFacadeAdapter` | `CrumbsHttpAdapter` | `MagicCrumbsIntegration.install()` | `http` | `crumbs:requests`, `crumbs_requests` |
 | `MagicModelWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `models` | `CrumbsStore.recentModels()` in the app |
 | `MagicCacheWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `caches` | `crumbs:caches`, `crumbs_caches` |
@@ -36,7 +35,7 @@ Each unit implements one of two contracts: `CrumbsWatcher` (hook and event captu
 <a name="call-site-guard"></a>
 ## Call-site guard
 
-`CrumbsPlugin.install()` installs no mode guard of its own. The app gates the whole crumbs install at the call site, and `kDebugMode` and `!kReleaseMode` both tree-shake it from a release build:
+`CrumbsPlugin.install()` installs no mode guard of its own. The app gates the whole crumbs install at the call site, and `!kReleaseMode` tree-shakes it from a release build:
 
 ```dart
 if (!kReleaseMode) {
@@ -45,10 +44,13 @@ if (!kReleaseMode) {
 }
 ```
 
-- `kDebugMode` is what `crumbs:install` writes into `lib/main.dart`. Debug builds carry crumbs; profile and release builds do not.
-- `!kReleaseMode` also keeps crumbs in profile builds. Use it when you measure performance: debug frame timings do not describe a shipped app, so a frame measurement needs a profile build. Keep the guard at the call site, never inside a helper, or the call stays live in release and the tree-shake is lost.
+- `!kReleaseMode` is what `crumbs:install` writes into `lib/main.dart`. Debug and profile builds carry crumbs; a release build does not.
+- Profile builds matter when you measure performance: debug frame timings do not describe a shipped app, so a frame measurement needs a profile build. Keep the guard at the call site, never inside a helper, or the call stays live in release and the tree-shake is lost.
+- An app wired by an earlier crumbs with a `kDebugMode` guard keeps working, and `crumbs:install` leaves that block as it is. Switch it to `!kReleaseMode` to get frame-performance data in profile builds.
 
-The snippets on this page use `kDebugMode`; either guard works in each of them. Individual watchers need no guard of their own, except that `DumpWatcher` has an internal `kDebugMode` check (see below) and so captures nothing in a profile build unless `allowInRelease` is set.
+The snippets on this page use `!kReleaseMode`. Individual watchers need no guard of their own, except that `DumpWatcher` has an internal `kDebugMode` check (see below) and so captures nothing in a profile build unless `allowInRelease` is set.
+
+`--dart-define=CRUMBS_DISABLE=1` (or `true`, `yes`) turns the whole install off in a build that must not expose the extensions: `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` each return without installing anything, so no watcher replaces a global hook to fill a buffer nobody can read.
 
 <a name="chain-preserve-pattern"></a>
 ## Chain-preserve pattern
@@ -88,7 +90,7 @@ These units ship in `crumbs` and depend on no application framework.
 
 Subscribes to `Logger.root.onRecord` from `package:logging`. Every record that reaches the root logger, at any level, becomes a `LogRecordEntry` (stamped with a monotonic `atUs`) and goes to the store, through `CrumbsRedaction.redactor` when the host set one.
 
-Install sets `hierarchicalLoggingEnabled` to `true` so named child loggers (`Logger('http')`, `Logger('auth')`) reach the root, and sets `Logger.root.level` to `Level.ALL` so fine-grained levels are emitted too. A second install while the subscription is live is a no-op. An app that does not use `package:logging` simply produces no records; adding it later needs no crumbs change. `CrumbsPlugin.install()` offers no way to leave `LogWatcher` out. A level the app sets on `Logger.root` after the install still decides which records are emitted at all.
+Install sets `hierarchicalLoggingEnabled` to `true` so named child loggers (`Logger('http')`, `Logger('auth')`) reach the root, and sets `Logger.root.level` to `Level.ALL` so fine-grained levels are emitted too. A second install while the subscription is live is a no-op, and `uninstall()` puts the root level and the hierarchical flag back to the values they held before the install. An app that does not use `package:logging` simply produces no records; adding it later needs no crumbs change. `CrumbsPlugin.install()` offers no way to leave `LogWatcher` out. A level the app sets on `Logger.root` after the install still decides which records are emitted at all.
 
 ### ExceptionWatcher
 
@@ -102,6 +104,8 @@ Install sets `hierarchicalLoggingEnabled` to `true` so named child loggers (`Log
 
 Hooks `FlutterError.onError` (synchronous framework and widget errors) and `PlatformDispatcher.instance.onError` (asynchronous errors, isolate errors, plugin errors), both through the chain-preserve pattern. The `PlatformDispatcher` handler returns the previous handler's answer, so a reporter that returns `false` to let the native crash reporter take over keeps that behaviour; with no previous handler it returns `true` (handled), as before install.
 
+Recording never stands between an error and the previous handler: when recording itself throws (an error whose `toString()` throws), the previous handler still runs, and the recording failure propagates after it.
+
 `uninstall()` restores both handlers to exactly what they held before `install()`; a second `install()` is a no-op.
 
 To coexist with Sentry, initialise Sentry first: the watcher wraps the handlers that already exist, so a reporter installed after crumbs keeps receiving errors only if it chains as well.
@@ -109,7 +113,7 @@ To coexist with Sentry, initialise Sentry first: the watcher wraps the handlers 
 ```dart
 // sentryDsn is the host's; SentryFlutter.init sets both error hooks.
 await SentryFlutter.init((options) => options.dsn = sentryDsn);
-if (kDebugMode) {
+if (!kReleaseMode) {
   CrumbsPlugin.install();
   CrumbsPlugin.registerWatcher(ExceptionWatcher()); // wraps Sentry's handlers; Sentry still fires
 }
@@ -127,10 +131,10 @@ if (kDebugMode) {
 
 Replaces the global `debugPrint` callback with an interceptor that records a `DumpRecord` and calls the previous callback. `uninstall()` restores the previous callback exactly. `print()` does not go through `debugPrint` and is not captured.
 
-`install()` is a no-op outside a debug build unless `allowInRelease` is set to `true` before it runs.
+`install()` is a no-op outside a debug build unless `allowInRelease` is set to `true` before it runs. `allowInRelease` is read at runtime, so the watcher's code still ships in a release build that references it; keeping it out of release is the job of the call-site guard around `registerWatcher`.
 
 ```dart
-if (kDebugMode) {
+if (!kReleaseMode) {
   CrumbsPlugin.install();
   CrumbsPlugin.registerWatcher(DumpWatcher());
 }
@@ -158,7 +162,7 @@ if (!kReleaseMode) {
 <a name="http-adapters"></a>
 ## HTTP adapters
 
-HTTP adapters implement `CrumbsHttpAdapter`: `name`, `install` and `uninstall`, plus an optional `pendingCount` getter. They feed `CrumbsStore.recordHttp`, and their in-flight counts add up in `CrumbsStore.pendingHttpCount`, which tapir's `wait_for_network_idle` reads. Register an adapter with `CrumbsPlugin.registerHttpAdapter()`, which calls its `install()` at once.
+HTTP adapters implement `CrumbsHttpAdapter`: `name`, `install`, `uninstall` and `pendingCount`, which has no default body: an adapter that does not track in-flight requests returns 0. They feed `CrumbsStore.recordHttp`, and their in-flight counts add up in `CrumbsStore.pendingHttpCount`, which tapir's `wait_for_network_idle` reads. Register an adapter with `CrumbsPlugin.registerHttpAdapter()`, which calls its `install()` at once.
 
 <a name="credential-redaction"></a>
 ### Credential redaction
@@ -168,8 +172,8 @@ The HTTP buffer is served to AI agents, so `CrumbsStore.recordHttp` masks creden
 | List | Applies to | Defaults |
 |---|---|---|
 | Request headers | `requestHeaders` | `authorization`, `proxy-authorization`, `cookie`, `set-cookie`, `x-api-key` |
-| Request parameters | keys of a JSON or form `requestBody`, at any depth | `password`, `password_confirmation`, `current_password`, `new_password`, `token`, `access_token`, `refresh_token`, `secret`, `client_secret`, `authorization_code`, `id_token`, `two_factor_token`, `recovery_code` |
-| Response parameters | keys of a JSON or form `responseBody`, at any depth | `token`, `access_token`, `refresh_token`, `plain_text_token`, `secret`, `client_secret`, `id_token`, `two_factor_token`, `recovery_codes`, `qr_url`, `qr_svg` |
+| Request parameters | keys of a JSON or form `requestBody`, at any depth; the query parameters of the `url`; the keys of the Map elements of a query's `bindings` and a gate check's `arguments` (a positional binding has no key) | `password`, `password_confirmation`, `current_password`, `new_password`, `token`, `access_token`, `refresh_token`, `secret`, `client_secret`, `authorization_code`, `id_token`, `two_factor_token`, `recovery_code`, `api_key`, `apikey`, `signature`, `sig`, `x-amz-signature`, `x-amz-credential`, `x-amz-security-token` |
+| Response parameters | keys of a JSON or form `responseBody`, at any depth | every request parameter name above, plus `plain_text_token`, `recovery_codes`, `qr_url`, `qr_svg` |
 
 Extend a list at install time; an addition merges with the defaults and never replaces them:
 
@@ -197,19 +201,11 @@ final String? safeText = CrumbsRedaction.redactBody(
 );
 ```
 
-Both return a masked copy and never mutate their input. Beyond these lists, a host can set `CrumbsRedaction.redactor` to run its own text redactor over every field of the log, event, exception and HTTP records, after the key masking; a redactor that throws drops the record. See [Redaction](../getting-started/redaction.md).
+Both return a masked copy and never mutate their input. In a URL only the value of a matching query parameter changes; the scheme, host, path and every other pair stay as captured. Free text (a log message, a dump, the SQL of a query) has no keys to match, so only a `CrumbsRedaction.redactor` the host sets masks it, after the key masking, over the text of the log, event, exception and HTTP records, a dump's message, a query's SQL and bindings, and a gate's arguments and user id; a redactor that throws drops the record. Model and cache records are buffered as given. See [Redaction](../getting-started/redaction.md).
 
-### DioHttpAdapter
+### Recording from your own interceptor
 
-| Field | Value |
-|---|---|
-| Contract | `CrumbsHttpAdapter` |
-| Name | `dio` |
-| Installed by | Your Dio interceptor, which calls `DioHttpAdapter.recordRequest()` |
-| Buffer | `CrumbsKind.http` |
-| VM extension | `ext.crumbs.requests` |
-
-crumbs does not depend on `dio`, so `DioHttpAdapter` hooks nothing itself: its `install()` and `uninstall()` are empty and its `pendingCount` is 0. The app adds `dio`, writes an interceptor, and records each response through the static `DioHttpAdapter.recordRequest()`, which goes through `recordHttp` and its credential masking like any adapter:
+crumbs depends on no HTTP client, so an app that does not use Magic records its own traffic: an interceptor builds an `HttpRequestRecord` and passes it to `CrumbsStore.recordHttp`, which applies the credential masking like any adapter. No `CrumbsHttpAdapter` is needed, and without one `CrumbsStore.pendingHttpCount` stays 0. The sample uses Dio, which the app adds itself:
 
 ```dart
 import 'package:crumbs/crumbs.dart';
@@ -218,18 +214,22 @@ import 'package:dio/dio.dart';
 class CrumbsDioInterceptor extends Interceptor {
   @override
   void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
-    DioHttpAdapter.recordRequest(
-      url: response.requestOptions.uri.toString(),
-      method: response.requestOptions.method,
-      statusCode: response.statusCode ?? 0,
-      durationMs: 0, // time the request in onRequest for a real duration
+    CrumbsStore.recordHttp(
+      HttpRequestRecord(
+        url: response.requestOptions.uri.toString(),
+        method: response.requestOptions.method,
+        statusCode: response.statusCode ?? 0,
+        durationMs: 0, // time the request in onRequest for a real duration
+        isError: false,
+        timestamp: DateTime.now(),
+      ),
     );
     handler.next(response);
   }
 }
 ```
 
-Add it with `dio.interceptors.add(CrumbsDioInterceptor())`. The bundled `example/` app has a complete interceptor that times each request and records errors. `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter())` only lists the adapter in the registry; it is optional.
+Add it with `dio.interceptors.add(CrumbsDioInterceptor())`. The bundled `example/` app has a complete interceptor that times each request and records errors.
 
 ### MagicHttpFacadeAdapter
 
@@ -254,17 +254,17 @@ These watchers ship in `magic_devtools`, not in `crumbs` and not in `magic` core
 ```dart
 import 'package:magic_devtools/crumbs.dart';
 
-if (kDebugMode) {
+if (!kReleaseMode) {
   MagicCrumbsIntegration.install(); // after Magic.init()
 }
 ```
 
-`package:magic_devtools/crumbs.dart` exists only in a `magic_devtools` release built on crumbs. `crumbs:install` writes these lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
+A `magic_devtools` release built on crumbs ships the Magic integration (`package:magic_devtools/crumbs.dart`); the installer wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
 
 | Watcher | Name | Subscribes to | Record |
 |:--------|:-----|:--------------|:-------|
-| `MagicModelWatcher` | `magic_model` | `ModelCreated`, `ModelSaved`, `ModelDeleted` | `MagicModelRecord`: `modelClass`, `event` (`created`, `saved`, `deleted`), `modelKey`, `time`, a snapshot of `attributes` |
-| `MagicCacheWatcher` | `magic_cache` | `CacheHit`, `CacheMiss`, `CachePut`, `CacheForget`, `CacheFlush` | `MagicCacheRecord`: `operation`, `key` (`*` for a flush), `time`, `ttl` on a put |
+| `MagicModelWatcher` | `magic_model` | `ModelCreated`, `ModelSaved`, `ModelDeleted` | `ModelRecord`: `modelClass`, `event` (`created`, `saved`, `deleted`), `modelKey`, `time`, a snapshot of `attributes` |
+| `MagicCacheWatcher` | `magic_cache` | `CacheHit`, `CacheMiss`, `CachePut`, `CacheForget`, `CacheFlush` | `CacheRecord`: `operation`, `key` (`*` for a flush), `time`, `ttl` on a put |
 | `MagicEventWatcher` | `magic_event` | `AuthLogin`, `AuthLogout`, `AuthFailed`, `AuthRestored`, `DatabaseConnected`, `GateAbilityDefined`, `GateBeforeRegistered` | `EventRecord` with an empty `payload`; model and gate-result events stay with their own watchers |
 | `MagicGateWatcher` | `magic_gate` | `GateAccessChecked` (covers allows and denies; `GateAccessDenied` is skipped to avoid a double record) | `GateRecord`: `ability`, `result`, `arguments` (the single argument wrapped in a list), `userId` (stringified, null without a user) |
 | `MagicQueryWatcher` | `magic_query` | `QueryExecuted`, dispatched by the query builder after every SQL run | `QueryRecord`: `sql`, `bindings`, `timeMs`, `connectionName`, `time` |
@@ -280,7 +280,7 @@ The model buffer has no extension and no MCP tool: read it in the app through `C
 | Sentry stops receiving errors. | Initialise Sentry before registering `ExceptionWatcher`, so crumbs chains to it. |
 | `crumbs_dumps` is empty in a profile build. | `DumpWatcher` installs only in debug builds; set `allowInRelease` before `registerWatcher` to capture in profile. |
 | `print()` output is missing from the dump buffer. | Use `debugPrint`; `print` bypasses the hook `DumpWatcher` replaces. |
-| Dio traffic does not show up. | Add an interceptor that calls `DioHttpAdapter.recordRequest()`; registering `DioHttpAdapter` alone hooks nothing. |
+| Dio traffic does not show up. | crumbs hooks no HTTP client: add an interceptor that calls `CrumbsStore.recordHttp`, or register a `CrumbsHttpAdapter` that does. |
 | `crumbs_frames` answers an empty list. | Register `FramePerfWatcher`; a `livenessCounter` that does not advance means it is missing or the engine draws nothing. |
 | The Magic buffers stay empty. | Call `MagicCrumbsIntegration.install()` after `Magic.init()`, from a `magic_devtools` release built on crumbs. |
 

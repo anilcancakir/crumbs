@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 
-/// An immutable Magic model lifecycle event captured by MagicModelWatcher
-/// (shipped in `magic` package via CrumbsPlugin.registerWatcher).
-class MagicModelRecord {
-  MagicModelRecord({
+/// An immutable model lifecycle event, recorded through
+/// [CrumbsStore.recordModel] by a watcher of the app's model layer (on Magic,
+/// the model watcher `magic_devtools` registers).
+final class ModelRecord {
+  ModelRecord({
     required this.modelClass,
     required this.event,
     required this.modelKey,
@@ -25,7 +26,9 @@ class MagicModelRecord {
   /// Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at
   /// construction unless the caller supplies one explicitly. Comparable
   /// across every crumbs record type regardless of wall-clock skew;
-  /// [time] stays the wall-clock field for display.
+  /// [time] stays the wall-clock field for display. Keep an explicit value
+  /// in step with insertion order: a reader that pages by `atUs` assumes the
+  /// two agree.
   final int atUs;
 
   /// Correlates this record to others captured during the same logical

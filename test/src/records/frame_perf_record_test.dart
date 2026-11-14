@@ -227,7 +227,7 @@ void main() {
 
     test('setting the frame buffer own cap and recording cap+5 evicts the '
         'oldest, leaving exactly cap surviving', () {
-      CrumbsStore.setFramePerfCapacity(10);
+      CrumbsStore.setCapacity(10, kind: CrumbsKind.framePerf);
 
       for (var i = 0; i < 15; i++) {
         CrumbsStore.recordFramePerf(frame(i));
@@ -243,7 +243,7 @@ void main() {
 
     test('recording many frames leaves the shared _cap (other buffers) '
         'untouched', () {
-      CrumbsStore.setFramePerfCapacity(10);
+      CrumbsStore.setCapacity(10, kind: CrumbsKind.framePerf);
 
       for (var i = 0; i < 15; i++) {
         CrumbsStore.recordFramePerf(frame(i));
@@ -298,7 +298,7 @@ void main() {
     });
 
     test('resetForTesting() empties the frame buffer and restores its cap', () {
-      CrumbsStore.setFramePerfCapacity(5);
+      CrumbsStore.setCapacity(5, kind: CrumbsKind.framePerf);
 
       for (var i = 0; i < 8; i++) {
         CrumbsStore.recordFramePerf(frame(i));

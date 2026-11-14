@@ -6,15 +6,13 @@ import 'package:material_ui/material_ui.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  if (kDebugMode) {
+  if (!kReleaseMode) {
     // 1. Install core watcher (LogWatcher + VM extensions auto-registered).
     CrumbsPlugin.install();
     // 2. Opt-in exception + dump watchers.
     CrumbsPlugin.registerWatcher(ExceptionWatcher());
     CrumbsPlugin.registerWatcher(DumpWatcher());
-    // 3. Register the Dio HTTP adapter (stub; consumer wires the interceptor).
-    CrumbsPlugin.registerHttpAdapter(DioHttpAdapter());
-    // 4. Route all package:logging levels into LogWatcher.
+    // 3. Route all package:logging levels into LogWatcher.
     Logger.root.level = Level.ALL;
   }
   final dio = Dio()..interceptors.add(_CrumbsDioInterceptor());
@@ -22,8 +20,8 @@ void main() {
 }
 
 // ---------------------------------------------------------------------------
-// Dio interceptor: canonical V1 pattern for routing Dio traffic into
-// CrumbsStore via DioHttpAdapter.recordRequest.
+// Dio interceptor: routes Dio traffic into CrumbsStore.recordHttp, which
+// masks the credentials before the record is buffered.
 // ---------------------------------------------------------------------------
 
 class _CrumbsDioInterceptor extends Interceptor {
@@ -64,15 +62,18 @@ class _CrumbsDioInterceptor extends Interceptor {
     required String? error,
   }) {
     final watch = _watches.remove(options.hashCode);
-    DioHttpAdapter.recordRequest(
-      url: options.uri.toString(),
-      method: options.method,
-      statusCode: statusCode,
-      durationMs: watch?.elapsedMilliseconds ?? 0,
-      isError: error != null || statusCode >= 400,
-      requestHeaders: <String, String>{
-        for (final e in options.headers.entries) e.key: e.value.toString(),
-      },
+    CrumbsStore.recordHttp(
+      HttpRequestRecord(
+        url: options.uri.toString(),
+        method: options.method,
+        statusCode: statusCode,
+        durationMs: watch?.elapsedMilliseconds ?? 0,
+        isError: error != null || statusCode >= 400,
+        timestamp: DateTime.now(),
+        requestHeaders: <String, String>{
+          for (final e in options.headers.entries) e.key: e.value.toString(),
+        },
+      ),
     );
   }
 }
@@ -239,7 +240,7 @@ class _HttpSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('HTTP via DioHttpAdapter', style: titleStyle),
+            Text('HTTP via a Dio interceptor', style: titleStyle),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,

@@ -1,6 +1,6 @@
 name: crumbs
 description: "Inspect a running Flutter app from an AI agent or the CLI: HTTP traffic, logs, exceptions, queries and events captured in memory, read over MCP."
-version: 0.0.13
+version: 1.0.0
 homepage: https://anilcancakir.com/crumbs
 repository: https://github.com/anilcancakir/crumbs
 issue_tracker: https://github.com/anilcancakir/crumbs/issues
@@ -21,7 +21,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  dowel: ^0.0.21
+  dowel: ^1.0.0
   logging: ^1.2.0
   meta: ^1.16.0
 

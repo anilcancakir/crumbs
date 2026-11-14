@@ -2,7 +2,7 @@
 
 > Read what a running Flutter app captured, from an LLM agent or a CI script: HTTP traffic, logs, exceptions, debug dumps, in-app events, gate checks, database queries, cache operations and frame timings. Records sit in in-memory ring buffers, with an optional redacted JSONL timeline on disk, and are served as `crumbs_*` MCP tools and `crumbs:*` CLI commands on the `dowel` substrate.
 
-**Stack**: Dart >=3.13, Flutter >=3.47. A `dowel` plugin: `CrumbsDowelProvider` adds the `crumbs:*` commands and `crumbs_*` MCP tools, which call `ext.crumbs.*` VM Service extensions inside the app. Production dependencies: the Flutter SDK, `dowel`, `logging`, `meta`. Crumbs adds no build-mode guard of its own, so guard the install with `if (kDebugMode)` (`crumbs:install` writes it): anyone who reaches the VM Service of a build that carries crumbs can read every buffer.
+**Stack**: Dart >=3.13, Flutter >=3.47. A `dowel` plugin: `CrumbsDowelProvider` adds the `crumbs:*` commands and `crumbs_*` MCP tools, which call `ext.crumbs.*` VM Service extensions inside the app. Production dependencies: the Flutter SDK, `dowel`, `logging`, `meta`. Crumbs adds no build-mode guard of its own, so guard the install with `if (!kReleaseMode)` (`crumbs:install` writes it): anyone who reaches the VM Service of a build that carries crumbs can read every buffer.
 
 **Setup**:
 
@@ -16,13 +16,13 @@ dart run crumbs mcp:install           # the `dowel` entry in .mcp.json; reconnec
 
 ```dart
 import 'package:crumbs/crumbs.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/widgets.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (kDebugMode) {
+  if (!kReleaseMode) {
     CrumbsPlugin.install();
     CrumbsPlugin.registerWatcher(ExceptionWatcher());
     CrumbsPlugin.registerWatcher(DumpWatcher());
@@ -34,20 +34,20 @@ void main() {
 
 ## API
 
-- `CrumbsPlugin.install()`: registers the `ext.crumbs.*` extensions and installs `LogWatcher`, which listens on `Logger.root.onRecord`, turns on `hierarchicalLoggingEnabled` and sets `Logger.root.level` to `Level.ALL`. Idempotent; call it before `runApp` (before `Magic.init` on a Magic app). `--dart-define=CRUMBS_DISABLE=1` (or `true`, `yes`) makes it a no-op; watchers and adapters registered separately still install.
-- `CrumbsPlugin.registerWatcher(CrumbsWatcher)`: installs the watcher at once and does not deduplicate, so register each one once. Shipped: `ExceptionWatcher` (chains `FlutterError.onError` and `PlatformDispatcher.instance.onError`), `DumpWatcher` (chains `debugPrint`; installs only in debug builds unless `DumpWatcher()..allowInRelease = true` is set before `registerWatcher`, and the host guard allows the build), `FramePerfWatcher` (frame timings; `blocks` fill only while `FlutterTimeline` collection is on).
-- `CrumbsPlugin.registerHttpAdapter(CrumbsHttpAdapter)`: an HTTP capture adapter; `CrumbsStore.pendingHttpCount` sums each adapter's `pendingCount`. `DioHttpAdapter` installs no interceptor: an app's own Dio interceptor calls `DioHttpAdapter.recordRequest(...)`. An adapter that holds a body as structured data runs it through `CrumbsRedaction.redactParameters` before stringifying it, and a string body through `CrumbsRedaction.redactBody` before truncating it: the store masks only JSON and form strings, and a cut JSON body no longer parses.
-- `CrumbsStore`: the ring buffers. `recordX`, `recentX({limit})` (`recentLogs` also takes `minLevel`), the `onXRecord` broadcast streams, `setCapacity(cap, kind: CrumbsKind.x)` (500 per buffer by default; frame perf holds 3600 and has `setFramePerfCapacity`), `clear()`, `clearFramePerf()`, `pause()`, `resume()`, `resetForTesting()`.
-- `CrumbsRedaction`: credential masking of HTTP records (`hideRequestHeaders`, `hideRequestParameters`, `hideResponseParameters`, `redactParameters`, `redactBody`) and the host text hook `redactor`, which runs over log, event, exception and HTTP text before buffering; a hook that throws drops the record.
-- `CrumbsFileSink.start(directory:, maxFileBytes: 1048576, maxFiles: 8)`: the rotating JSONL timeline of redacted log, event and exception records. It throws a `FileSystemException` when the directory cannot be written.
+- `CrumbsPlugin.install()`: registers the `ext.crumbs.*` extensions and installs `LogWatcher`, which listens on `Logger.root.onRecord`, turns on `hierarchicalLoggingEnabled` and sets `Logger.root.level` to `Level.ALL`. Idempotent; call it before `runApp` (before `Magic.init` on a Magic app). `--dart-define=CRUMBS_DISABLE=1` (or `true`, `yes`) makes it, `registerWatcher` and `registerHttpAdapter` return without installing anything.
+- `CrumbsPlugin.registerWatcher(CrumbsWatcher)`: installs the watcher at once and does not deduplicate, so register each one once. `CrumbsWatcher` is an `abstract interface class` (`name`, `install()`, `uninstall()`): implement it, do not extend it. The shipped watchers are `final class`. Shipped: `ExceptionWatcher` (chains `FlutterError.onError` and `PlatformDispatcher.instance.onError`), `DumpWatcher` (chains `debugPrint`; installs only in debug builds unless `DumpWatcher()..allowInRelease = true` is set before `registerWatcher`, and the host guard allows the build), `FramePerfWatcher` (frame timings; `blocks` fill only while `FlutterTimeline` collection is on).
+- `CrumbsPlugin.registerHttpAdapter(CrumbsHttpAdapter)`: an HTTP capture adapter; `CrumbsHttpAdapter` is an `abstract interface class` (`name`, `install()`, `uninstall()`, and `pendingCount`, which has no default body: return 0 when you do not track in-flight requests), and `CrumbsStore.pendingHttpCount` sums each adapter's `pendingCount`. No adapter is needed to record HTTP: an app's own interceptor builds an `HttpRequestRecord` and calls `CrumbsStore.recordHttp`. An adapter that holds a body as structured data runs it through `CrumbsRedaction.redactParameters` before stringifying it, and a string body through `CrumbsRedaction.redactBody` before truncating it: the store masks only JSON and form strings, and a cut JSON body no longer parses.
+- `CrumbsStore`: the ring buffers. `recordX` (`recordHttp`, `recordLog`, `recordException`, `recordDump`, `recordEvent`, `recordGate`, `recordQuery`, `recordModel`, `recordCache`, `recordFramePerf`), `recentX({limit})` (`recentLogs` also takes `minLevel`), the `onXRecord` broadcast streams, `setCapacity(cap, kind: CrumbsKind.x)` (500 per buffer by default; frame perf holds 3600 and is set with `kind: CrumbsKind.framePerf`), `clear()`, `clearFramePerf()`, `pause()`, `resume()`, `resetForTesting()`.
+- `CrumbsRedaction`: masking by key, always on (`hideRequestHeaders`, `hideRequestParameters`, `hideResponseParameters`, `redactParameters`, `redactBody`): HTTP headers, JSON and form bodies and URL query parameters, plus the Map elements of a query's bindings and a gate check's arguments (a positional binding has no key). The host text hook `redactor` masks free text (log, exception and dump messages, SQL, event payloads, the strings inside bindings and arguments, a gate's user id, the URL, header values and bodies of an HTTP record) before buffering; a hook that throws drops the record. Without a `redactor`, a credential written into free text is buffered as written. Model and cache records are never masked.
+- `CrumbsFileSink.start(directory:, maxFileBytes: 1048576, maxFiles: 8)`: the rotating JSONL timeline of redacted log, event and exception records, in files named `timeline-<UTC stamp>-<n>.jsonl` with `n` from 1. Run one sink per directory: pruning deletes the files of a second process writing there. It throws a `FileSystemException` when the directory cannot be written.
 - `CrumbsDowelProvider` and `followCursor` (`package:crumbs/cli.dart`): the provider dowel loads from `lib/app/_plugins.g.dart`, and the polling loop behind `--follow`.
-- `MagicCrumbsIntegration.install()` (`package:magic_devtools/crumbs.dart`): the Magic HTTP adapter and the model, cache, event, gate and query watchers, after `Magic.init()`. Available only with a `magic_devtools` release built on crumbs; otherwise `crumbs:install` warns and skips it. Until that release ships, `MagicTelescopeIntegration` feeds `fluttersdk_telescope`, not crumbs, so the HTTP, event, gate, query and cache buffers of crumbs stay empty in a Magic app.
-- MCP tools: `crumbs_tail` (logs, reads `ext.crumbs.console`), `crumbs_requests`, `crumbs_exceptions`, `crumbs_dumps`, `crumbs_events`, `crumbs_gates`, `crumbs_queries`, `crumbs_caches`, `crumbs_frames`, `crumbs_clear`.
+- `MagicCrumbsIntegration.install()` (`package:magic_devtools/crumbs.dart`): the Magic HTTP adapter and the model, cache, event, gate and query watchers, after `Magic.init()`. A `magic_devtools` release built on crumbs ships this integration; `crumbs:install` wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade.
+- MCP tools: `crumbs_tail` (logs, reads `ext.crumbs.console`; takes `limit`, `level`, `logger`, `since`), `crumbs_requests` (answers under `requests`), `crumbs_exceptions`, `crumbs_dumps`, `crumbs_events` (takes `limit`, `type`, `since`), `crumbs_gates`, `crumbs_queries`, `crumbs_caches`, `crumbs_frames`, `crumbs_clear`.
 - CLI commands mirror the tools by name, except: `crumbs_exceptions` has no command, and `crumbs:install` and `crumbs:files` (the timeline files) have no tool. Pause and resume are extensions with neither.
 
 ## Platforms
 
-Any Flutter target that exposes a VM Service in a debug or profile build: Android, iOS, web, macOS, Windows and Linux. `crumbs:install` guards with `kDebugMode`, so profile and release builds drop crumbs; write `!kReleaseMode` by hand to keep profile builds. `CrumbsFileSink` writes through `dart:io`, so the timeline on disk needs a native target.
+Any Flutter target that exposes a VM Service in a debug or profile build: Android, iOS, macOS, Windows and Linux, and web for everything except the file sink. `crumbs:install` guards with `!kReleaseMode`, so debug and profile builds carry crumbs and a release build drops it. `CrumbsFileSink` imports `dart:io` with no conditional import, so the timeline on disk needs a native target and pub.dev shows no Web tag.
 
 ## Rules for agents
 

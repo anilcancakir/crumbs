@@ -1,8 +1,8 @@
 # Cursor and filters
 
-Follow the log and event buffers without re-reading them or skipping a record: the filters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events`, the matching CLI flags, and the `followCursor` loop.
+Follow the log and event buffers without re-reading them: the filters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events`, the matching CLI flags, and the `followCursor` loop.
 
-The parameters belong to the VM Service extensions and the CLI. The MCP descriptors of `crumbs_tail` and `crumbs_events` declare only `limit` (and `level` on `crumbs_tail`), but dowel's MCP server forwards a call's arguments unchanged, so `since`, `logger` and `type` work over MCP too and the answer carries the same `cursor`.
+The parameters belong to the VM Service extensions and the CLI, and the MCP tools declare them too: `crumbs_tail` takes `limit`, `level`, `logger` and `since`, and `crumbs_events` takes `limit`, `type` and `since`. The answer carries the same `cursor`.
 
 - [Extension parameters](#extension-parameters)
 - [Which records limit keeps](#which-records-limit-keeps)
@@ -33,8 +33,10 @@ were new.
 
 The filters run first, then `limit`:
 
-- With `since`, `limit` keeps the OLDEST N records after it. Paging by `cursor` then skips nothing. A page cut
-  inside a run of records sharing one `atUs` keeps the whole run, so it may exceed `limit` by those ties.
+- With `since`, `limit` keeps the OLDEST N records after it. A page cut inside a run of records
+  sharing one `atUs` keeps the whole run, so it may exceed `limit` by those ties. Paging by `cursor` is exact for
+  the records that exist when the page is read; a record added later with the same microsecond `atUs` as the
+  page's last record can be missed, because the next read is exclusive.
 - Without `since`, `limit` keeps the NEWEST N records that matched.
 
 Records come back oldest first either way.
@@ -44,6 +46,8 @@ Records come back oldest first either way.
 
 Both answers carry `cursor`: the largest `atUs` among the returned records, else the `since` you passed,
 else null. Pass it back as `since` and the next answer holds only newer records.
+
+The cursor assumes a buffer's insertion order is its `atUs` order, which holds while each record takes its `atUs` from the clock at construction. A record built with an explicit `atUs` behind one already returned sits at or before the cursor, so the next read skips it.
 
 ```json
 {

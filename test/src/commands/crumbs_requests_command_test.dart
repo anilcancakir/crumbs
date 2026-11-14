@@ -75,7 +75,7 @@ void main() {
       final ctx = _StubContext(
         input: MapInput(const {}),
         output: output,
-        response: const {'records': <dynamic>[]},
+        response: const {'requests': <dynamic>[]},
       );
 
       await CrumbsRequestsCommand().handle(ctx);
@@ -88,7 +88,7 @@ void main() {
       final ctx = _StubContext(
         input: MapInput(const {'limit': '20'}),
         output: output,
-        response: const {'records': <dynamic>[]},
+        response: const {'requests': <dynamic>[]},
       );
 
       await CrumbsRequestsCommand().handle(ctx);
@@ -105,7 +105,7 @@ void main() {
       final ctx = _StubContext(
         input: MapInput(const {}),
         output: output,
-        response: const {'records': <dynamic>[]},
+        response: const {'requests': <dynamic>[]},
       );
 
       final code = await CrumbsRequestsCommand().handle(ctx);
@@ -122,7 +122,7 @@ void main() {
           input: MapInput(const {}),
           output: output,
           response: {
-            'records': [
+            'requests': [
               {
                 'timestamp': '2026-05-18T12:00:00.000Z',
                 'method': 'GET',
@@ -152,7 +152,7 @@ void main() {
           input: MapInput(const {}),
           output: output,
           response: {
-            'records': [
+            'requests': [
               {
                 'timestamp': '2026-05-18T12:00:00.000Z',
                 'method': 'GET',
@@ -184,7 +184,7 @@ void main() {
         input: MapInput(const {}),
         output: output,
         response: {
-          'records': [
+          'requests': [
             {
               'timestamp': '2026-05-18T12:00:00.000Z',
               'method': 'GET',
@@ -211,7 +211,7 @@ void main() {
         input: MapInput(const {}),
         output: output,
         response: {
-          'records': [
+          'requests': [
             {
               'timestamp': '2026-05-18T12:00:00.000Z',
               'method': 'GET',
@@ -237,7 +237,7 @@ void main() {
       final ctx = _StubContext(
         input: MapInput(const {}),
         output: output,
-        response: const {'records': <dynamic>[]},
+        response: const {'requests': <dynamic>[]},
       );
 
       final code = await CrumbsRequestsCommand().handle(ctx);

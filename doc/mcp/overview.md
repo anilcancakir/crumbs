@@ -35,7 +35,7 @@ The provider's `providerName` is `crumbs`, the package name that the `packages` 
 2. The dowel MCP server collects the descriptors of every registered provider and lists them to the client.
 3. The agent calls a tool by name, for example `crumbs_tail`, with optional parameters.
 4. The server dispatches the call to the descriptor's extension, `ext.crumbs.console` for `crumbs_tail`, over the VM Service of the session dowel recorded.
-5. The handler that `CrumbsPlugin.install()` registered in the app reads the matching `CrumbsStore` buffer, applies `limit` (and `level` on the log buffer) and answers JSON.
+5. The handler that `CrumbsPlugin.install()` registered in the app reads the matching `CrumbsStore` buffer, applies `limit` (and the log and event filters) and answers JSON.
 6. The server returns that JSON to the agent as the tool result.
 
 <a name="vm-service-routing"></a>
@@ -44,7 +44,7 @@ The provider's `providerName` is `crumbs`, the package name that the `packages` 
 | MCP tool | VM Service extension | Answer key |
 |:---------|:---------------------|:-----------|
 | `crumbs_tail` | `ext.crumbs.console` | `messages`, `cursor` |
-| `crumbs_requests` | `ext.crumbs.requests` | `records` |
+| `crumbs_requests` | `ext.crumbs.requests` | `requests` |
 | `crumbs_exceptions` | `ext.crumbs.exceptions` | `exceptions` |
 | `crumbs_events` | `ext.crumbs.events` | `events`, `cursor` |
 | `crumbs_gates` | `ext.crumbs.gates` | `gates` |
@@ -59,7 +59,7 @@ These extensions have no MCP tool:
 - `ext.crumbs.files` and `ext.crumbs.file` read the timeline of a running [file sink](../getting-started/file-sink.md); reach them through `crumbs:files`.
 - `ext.crumbs.pause` and `ext.crumbs.resume` stop and restart recording into the store.
 
-The `since`, `type` and `logger` parameters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events` live on the extensions and the CLI; the tool descriptors leave them out, but dowel forwards them over MCP unchanged. See [Cursor and filters](cursor-and-filters.md).
+The `since`, `type` and `logger` parameters and the `cursor` of `ext.crumbs.console` and `ext.crumbs.events` work over the CLI and over MCP: `crumbs_tail` declares `logger` and `since`, `crumbs_events` declares `type` and `since`. See [Cursor and filters](cursor-and-filters.md).
 
 Every extension is registered through dowel's `registerExtensionIdempotent`, so a hot restart does not fail on a duplicate registration.
 

@@ -30,7 +30,7 @@ flutter pub add crumbs
 dart run crumbs crumbs:install
 ```
 
-`crumbs:install` scaffolds the dowel harness when it is missing, registers the plugin and patches `lib/main.dart` so `CrumbsPlugin.install()` runs at startup inside a `kDebugMode` guard. The guard belongs to the call site: `kDebugMode` is what the installer writes, and `!kReleaseMode` also keeps crumbs in profile builds (see [Call-site guard](../watchers/index.md#call-site-guard)). A release build tree-shakes crumbs either way.
+`crumbs:install` scaffolds the dowel harness when it is missing, registers the plugin and patches `lib/main.dart` so `CrumbsPlugin.install()` runs at startup inside an `!kReleaseMode` guard. The guard belongs to the call site: `!kReleaseMode` keeps crumbs in debug and profile builds (see [Call-site guard](../watchers/index.md#call-site-guard)), and a release build tree-shakes it.
 
 <a name="requirements"></a>
 ## Requirements
@@ -39,7 +39,7 @@ dart run crumbs crumbs:install
 |:-----------|:--------|:------|
 | Dart SDK | `3.13` | |
 | Flutter SDK | `3.47` | The VM Service extensions need the Flutter runtime. |
-| dowel | `^0.0.21` | Pulled in by crumbs; `crumbs:install` sets up the rest. |
+| dowel | `^1.0.0` | Pulled in by crumbs; `crumbs:install` sets up the rest. |
 | Magic stack | optional | `MagicCrumbsIntegration` from a `magic_devtools` release built on crumbs adds HTTP, model, cache, event, gate and query capture. |
 
 <a name="what-gets-captured"></a>
@@ -65,7 +65,7 @@ With the Magic stack (`MagicCrumbsIntegration.install()` after `Magic.init()`):
 <a name="host-features"></a>
 ## Host features
 
-- [Redaction](redaction.md): the credential lists and `CrumbsRedaction.redactor`, the host hook that masks every log, event, exception and HTTP record at insert.
+- [Redaction](redaction.md): the credential lists, which mask by key, and `CrumbsRedaction.redactor`, the host hook that masks free text at insert.
 - [File sink](file-sink.md): `CrumbsFileSink`, a rotating JSONL timeline on disk that writes only redacted records, read back through `crumbs:files`.
 - [Buffers](buffers.md): per-kind capacity with `CrumbsStore.setCapacity`, the `atUs` clock, and how `limit` and `minLevel` behave.
 - [Cursor and filters](../mcp/cursor-and-filters.md): `since`, `type`, `logger` and `cursor` on the read extensions, and `--json` and `--follow` on the CLI.

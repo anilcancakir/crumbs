@@ -156,6 +156,39 @@ void main() {
           expect(previousCalled, isTrue);
         },
       );
+
+      test('an error whose toString throws still reaches the previous '
+          'PlatformDispatcher.onError handler, then propagates', () {
+        Object? seen;
+        PlatformDispatcher.instance.onError = (Object error, StackTrace _) {
+          seen = error;
+          return false;
+        };
+        final error = _UnprintableError();
+
+        watcher.install();
+
+        expect(
+          () => PlatformDispatcher.instance.onError!(error, StackTrace.current),
+          throwsA(isA<StateError>()),
+        );
+        expect(seen, same(error));
+      });
+
+      test('an exception whose toString throws still reaches the previous '
+          'FlutterError.onError handler, then propagates', () {
+        FlutterErrorDetails? seen;
+        FlutterError.onError = (FlutterErrorDetails details) => seen = details;
+        final details = FlutterErrorDetails(exception: _UnprintableError());
+
+        watcher.install();
+
+        expect(
+          () => FlutterError.onError!(details),
+          throwsA(isA<StateError>()),
+        );
+        expect(seen, same(details));
+      });
     });
 
     // -------------------------------------------------------------------------
@@ -198,4 +231,10 @@ void main() {
       );
     });
   });
+}
+
+/// An error whose `toString` throws, as a broken third-party error can.
+final class _UnprintableError extends Error {
+  @override
+  String toString() => throw StateError('toString failed');
 }

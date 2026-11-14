@@ -12,24 +12,25 @@ The JSON keys of each record as `toJson()` writes it, which is what an MCP answe
 - [EventRecord](#eventrecord)
 - [GateRecord](#gaterecord)
 - [QueryRecord](#queryrecord)
-- [MagicCacheRecord](#magiccacherecord)
-- [MagicModelRecord](#magicmodelrecord)
+- [CacheRecord](#cacherecord)
+- [ModelRecord](#modelrecord)
 - [FramePerfRecord](#frameperfrecord)
 
 ## Clocks and links
 
 - `time` (or `timestamp` on HTTP) is the wall clock as ISO 8601, for display.
-- `atUs` is a monotonic microsecond reading of `FlutterTimeline.now`, taken when the record is built. It orders records across buffers whatever the wall clock does; join on it. Exceptions, dumps and gates have none.
+- `atUs` is a monotonic microsecond reading of `FlutterTimeline.now`, taken when the record is built. It orders records across buffers whatever the wall clock does; join on it. Exceptions, dumps and gates have none. The `since` cursor assumes a buffer's insertion order is its `atUs` order: a record built with an explicit `atUs` behind one already read is skipped by the next cursor read.
 - `interactionId` and `linkedBy` (`zone`, `frame` or `window`) are set when the capturing site ties the record to one interaction (a tap, a navigation). `window` means no interaction was open and `interactionId` is null: join by `atUs`.
 - `redacted` (logs, events, exceptions, HTTP) is true only when the host's `CrumbsRedaction.redactor` ran over the record before it was buffered.
 
 ## HttpRequestRecord
 
-Answer key `records`. The credential masking of `CrumbsRedaction` has already run: a hidden value reads `********`.
+Answer key `requests`. The credential masking of `CrumbsRedaction` has already run: a hidden value reads `********`.
 
 | Key | Type | Notes |
 |---|---|---|
-| `url`, `method` | String | |
+| `url` | String | The value of a credential-named query parameter reads `********`; the rest of the URL is as captured |
+| `method` | String | |
 | `statusCode` | int | |
 | `durationMs` | int | |
 | `isError` | bool | Set by the adapter |
@@ -41,7 +42,7 @@ Answer key `records`. The credential masking of `CrumbsRedaction` has already ru
 | `startUs`, `endUs` | int | Optional; send and arrival on the `atUs` clock |
 | `atUs`, `interactionId`, `linkedBy`, `redacted` | | See above |
 
-The bundled `DioHttpAdapter.recordRequest` fills `url`, `method`, `statusCode`, `durationMs`, `isError`, `requestHeaders`, the two bodies, and `timestamp` and `atUs` from the clock; `requestId`, `startUs`, `endUs`, `attributedHeuristically`, `interactionId` and `linkedBy` come from an adapter that sets them.
+An interceptor that calls `CrumbsStore.recordHttp` builds the record itself: `url`, `method`, `statusCode`, `durationMs`, `isError` and `timestamp` are required, the headers and bodies optional, and `atUs` comes from the clock unless set; `requestId`, `startUs`, `endUs`, `attributedHeuristically`, `interactionId` and `linkedBy` come from an adapter that sets them.
 
 ## LogRecordEntry
 
@@ -70,7 +71,7 @@ Answer key `exceptions`. Written by `ExceptionWatcher`.
 
 ## DumpRecord
 
-Answer key `dumps`. Written by `DumpWatcher` from `debugPrint`: `message`, `time`, optional `wrapWidth`. Not run through the `redactor`.
+Answer key `dumps`. Written by `DumpWatcher` from `debugPrint`: `message`, `time`, optional `wrapWidth`. Free text: only a host `redactor` masks the message, and the record has no `redacted` flag.
 
 ## EventRecord
 
@@ -79,26 +80,26 @@ Answer key `events`. Written by an event watcher (Magic's, through `MagicCrumbsI
 | Key | Type | Notes |
 |---|---|---|
 | `eventType` | String | The `type` filter is a prefix of this |
-| `payload` | Map | Made JSON-safe at insert: a value `jsonEncode` cannot write, and a non-String key, is stored as its `toString()` |
+| `payload` | Map | Made JSON-safe at insert: a value `jsonEncode` cannot write (`NaN` and the infinities included), and a non-String key, is stored as its `toString()`; one whose `toString()` throws reads `<unprintable Type>` |
 | `time` | String | |
 | `listenerCount` | int | Optional |
 | `atUs`, `interactionId`, `linkedBy`, `redacted` | | |
 
 ## GateRecord
 
-Answer key `gates`: `ability`, `result` (true allowed, false denied), `arguments` (list), `time`, optional `userId`.
+Answer key `gates`: `ability`, `result` (true allowed, false denied), `arguments` (list), `time`, optional `userId`. A value under a credential-named key inside `arguments` reads `********`; a host `redactor` also masks its strings and the `userId`, never the `ability`. Made JSON-safe like an event payload. No `redacted` flag.
 
 ## QueryRecord
 
-Answer key `queries`: `sql`, `bindings`, `timeMs`, `connectionName`, `time`, `atUs`, optional `interactionId`, `linkedBy`.
+Answer key `queries`: `sql`, `bindings`, `timeMs`, `connectionName`, `time`, `atUs`, optional `interactionId`, `linkedBy`. A value under a credential-named key of a Map inside `bindings` reads `********` (a positional binding has no key); a host `redactor` also masks the `sql` and the strings in `bindings`, never the `connectionName`; `bindings` are made JSON-safe like an event payload; and nothing masks a credential written as a SQL literal without one. No `redacted` flag.
 
-## MagicCacheRecord
+## CacheRecord
 
-Answer key `caches`: `operation` (`hit`, `miss`, `put`, `forget`, `flush`), `key`, `time`, optional `ttlMs`, `atUs`, optional `interactionId`, `linkedBy`.
+Answer key `caches`: `operation` (`hit`, `miss`, `put`, `forget`, `flush`), `key`, `time`, optional `ttlMs`, `atUs`, optional `interactionId`, `linkedBy`. Not masked.
 
-## MagicModelRecord
+## ModelRecord
 
-No extension serves it; it is read in process with `CrumbsStore.recentModels()`. Keys: `modelClass`, `event`, `modelKey`, `time`, optional `attributes`, `atUs`, optional `interactionId`, `linkedBy`.
+No extension serves it; it is read in process with `CrumbsStore.recentModels()`. Keys: `modelClass`, `event`, `modelKey`, `time`, optional `attributes`, `atUs`, optional `interactionId`, `linkedBy`. Not masked.
 
 ## FramePerfRecord
 

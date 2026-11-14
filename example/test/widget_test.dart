@@ -35,7 +35,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Crumbs Showroom'), findsOneWidget);
-      expect(find.text('HTTP via DioHttpAdapter'), findsOneWidget);
+      expect(find.text('HTTP via a Dio interceptor'), findsOneWidget);
       expect(find.text('Logs via package:logging'), findsOneWidget);
       expect(find.text('Exceptions via ExceptionWatcher'), findsOneWidget);
       expect(find.text('Dumps via DumpWatcher'), findsOneWidget);

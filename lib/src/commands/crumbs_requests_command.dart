@@ -26,7 +26,7 @@ class CrumbsRequestsCommand extends DowelCommand {
       'ext.crumbs.requests',
       params,
     );
-    final records = (result['records'] as List?) ?? [];
+    final records = (result['requests'] as List?) ?? [];
     if (records.isEmpty) {
       ctx.output.warning('No HTTP records (register a CrumbsHttpAdapter).');
       return 0;

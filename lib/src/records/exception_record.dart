@@ -1,7 +1,7 @@
 import '../crumbs_redaction.dart';
 
 /// An immutable exception record captured by [ExceptionWatcher].
-class ExceptionRecord {
+final class ExceptionRecord {
   ExceptionRecord({
     required this.exceptionType,
     required this.message,

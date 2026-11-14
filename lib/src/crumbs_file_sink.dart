@@ -35,6 +35,11 @@ import 'crumbs_store.dart';
 /// launches included, and nothing else: a name is matched against that
 /// listing before it is ever turned into a path, so a caller-supplied name
 /// cannot reach any other file.
+///
+/// One sink per directory: pruning counts every timeline file in it and
+/// spares only the file this sink is writing, so the sink of another
+/// process (a second app instance) writing to the same directory has its
+/// files deleted, and deletes this one's in turn.
 final class CrumbsFileSink {
   CrumbsFileSink._({
     required this._directory,

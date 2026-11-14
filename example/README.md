@@ -1,6 +1,6 @@
 # crumbs showroom
 
-A vanilla Flutter app that demonstrates every core crumbs capture surface: HTTP via `DioHttpAdapter`, structured logs via `package:logging`, exceptions via `ExceptionWatcher`, and debug prints via `DumpWatcher`. The app resolves `crumbs` directly from the sibling source tree via `path: ../`, so any edit to the parent package is immediately reflected on the next hot restart. Framework-stack integration (such as the dowel provider or watcher auto-wiring) is out of scope; this is a plain `runApp` entry point wired manually.
+A vanilla Flutter app that demonstrates every core crumbs capture surface: HTTP through a Dio interceptor that calls `CrumbsStore.recordHttp`, structured logs via `package:logging`, exceptions via `ExceptionWatcher`, and debug prints via `DumpWatcher`. The app resolves `crumbs` directly from the sibling source tree via `path: ../`, so any edit to the parent package is immediately reflected on the next hot restart. Framework-stack integration (such as the dowel provider or watcher auto-wiring) is out of scope; this is a plain `runApp` entry point wired manually.
 
 ## How to run
 
@@ -16,7 +16,7 @@ dart run crumbs start --device=chrome    # or macos, linux, a device id
 
 | Section | Triggers | Inspect via |
 |---------|----------|-------------|
-| HTTP via DioHttpAdapter | GET /get, POST /post, GET /status/418, GET /delay/5 (timeout) | `dart run crumbs crumbs:requests` |
+| HTTP via a Dio interceptor | GET /get, POST /post, GET /status/418, GET /delay/5 (timeout) | `dart run crumbs crumbs:requests` |
 | Logs via package:logging | Logger.info, Logger.warning, Logger.severe | `dart run crumbs crumbs:tail` |
 | Exceptions via ExceptionWatcher | Async throw, Sync throw (caught), Custom error | `crumbs_exceptions` MCP tool |
 | Dumps via DumpWatcher | debugPrint single line, debugPrint multiline | `crumbs_dumps` MCP tool |
@@ -33,7 +33,7 @@ dart run crumbs start --device=chrome    # or macos, linux, a device id
 
 ## Path dependency note
 
-This example depends on the parent crumbs package via `path: ../`. Source edits to the parent require nothing more than a hot restart in the running example app. Downstream consumers that install from pub.dev use the hosted `^0.0.13` constraint instead.
+This example depends on the parent crumbs package via `path: ../`. Source edits to the parent require nothing more than a hot restart in the running example app. Downstream consumers that install from pub.dev use the hosted constraint from pub.dev instead.
 
 ## License
 

@@ -15,7 +15,7 @@ How `CrumbsStore` holds records: one in-memory ring buffer per record kind, thei
 |:-----|:-------|
 | `CrumbsStore.setCapacity(2000)` | Caps every buffer except frame performance. |
 | `CrumbsStore.setCapacity(5000, kind: CrumbsKind.logs)` | Caps one buffer. |
-| `CrumbsStore.setFramePerfCapacity(7200)` | Caps the frame buffer; same as `kind: CrumbsKind.framePerf`. |
+| `CrumbsStore.setCapacity(7200, kind: CrumbsKind.framePerf)` | Caps the frame buffer on its own. |
 | `CrumbsStore.recentLogs(limit: 20, minLevel: 'WARNING')` | The newest 20 log records at `WARNING` or above, oldest first. |
 | `CrumbsStore.clear()` | Empties every buffer. |
 
@@ -42,7 +42,7 @@ CrumbsStore.setCapacity(7200, kind: CrumbsKind.framePerf);
 <a name="monotonic-timestamps"></a>
 ## Monotonic timestamps
 
-`LogRecordEntry` and `EventRecord` carry `atUs`, stamped at construction from `FlutterTimeline.now` and serialised in `toJson`, so a log line orders against an event whatever the wall clock did. `time` stays the wall-clock field for display. `atUs` is also the cursor that `ext.crumbs.console` and `ext.crumbs.events` page on (see [Cursor and filters](../mcp/cursor-and-filters.md)).
+`LogRecordEntry` and `EventRecord` carry `atUs`, stamped at construction from `FlutterTimeline.now` and serialised in `toJson`, so a log line orders against an event whatever the wall clock did. `time` stays the wall-clock field for display. `atUs` is also the cursor that `ext.crumbs.console` and `ext.crumbs.events` page on (see [Cursor and filters](../mcp/cursor-and-filters.md)). That paging assumes a buffer's insertion order is its `atUs` order, which holds while each record takes its `atUs` from the clock at construction: a record built with an explicit `atUs` behind one already read sits at or before the cursor, and the next read skips it.
 
 <a name="reading-with-limit-and-minlevel"></a>
 ## Reading with limit and minLevel

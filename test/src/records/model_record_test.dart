@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:crumbs/src/records/magic_model_record.dart';
+import 'package:crumbs/src/records/model_record.dart';
 
 void main() {
-  group('MagicModelRecord', () {
+  group('ModelRecord', () {
     final time = DateTime(2026, 5, 19, 12, 0, 0);
 
     // -------------------------------------------------------------------------
@@ -14,7 +14,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test('constructor sets all required fields', () {
-      final record = MagicModelRecord(
+      final record = ModelRecord(
         modelClass: 'Monitor',
         event: 'created',
         modelKey: 'abc-123',
@@ -29,7 +29,7 @@ void main() {
     });
 
     test('constructor sets optional attributes when provided', () {
-      final record = MagicModelRecord(
+      final record = ModelRecord(
         modelClass: 'Monitor',
         event: 'saved',
         modelKey: 'abc-123',
@@ -44,13 +44,13 @@ void main() {
     });
 
     test('event field accepts saved and deleted values', () {
-      final saved = MagicModelRecord(
+      final saved = ModelRecord(
         modelClass: 'Monitor',
         event: 'saved',
         modelKey: 'abc-123',
         time: time,
       );
-      final deleted = MagicModelRecord(
+      final deleted = ModelRecord(
         modelClass: 'Monitor',
         event: 'deleted',
         modelKey: 'abc-123',
@@ -66,7 +66,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     test('toJson returns expected map without optional fields', () {
-      final record = MagicModelRecord(
+      final record = ModelRecord(
         modelClass: 'Monitor',
         event: 'created',
         modelKey: 'abc-123',
@@ -87,7 +87,7 @@ void main() {
     });
 
     test('toJson includes attributes when set', () {
-      final record = MagicModelRecord(
+      final record = ModelRecord(
         modelClass: 'Monitor',
         event: 'saved',
         modelKey: 'abc-123',
@@ -101,7 +101,7 @@ void main() {
     });
 
     test('toJson omits attributes when null', () {
-      final record = MagicModelRecord(
+      final record = ModelRecord(
         modelClass: 'Monitor',
         event: 'deleted',
         modelKey: 'abc-123',
@@ -117,7 +117,7 @@ void main() {
 
     test('atUs defaults to FlutterTimeline.now captured at construction', () {
       final int before = FlutterTimeline.now;
-      final record = MagicModelRecord(
+      final record = ModelRecord(
         modelClass: 'Monitor',
         event: 'created',
         modelKey: 'abc-123',
@@ -129,7 +129,7 @@ void main() {
     });
 
     test('atUs accepts an explicit override', () {
-      final record = MagicModelRecord(
+      final record = ModelRecord(
         modelClass: 'Monitor',
         event: 'created',
         modelKey: 'abc-123',
@@ -143,7 +143,7 @@ void main() {
     test(
       'interactionId and linkedBy default to null and toJson omits them',
       () {
-        final record = MagicModelRecord(
+        final record = ModelRecord(
           modelClass: 'Monitor',
           event: 'created',
           modelKey: 'abc-123',
@@ -160,7 +160,7 @@ void main() {
     );
 
     test('interactionId and linkedBy are set and serialized when provided', () {
-      final record = MagicModelRecord(
+      final record = ModelRecord(
         modelClass: 'Monitor',
         event: 'created',
         modelKey: 'abc-123',
@@ -175,7 +175,7 @@ void main() {
     });
 
     test('JSON round-trip survives jsonEncode and jsonDecode', () {
-      final record = MagicModelRecord(
+      final record = ModelRecord(
         modelClass: 'Monitor',
         event: 'created',
         modelKey: 'abc-123',
@@ -200,13 +200,13 @@ void main() {
     test(
       'two records with same fields are not identical (default identity eq)',
       () {
-        final a = MagicModelRecord(
+        final a = ModelRecord(
           modelClass: 'Monitor',
           event: 'created',
           modelKey: 'abc-123',
           time: time,
         );
-        final b = MagicModelRecord(
+        final b = ModelRecord(
           modelClass: 'Monitor',
           event: 'created',
           modelKey: 'abc-123',

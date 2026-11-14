@@ -312,13 +312,17 @@ Future<void> main() async {
       );
 
       // The integration install call lands after Magic.init(), under the
-      // same kDebugMode guard as the crumbs block.
+      // same !kReleaseMode guard as the crumbs block.
       final magicInitIdx = result.indexOf('await Magic.init(');
       final integrationIdx = result.indexOf(
         'MagicCrumbsIntegration.install();',
       );
       expect(integrationIdx, greaterThan(magicInitIdx));
-      expect(result.contains('kReleaseMode'), isFalse);
+      expect(
+        result,
+        contains('if (!kReleaseMode) {\n    MagicCrumbsIntegration'),
+      );
+      expect(result, isNot(contains('kDebugMode')));
 
       // Sanity: plugin:install ran (wrapper present, scaffold skipped).
       expect(runner.calls, hasLength(1));
@@ -737,7 +741,7 @@ Future<void> main() async {
           contains("import 'package:magic_devtools/crumbs.dart';"),
         );
         expect(result, contains('MagicCrumbsIntegration.install();'));
-        expect(result, contains('show kDebugMode;'));
+        expect(result, contains('show kReleaseMode;'));
       });
 
       test('re-running with crumbs.dart available is idempotent', () async {
@@ -846,6 +850,170 @@ void main() {
         );
         expect(File(mainDartPath).readAsStringSync(), equals(afterFirst));
       });
+    });
+
+    group('the kReleaseMode guard and import', () {
+      late Directory tempDir;
+
+      setUp(() {
+        tempDir = Directory.systemTemp.createTempSync('crumbs_install_debug_');
+      });
+
+      tearDown(() => tempDir.deleteSync(recursive: true));
+
+      test('is skipped when foundation.dart is already imported in full, '
+          'which would make it an unnecessary_import', () async {
+        final mainDartPath = _seedProject(
+          tempDir,
+          mainDartContents: '''
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(const App());
+}
+''',
+        );
+
+        await _runInstallIn(tempDir, BufferedOutput());
+
+        final result = File(mainDartPath).readAsStringSync();
+        expect(result, isNot(contains('show kReleaseMode')));
+        expect(result, contains('if (!kReleaseMode) {'));
+        expect(result, contains("import 'package:crumbs/crumbs.dart';"));
+      });
+
+      test('is added when foundation.dart is not imported', () async {
+        final mainDartPath = _seedProject(
+          tempDir,
+          mainDartContents: '''
+import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(const App());
+}
+''',
+        );
+
+        await _runInstallIn(tempDir, BufferedOutput());
+
+        expect(
+          File(mainDartPath).readAsStringSync(),
+          contains(
+            "import 'package:flutter/foundation.dart' show kReleaseMode;",
+          ),
+        );
+      });
+
+      test('a fresh install writes the !kReleaseMode block and the import, '
+          'and a re-run adds no second block', () async {
+        final mainDartPath = _seedProject(
+          tempDir,
+          mainDartContents: '''
+import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(const App());
+}
+''',
+        );
+
+        await _runInstallIn(tempDir, BufferedOutput());
+        final afterFirst = File(mainDartPath).readAsStringSync();
+
+        expect(
+          afterFirst,
+          contains(
+            "import 'package:flutter/foundation.dart' show kReleaseMode;",
+          ),
+        );
+        expect(
+          afterFirst,
+          contains(
+            '  if (!kReleaseMode) {\n'
+            '    CrumbsPlugin.install();\n'
+            '    CrumbsPlugin.registerWatcher(ExceptionWatcher());\n'
+            '    CrumbsPlugin.registerWatcher(DumpWatcher());\n'
+            '  }\n'
+            '  runApp(',
+          ),
+        );
+        expect(afterFirst, isNot(contains('kDebugMode')));
+
+        await _runInstallIn(tempDir, BufferedOutput());
+
+        expect(File(mainDartPath).readAsStringSync(), equals(afterFirst));
+        expect(
+          'CrumbsPlugin.install('.allMatches(afterFirst).length,
+          equals(1),
+        );
+      });
+
+      test('a main.dart wired by an earlier crumbs with the kDebugMode block '
+          'is left byte-identical, not given a second block', () async {
+        const legacy = '''
+import 'package:crumbs/crumbs.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/widgets.dart';
+
+void main() {
+  if (kDebugMode) {
+    CrumbsPlugin.install();
+    CrumbsPlugin.registerWatcher(ExceptionWatcher());
+    CrumbsPlugin.registerWatcher(DumpWatcher());
+  }
+  runApp(const App());
+}
+''';
+        final mainDartPath = _seedProject(tempDir, mainDartContents: legacy);
+
+        await _runInstallIn(tempDir, BufferedOutput());
+
+        expect(File(mainDartPath).readAsStringSync(), equals(legacy));
+      });
+
+      test(
+        'a Magic main.dart wired by an earlier crumbs with the kDebugMode '
+        'block gets the Magic block behind the same kDebugMode guard',
+        () async {
+          final mainDartPath = _seedProject(
+            tempDir,
+            pubspecDeps: const {'magic': 'any', 'magic_devtools': 'any'},
+            magicDevtoolsLibrary: 'crumbs.dart',
+            mainDartContents: '''
+import 'package:crumbs/crumbs.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/material.dart';
+import 'package:magic/magic.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (kDebugMode) {
+    CrumbsPlugin.install();
+    CrumbsPlugin.registerWatcher(ExceptionWatcher());
+    CrumbsPlugin.registerWatcher(DumpWatcher());
+  }
+  await Magic.init(configFactories: [() => {}]);
+  runApp(const MagicApplication());
+}
+''',
+          );
+
+          await _runInstallIn(tempDir, BufferedOutput());
+
+          final result = File(mainDartPath).readAsStringSync();
+          expect(
+            result,
+            contains(
+              '  if (kDebugMode) {\n'
+              '    MagicCrumbsIntegration.install();\n'
+              '  }\n',
+            ),
+          );
+          expect(result, isNot(contains('kReleaseMode')));
+          expect('CrumbsPlugin.install('.allMatches(result).length, equals(1));
+        },
+      );
     });
   });
 }

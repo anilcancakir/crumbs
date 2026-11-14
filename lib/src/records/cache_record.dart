@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart' show FlutterTimeline;
 
-/// An immutable Magic cache operation record captured by MagicCacheWatcher
-/// (shipped in `magic` package).
-class MagicCacheRecord {
-  MagicCacheRecord({
+/// An immutable cache operation, recorded through [CrumbsStore.recordCache]
+/// by a watcher of the app's cache layer (on Magic, the cache watcher
+/// `magic_devtools` registers).
+final class CacheRecord {
+  CacheRecord({
     required this.operation,
     required this.key,
     required this.time,
@@ -13,7 +14,8 @@ class MagicCacheRecord {
     this.linkedBy,
   }) : atUs = atUs ?? FlutterTimeline.now;
 
-  /// 'put' | 'get' | 'forget' | 'hit' | 'miss'
+  /// 'hit' | 'miss' | 'put' | 'forget' | 'flush'; a flush has no key and
+  /// records `*`.
   final String operation;
   final String key;
   final DateTime time;
@@ -22,7 +24,9 @@ class MagicCacheRecord {
   /// Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at
   /// construction unless the caller supplies one explicitly. Comparable
   /// across every crumbs record type regardless of wall-clock skew;
-  /// [time] stays the wall-clock field for display.
+  /// [time] stays the wall-clock field for display. Keep an explicit value
+  /// in step with insertion order: a reader that pages by `atUs` assumes the
+  /// two agree.
   final int atUs;
 
   /// Correlates this record to others captured during the same logical

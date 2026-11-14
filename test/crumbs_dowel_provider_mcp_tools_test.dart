@@ -130,6 +130,35 @@ void main() {
       expect(limit['type'], equals('integer'));
     });
 
+    test('crumbs_events declares the since and type filters its handler '
+        'reads', () {
+      final events = tools.firstWhere((t) => t.name == 'crumbs_events');
+      final properties =
+          events.inputSchema['properties'] as Map<String, dynamic>;
+      expect(
+        (properties['since'] as Map<String, dynamic>)['type'],
+        equals('integer'),
+      );
+      expect(
+        (properties['type'] as Map<String, dynamic>)['type'],
+        equals('string'),
+      );
+    });
+
+    test('crumbs_tail declares the since and logger filters its handler '
+        'reads', () {
+      final tail = tools.firstWhere((t) => t.name == 'crumbs_tail');
+      final properties = tail.inputSchema['properties'] as Map<String, dynamic>;
+      expect(
+        (properties['since'] as Map<String, dynamic>)['type'],
+        equals('integer'),
+      );
+      expect(
+        (properties['logger'] as Map<String, dynamic>)['type'],
+        equals('string'),
+      );
+    });
+
     test('crumbs_events does not declare required params', () {
       final events = tools.firstWhere((t) => t.name == 'crumbs_events');
       expect(events.inputSchema.containsKey('required'), isFalse);
