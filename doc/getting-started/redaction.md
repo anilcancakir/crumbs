@@ -1,9 +1,13 @@
 # Redaction
 
-Crumbs serves its buffers to AI agents and, with a file sink, writes them to disk. Two layers keep
-secrets out of both: the credential lists for HTTP records, and a host-supplied text redactor for every
-record that carries free text.
+How crumbs keeps secrets out of the buffers it serves to AI agents and writes to disk: credential lists for HTTP records, and a host-supplied text redactor for every record that carries free text.
 
+- [Credential lists (HTTP)](#credential-lists)
+- [The text redactor](#the-text-redactor)
+- [JSON-safe event payloads](#json-safe-event-payloads)
+- [Related Documentation](#related-documentation)
+
+<a name="credential-lists"></a>
 ## Credential lists (HTTP)
 
 `CrumbsStore.recordHttp` masks credential values before it buffers a record. The request headers
@@ -15,8 +19,9 @@ Extend the lists with `CrumbsRedaction.hideRequestHeaders`, `hideRequestParamete
 `hideResponseParameters`. Additions merge with the defaults and never replace them. An adapter that holds a
 body as a Dart `Map` runs it through `CrumbsRedaction.redactParameters(data, keys)` or
 `redactBody(body, keys)` before it stringifies or truncates it, because the store cannot mask a body it
-cannot parse.
+cannot parse. The full default lists are on the [Watchers](../watchers/index.md#credential-redaction) page.
 
+<a name="the-text-redactor"></a>
 ## The text redactor
 
 `CrumbsRedaction.redactor` is a host hook, `String Function(String)?`, that is null until you set it:
@@ -61,9 +66,17 @@ on this: it writes only records whose `redacted` is true (see [File sink](file-s
 one record. The store calls them; a caller outside the store rarely needs to. Each returns null for a
 dropped record, so `redactHttpRecord` returns `HttpRequestRecord?` and a caller adds a null check.
 
+<a name="json-safe-event-payloads"></a>
 ## JSON-safe event payloads
 
 `recordEvent` stores any payload value that `jsonEncode` cannot write (a `DateTime`, a `Duration`, any
-object) as its `toString()`, and a non-String map key likewise. One bad payload can no longer fail a whole
+object) as its `toString()`, and a non-String map key likewise, so one bad payload cannot fail a whole
 `ext.crumbs.events` response. A payload that is already safe keeps its identity. This runs with or
 without a redactor.
+
+<a name="related-documentation"></a>
+## Related Documentation
+
+- [File sink](file-sink.md): the timeline on disk that writes only redacted records.
+- [Watchers](../watchers/index.md#credential-redaction): the default credential lists and how an HTTP adapter masks a body.
+- [Tool reference](../mcp/tool-reference.md#crumbs_requests): how a masked HTTP record reads over MCP.

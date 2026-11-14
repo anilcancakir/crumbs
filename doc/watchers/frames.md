@@ -1,11 +1,23 @@
 # FramePerfWatcher
 
+`FramePerfWatcher` records the build, raster and vsync cost of every drawn frame, with optional per-widget attribution, and proves the engine is still rendering.
+
+- [Quick Reference](#quick-reference)
+- [Liveness](#liveness)
+- [Attribution](#attribution)
+- [Clock and interaction link](#clock-and-interaction-link)
+- [Registration](#registration)
+- [Related Documentation](#related-documentation)
+
+<a name="quick-reference"></a>
+## Quick Reference
+
 | Field | Value |
 |---|---|
 | Contract | `CrumbsWatcher` |
 | Name | `frame_perf` |
 | Auto-install | No (opt-in via `CrumbsPlugin.registerWatcher(FramePerfWatcher())`) |
-| Ring buffer | `CrumbsStore._framePerf` (own capacity, default 3600, independent of the shared 500-entry cap) |
+| Buffer | `CrumbsKind.framePerf` (own capacity, default 3600, independent of the shared 500-entry cap) |
 | VM extension | `ext.crumbs.frames` |
 | CLI command | `crumbs:frames` |
 | MCP tool | `crumbs_frames` |
@@ -21,6 +33,7 @@ point, popping the matching map and writing one complete `FramePerfRecord` per `
 nothing to chain-preserve here: every other listener (sentry_flutter's among them) keeps receiving
 timings while this watcher is installed.
 
+<a name="liveness"></a>
 ## Liveness
 
 A static `livenessCounter`, incremented once per drawn frame regardless of whether a measurement
@@ -29,6 +42,7 @@ every `ext.crumbs.frames` response so a caller can tell an empty result caused b
 from one caused by a stalled engine (a backgrounded Chrome tab suspends `requestAnimationFrame`
 while every other in-app health signal keeps reading healthy).
 
+<a name="attribution"></a>
 ## Attribution
 
 Attribution only flows while `FlutterTimeline.debugCollectionEnabled` is true, which a measurement
@@ -36,6 +50,7 @@ session turns on. Until then the watcher records frame magnitude alone and every
 map is empty. Each block entry carries `micros` (inclusive of nested children), `selfMicros`
 (exclusive: `micros` minus the combined duration of directly nested children), and `count`.
 
+<a name="clock-and-interaction-link"></a>
 ## Clock and interaction link
 
 Every record carries `atUs`, a monotonic microsecond timestamp from `FlutterTimeline.now`, and the
@@ -46,16 +61,21 @@ timestamp only as microseconds "from some epoch" shared across every `FrameTimin
 test can only inject synthetic `FrameTiming` values, never a real engine-reported one. Treat
 `vsyncStartUs` vs. `atUs` comparisons as needing a driven, live-engine run to validate.
 
+<a name="registration"></a>
 ## Registration
 
 ```dart
-if (kDebugMode) {
+if (!kReleaseMode) {
   CrumbsPlugin.install();
   CrumbsPlugin.registerWatcher(FramePerfWatcher()); // opt-in
 }
 ```
 
-Opt-out: simply omit the `registerWatcher(FramePerfWatcher())` call.
+`!kReleaseMode` keeps the watcher in a profile build, the build whose frame timings describe a shipped app. To leave it out, omit the `registerWatcher(FramePerfWatcher())` call. `CrumbsStore.clearFramePerf()` empties only this buffer, without touching the HTTP, log and exception history.
 
-See the [MCP tool reference](../mcp/tool-reference.md#crumbs_frames) for the full
-`crumbs_frames` input schema and output shape.
+<a name="related-documentation"></a>
+## Related Documentation
+
+- [Tool reference](../mcp/tool-reference.md#crumbs_frames): the `crumbs_frames` input schema and output shape.
+- [Watchers](index.md): every other watcher and the call-site guard.
+- [Buffers](../getting-started/buffers.md): `setFramePerfCapacity` and the per-kind caps.

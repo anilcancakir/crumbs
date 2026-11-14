@@ -1,15 +1,42 @@
 # Watchers
 
-Crumbs ships 10 watcher units across three categories. Each unit implements one of two contracts:
-`CrumbsWatcher` (for event-driven and hook-based capture) or `CrumbsHttpAdapter` (for HTTP
-traffic capture). All units feed the matching ring buffer inside `CrumbsStore` and expose their
-data via a VM Service extension method.
+Every watcher and HTTP adapter that feeds crumbs: what each captures, how it is installed, and the guard and chaining rules they share.
+
+Each unit implements one of two contracts: `CrumbsWatcher` (hook and event capture) or `CrumbsHttpAdapter` (HTTP capture). Both feed a ring buffer in `CrumbsStore`, which a VM Service extension serves to the CLI and the MCP tools.
+
+- [Quick Reference](#quick-reference)
+- [Call-site guard](#call-site-guard)
+- [Chain-preserve pattern](#chain-preserve-pattern)
+- [Framework-agnostic watchers](#framework-agnostic-watchers)
+- [HTTP adapters](#http-adapters)
+  - [Credential redaction](#credential-redaction)
+- [Magic-stack watchers](#magic-stack-watchers)
+- [Gotchas](#gotchas)
+- [Related Documentation](#related-documentation)
+
+<a name="quick-reference"></a>
+## Quick Reference
+
+| Unit | Contract | Installed by | Buffer (`CrumbsKind`) | Read with |
+|:-----|:---------|:-------------|:----------------------|:----------|
+| `LogWatcher` | `CrumbsWatcher` | `CrumbsPlugin.install()` | `logs` | `crumbs:tail`, `crumbs_tail` |
+| `ExceptionWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `exceptions` | `crumbs_exceptions` |
+| `DumpWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `dumps` | `crumbs:dumps`, `crumbs_dumps` |
+| `FramePerfWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `framePerf` | `crumbs:frames`, `crumbs_frames` |
+| `DioHttpAdapter` | `CrumbsHttpAdapter` | Your Dio interceptor, through `DioHttpAdapter.recordRequest()` | `http` | `crumbs:requests`, `crumbs_requests` |
+| `MagicHttpFacadeAdapter` | `CrumbsHttpAdapter` | `MagicCrumbsIntegration.install()` | `http` | `crumbs:requests`, `crumbs_requests` |
+| `MagicModelWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `models` | `CrumbsStore.recentModels()` in the app |
+| `MagicCacheWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `caches` | `crumbs:caches`, `crumbs_caches` |
+| `MagicEventWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `events` | `crumbs:events`, `crumbs_events` |
+| `MagicGateWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `gates` | `crumbs:gates`, `crumbs_gates` |
+| `MagicQueryWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `queries` | `crumbs:queries`, `crumbs_queries` |
+
+`crumbs:install` registers `ExceptionWatcher` and `DumpWatcher` for you; a hand wiring registers them itself.
 
 <a name="call-site-guard"></a>
 ## Call-site guard
 
-`CrumbsPlugin.install()` installs no mode guard of its own. The consumer gates the entire crumbs
-install at the call site, and `kDebugMode` and `!kReleaseMode` both tree-shake it from release builds:
+`CrumbsPlugin.install()` installs no mode guard of its own. The app gates the whole crumbs install at the call site, and `kDebugMode` and `!kReleaseMode` both tree-shake it from a release build:
 
 ```dart
 if (!kReleaseMode) {
@@ -18,49 +45,36 @@ if (!kReleaseMode) {
 }
 ```
 
-- `kDebugMode` is what `crumbs:install` writes into `lib/main.dart`. Debug builds carry crumbs;
-  profile and release builds do not.
-- `!kReleaseMode` also keeps crumbs in profile builds. Use it when you measure performance, since a
-  frame measurement needs a profile build, since debug frame timings do not describe a shipped app. It is the
-  guard `magic_devtools` uses and documents. Keep the guard at the call site, never inside a helper, or
-  the call stays live in release and the tree-shake is lost.
+- `kDebugMode` is what `crumbs:install` writes into `lib/main.dart`. Debug builds carry crumbs; profile and release builds do not.
+- `!kReleaseMode` also keeps crumbs in profile builds. Use it when you measure performance: debug frame timings do not describe a shipped app, so a frame measurement needs a profile build. Keep the guard at the call site, never inside a helper, or the call stays live in release and the tree-shake is lost.
 
-The snippets on this page use `kDebugMode`; either guard works in each of them. This single gate
-tree-shakes the entire subsystem in release builds (dart2js for web, dart2native for mobile/desktop
-AOT). Individual watchers do not need their own gate except `DumpWatcher`, which has an additional
-internal `kDebugMode` guard (see below) and so captures nothing in a profile build unless
-`allowInRelease` is set.
+The snippets on this page use `kDebugMode`; either guard works in each of them. Individual watchers need no guard of their own, except that `DumpWatcher` has an internal `kDebugMode` check (see below) and so captures nothing in a profile build unless `allowInRelease` is set.
 
+<a name="chain-preserve-pattern"></a>
 ## Chain-preserve pattern
 
-Any watcher that overrides a global Dart/Flutter hook saves the previous handler before replacing it
-and calls it inside the new handler body. On `uninstall()`, the previous handler is restored
-symmetrically. This is the Sentry/Bugsnag coexistence contract: crumbs captures the record AND
-forwards to whatever was registered before it. The numbered step comments in `ExceptionWatcher` are
-the canonical reference for this pattern:
+A watcher that replaces a global Dart or Flutter hook saves the previous handler, calls it from the new one, and restores it on `uninstall()`. That is how crumbs coexists with Sentry and Bugsnag: it records the error and forwards it to whatever was registered before it. `ExceptionWatcher` is the reference:
 
 ```dart
 // 1. Chain-preserve FlutterError.onError (sync framework errors).
-_previousOnError = FlutterError.onError;
-FlutterError.onError = (details) {
-  CrumbsStore.recordException(...);
-  _previousOnError?.call(details);
+_previousFlutterOnError = FlutterError.onError;
+FlutterError.onError = (FlutterErrorDetails details) {
+  CrumbsStore.recordException(/* ... */);
+  _previousFlutterOnError?.call(details);
 };
 
-// 2. Chain-preserve PlatformDispatcher.instance.onError (async + isolate errors).
+// 2. Chain-preserve PlatformDispatcher.instance.onError (async and isolate errors).
 _previousPlatformOnError = PlatformDispatcher.instance.onError;
-PlatformDispatcher.instance.onError = (error, stack) {
-  CrumbsStore.recordException(...);
+PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+  CrumbsStore.recordException(/* ... */);
   return _previousPlatformOnError?.call(error, stack) ?? true;
 };
 ```
 
----
-
+<a name="framework-agnostic-watchers"></a>
 ## Framework-agnostic watchers
 
-These three units are part of the `crumbs` core package. They have no dependency on
-Magic or any other application framework.
+These units ship in `crumbs` and depend on no application framework.
 
 ### LogWatcher
 
@@ -68,33 +82,13 @@ Magic or any other application framework.
 |---|---|
 | Contract | `CrumbsWatcher` |
 | Name | `log` |
-| Auto-install | Yes (auto-registered by `CrumbsPlugin.install()`) |
-| Ring buffer | `CrumbsStore._logs` |
+| Installed by | `CrumbsPlugin.install()`, always |
+| Buffer | `CrumbsKind.logs` |
 | VM extension | `ext.crumbs.console` |
-| Opt-out | Call `CrumbsPlugin.install()` then remove it by not calling `LogWatcher().install()` directly; or skip the default auto-install path and register manually |
 
-Subscribes to `Logger.root.onRecord` from `package:logging`. Every log record that flows through
-the root logger (at any level) is converted to a `LogRecordEntry` (stamped with a monotonic `atUs`) and
-pushed to the store, through `CrumbsRedaction.redactor` when the host set one.
+Subscribes to `Logger.root.onRecord` from `package:logging`. Every record that reaches the root logger, at any level, becomes a `LogRecordEntry` (stamped with a monotonic `atUs`) and goes to the store, through `CrumbsRedaction.redactor` when the host set one.
 
-`hierarchicalLoggingEnabled` is set to `true` during install so named child loggers (`Logger('http')`,
-`Logger('auth')`, etc.) funnel through root. Install is idempotent: a second call when the
-subscription is already live is a no-op.
-
-If the app does not use `package:logging`, the watcher is dormant (no records flow through
-`Logger.root`). It is still registered because adding `package:logging` later immediately benefits
-from capture without any crumbs config change.
-
-Registration (auto-installed, shown for completeness):
-
-```dart
-CrumbsPlugin.install(); // LogWatcher registered automatically
-```
-
-Manual opt-out (skip auto-registration) is not exposed in the V1 API; file a feature request if
-selective watcher exclusion is needed.
-
----
+Install sets `hierarchicalLoggingEnabled` to `true` so named child loggers (`Logger('http')`, `Logger('auth')`) reach the root. A second install while the subscription is live is a no-op. An app that does not use `package:logging` simply produces no records; adding it later needs no crumbs change. `CrumbsPlugin.install()` offers no way to leave `LogWatcher` out. `Logger.root.level` still decides which records are emitted at all, so set it to `Level.ALL` to capture fine-grained levels.
 
 ### ExceptionWatcher
 
@@ -102,40 +96,24 @@ selective watcher exclusion is needed.
 |---|---|
 | Contract | `CrumbsWatcher` |
 | Name | `exception` |
-| Auto-install | No (opt-in via `CrumbsPlugin.registerWatcher(ExceptionWatcher())` after install) |
-| Ring buffer | `CrumbsStore._exceptions` |
+| Installed by | `CrumbsPlugin.registerWatcher(ExceptionWatcher())` (written by `crumbs:install`) |
+| Buffer | `CrumbsKind.exceptions` |
 | VM extension | `ext.crumbs.exceptions` |
-| Opt-out | Simply do not register; absent registration means no error capture. To coexist with Sentry / Bugsnag, install them BEFORE crumbs: the chain-preserve wraps the handler that was already there, so a reporter installed after crumbs keeps receiving errors only if it preserves the chain itself. |
 
-Hooks both `FlutterError.onError` (synchronous framework and widget errors) and
-`PlatformDispatcher.instance.onError` (asynchronous errors, isolate errors, plugin-originated
-errors). Both hooks follow the chain-preserve pattern.
+Hooks `FlutterError.onError` (synchronous framework and widget errors) and `PlatformDispatcher.instance.onError` (asynchronous errors, isolate errors, plugin errors), both through the chain-preserve pattern. The `PlatformDispatcher` handler returns the previous handler's answer, so a reporter that returns `false` to let the native crash reporter take over keeps that behaviour; with no previous handler it returns `true` (handled), as before install.
 
-The `PlatformDispatcher.onError` handler returns `_previousPlatformOnError?.call(...) ?? true`.
-When a previously-registered handler (e.g. Sentry) returns `false` to signal a fatal error and let
-the native crash reporter take over, crumbs preserves that semantics. When no previous handler
-exists, the default `true` (handled) matches pre-install behavior.
+`uninstall()` restores both handlers to exactly what they held before `install()`; a second `install()` is a no-op.
 
-On `uninstall()`, both handlers are restored to exactly the values they held before `install()` was
-called. Calling `install()` while already installed is a no-op.
-
-Registration (opt-in; add after `CrumbsPlugin.install()`):
+To coexist with Sentry, initialise Sentry first: the watcher wraps the handlers that already exist, so a reporter installed after crumbs keeps receiving errors only if it chains as well.
 
 ```dart
-CrumbsPlugin.install();
-CrumbsPlugin.registerWatcher(ExceptionWatcher());
-```
-
-Coexistence with Sentry (the chain-preserve contract means order matters; install Sentry first):
-
-```dart
-SentryFlutter.init((_) {});         // registers FlutterError.onError + PlatformDispatcher.onError
+// sentryDsn is the host's; SentryFlutter.init sets both error hooks.
+await SentryFlutter.init((options) => options.dsn = sentryDsn);
 if (kDebugMode) {
-  CrumbsPlugin.install();        // wraps Sentry's handlers; Sentry still fires
+  CrumbsPlugin.install();
+  CrumbsPlugin.registerWatcher(ExceptionWatcher()); // wraps Sentry's handlers; Sentry still fires
 }
 ```
-
----
 
 ### DumpWatcher
 
@@ -143,32 +121,20 @@ if (kDebugMode) {
 |---|---|
 | Contract | `CrumbsWatcher` |
 | Name | `dump` |
-| Auto-install | No (opt-in via `CrumbsPlugin.registerWatcher(DumpWatcher())`) |
-| Ring buffer | `CrumbsStore._dumps` |
+| Installed by | `CrumbsPlugin.registerWatcher(DumpWatcher())` (written by `crumbs:install`) |
+| Buffer | `CrumbsKind.dumps` |
 | VM extension | `ext.crumbs.dumps` |
-| Opt-out | Do not register it; it is never auto-installed |
 
-Captures all `debugPrint` output by replacing the global `debugPrint` callback with an interceptor.
-The interceptor records a `DumpRecord` AND calls the previous `debugPrint` value (chain-preserve).
-On `uninstall()`, the previous callback is restored exactly.
+Replaces the global `debugPrint` callback with an interceptor that records a `DumpRecord` and calls the previous callback. `uninstall()` restores the previous callback exactly. `print()` does not go through `debugPrint` and is not captured.
 
-Internal `kDebugMode` gate: `install()` is a no-op in release builds unless `allowInRelease` is set
-to `true` before calling `install()`. This gate is load-bearing: in release builds `debugPrint`
-itself is a no-op, so capture would produce empty records; the gate makes the intent explicit and
-ensures AOT tree-shaking eliminates the interceptor.
-
-Registration:
+`install()` is a no-op outside a debug build unless `allowInRelease` is set to `true` before it runs.
 
 ```dart
 if (kDebugMode) {
   CrumbsPlugin.install();
-  CrumbsPlugin.registerWatcher(DumpWatcher()); // opt-in
+  CrumbsPlugin.registerWatcher(DumpWatcher());
 }
 ```
-
-Opt-out: simply omit the `registerWatcher(DumpWatcher())` call.
-
----
 
 ### FramePerfWatcher
 
@@ -176,60 +142,36 @@ Opt-out: simply omit the `registerWatcher(DumpWatcher())` call.
 |---|---|
 | Contract | `CrumbsWatcher` |
 | Name | `frame_perf` |
-| Auto-install | No (opt-in via `CrumbsPlugin.registerWatcher(FramePerfWatcher())`) |
-| Ring buffer | `CrumbsStore._framePerf` |
+| Installed by | `CrumbsPlugin.registerWatcher(FramePerfWatcher())`, never automatically |
+| Buffer | `CrumbsKind.framePerf` |
 | VM extension | `ext.crumbs.frames` |
-| Opt-out | Do not register it; it is never auto-installed |
 
-Joins two sources the engine reports separately: frame magnitude from
-`SchedulerBinding.addTimingsCallback`, and per-frame attribution drained from `FlutterTimeline` at
-the end of every frame. The two arrive at different times, so the drain parks its block map in a
-bounded pending map and the timings callback pops the matching map to emit one complete
-`FramePerfRecord` per `FrameTiming`.
-
-`addTimingsCallback` appends to a list rather than replacing a single global slot, so there is
-nothing to chain-preserve here: every other listener (sentry_flutter's among them) keeps receiving
-timings while this watcher is installed. A static `livenessCounter`, incremented once per drawn
-frame regardless of whether a measurement session is running, is the only reliable proof the
-engine is rendering; it is exposed alongside every `ext.crumbs.frames` response.
-
-Attribution only flows while `FlutterTimeline.debugCollectionEnabled` is true. Until a measurement
-session turns that on, the watcher records frame magnitude alone and every record's `blocks` map
-is empty.
-
-Registration:
+Joins frame magnitude from `SchedulerBinding.addTimingsCallback` with per-frame attribution drained from `FlutterTimeline`, and exposes a static `livenessCounter` with every `ext.crumbs.frames` answer. See [FramePerfWatcher](frames.md) for liveness, attribution and the clock.
 
 ```dart
-if (kDebugMode) {
+if (!kReleaseMode) {
   CrumbsPlugin.install();
-  CrumbsPlugin.registerWatcher(FramePerfWatcher()); // opt-in
+  CrumbsPlugin.registerWatcher(FramePerfWatcher());
 }
 ```
 
-Opt-out: simply omit the `registerWatcher(FramePerfWatcher())` call.
-
----
-
+<a name="http-adapters"></a>
 ## HTTP adapters
 
-HTTP adapters implement `CrumbsHttpAdapter` (three methods: `name`, `install`, `uninstall`, plus
-the optional `pendingCount` getter). They feed `CrumbsStore.recordHttp` and their in-flight
-counts sum into `CrumbsStore.pendingHttpCount` (consumed by Tapir's `wait_for_network_idle`).
+HTTP adapters implement `CrumbsHttpAdapter`: `name`, `install` and `uninstall`, plus an optional `pendingCount` getter. They feed `CrumbsStore.recordHttp`, and their in-flight counts add up in `CrumbsStore.pendingHttpCount`, which tapir's `wait_for_network_idle` reads. Register an adapter with `CrumbsPlugin.registerHttpAdapter()`, which calls its `install()` at once.
 
+<a name="credential-redaction"></a>
 ### Credential redaction
 
-The HTTP buffer is served to AI agents over `ext.crumbs.requests` and MCP, so
-`CrumbsStore.recordHttp` masks credentials before it buffers a record, and `onHttpRecord`
-subscribers receive the masked copy too. The model is Laravel Telescope's: three name lists,
-matched case-insensitively, each value under a matching name replaced with `********`.
+The HTTP buffer is served to AI agents, so `CrumbsStore.recordHttp` masks credentials before it buffers a record, and `onHttpRecord` subscribers receive the masked copy too. The model is Laravel Telescope's: three name lists, matched case-insensitively, each value under a matching name replaced with `********`.
 
 | List | Applies to | Defaults |
 |---|---|---|
 | Request headers | `requestHeaders` | `authorization`, `proxy-authorization`, `cookie`, `set-cookie`, `x-api-key` |
-| Request parameters | keys of a JSON `requestBody`, at any depth | `password`, `password_confirmation`, `current_password`, `new_password`, `token`, `access_token`, `refresh_token`, `secret`, `client_secret`, `authorization_code`, `id_token`, `two_factor_token`, `recovery_code` |
-| Response parameters | keys of a JSON `responseBody`, at any depth | `token`, `access_token`, `refresh_token`, `plain_text_token`, `secret`, `client_secret`, `id_token`, `two_factor_token`, `recovery_codes`, `qr_url`, `qr_svg` |
+| Request parameters | keys of a JSON or form `requestBody`, at any depth | `password`, `password_confirmation`, `current_password`, `new_password`, `token`, `access_token`, `refresh_token`, `secret`, `client_secret`, `authorization_code`, `id_token`, `two_factor_token`, `recovery_code` |
+| Response parameters | keys of a JSON or form `responseBody`, at any depth | `token`, `access_token`, `refresh_token`, `plain_text_token`, `secret`, `client_secret`, `id_token`, `two_factor_token`, `recovery_codes`, `qr_url`, `qr_svg` |
 
-Extend a list at install time; an addition merges with the defaults, it never replaces them:
+Extend a list at install time; an addition merges with the defaults and never replaces them:
 
 ```dart
 CrumbsRedaction.hideRequestHeaders(['X-Auth']);
@@ -237,16 +179,9 @@ CrumbsRedaction.hideRequestParameters(['pin']);
 CrumbsRedaction.hideResponseParameters(['recovery_codes']);
 ```
 
-An empty value (null, `false`, `''`, `[]`, `{}`) stays visible: it is not a secret, and it explains a
-validation failure. A subtree nested deeper than 64 levels is masked whole, which keeps
-`recordHttp` from overflowing the stack on a pathological body. A bare list with no key (recovery
-codes returned directly under `data`, for example) has nothing to match and is not masked.
+An empty value (null, `false`, `''`, `[]`, `{}`) stays visible: it is not a secret, and it explains a validation failure. A subtree nested deeper than 64 levels is masked whole, which keeps `recordHttp` from overflowing the stack on a pathological body. A bare list with no key (recovery codes returned directly under `data`, for example) has nothing to match and is not masked.
 
-The store reads bodies that parse as a JSON object or array, and form-encoded bodies
-(`grant_type=password&password=...`), where only the value of a matching pair changes and a bracketed
-key (`user[password]`, `codes[]`) matches on its last part; anything else
-(plain text, a truncated JSON snippet, a Dart `Map.toString()`) is buffered as the adapter handed it
-over. An adapter must therefore mask a body before it stringifies or truncates it:
+The store reads bodies that parse as a JSON object or array, and form-encoded bodies (`grant_type=password&password=...`), where only the value of a matching pair changes and a bracketed key (`user[password]`, `codes[]`) matches on its last part. Anything else (plain text, a truncated JSON snippet, a Dart `Map.toString()`) is buffered as the adapter handed it over, so an adapter masks a body before it stringifies or truncates it:
 
 ```dart
 // A body held as a Dart structure.
@@ -262,11 +197,7 @@ final String? safeText = CrumbsRedaction.redactBody(
 );
 ```
 
-Both return a masked copy and never mutate their input.
-
-Beyond these name lists, a host can set `CrumbsRedaction.redactor` to run its own text redactor over
-every field of the log, event, exception and HTTP records, after the key masking above; a redactor that
-throws drops the record. See [Redaction](../getting-started/redaction.md).
+Both return a masked copy and never mutate their input. Beyond these lists, a host can set `CrumbsRedaction.redactor` to run its own text redactor over every field of the log, event, exception and HTTP records, after the key masking; a redactor that throws drops the record. See [Redaction](../getting-started/redaction.md).
 
 ### DioHttpAdapter
 
@@ -274,44 +205,31 @@ throws drops the record. See [Redaction](../getting-started/redaction.md).
 |---|---|
 | Contract | `CrumbsHttpAdapter` |
 | Name | `dio` |
-| Auto-install | No (opt-in via `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter())`) |
-| Ring buffer | `CrumbsStore._http` |
+| Installed by | Your Dio interceptor, which calls `DioHttpAdapter.recordRequest()` |
+| Buffer | `CrumbsKind.http` |
 | VM extension | `ext.crumbs.requests` |
-| Opt-out | Do not register it |
 
-Vanilla Dio adapter for Flutter apps that use raw Dio instances (not the Magic Http facade). V1
-ships as a stub: the actual Dio interceptor subclass requires `package:dio`, which is not in
-crumbs's own pubspec to keep the core package HTTP-library-agnostic. The consumer adds `package:dio`
-to their own pubspec and wires the adapter by calling the static helper:
+crumbs does not depend on `dio`, so `DioHttpAdapter` hooks nothing itself: its `install()` and `uninstall()` are empty and its `pendingCount` is 0. The app adds `dio`, writes an interceptor, and records each response through the static `DioHttpAdapter.recordRequest()`, which goes through `recordHttp` and its credential masking like any adapter:
 
 ```dart
-// consumer pubspec: dio: ^5.x
 import 'package:crumbs/crumbs.dart';
+import 'package:dio/dio.dart';
 
-// After constructing your Dio instance:
-dio.interceptors.add(_MyCrumbsInterceptor());
-
-class _MyCrumbsInterceptor extends Interceptor {
+class CrumbsDioInterceptor extends Interceptor {
   @override
-  void onResponse(Response response, ResponseInterceptorHandler handler) {
+  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
     DioHttpAdapter.recordRequest(
       url: response.requestOptions.uri.toString(),
       method: response.requestOptions.method,
       statusCode: response.statusCode ?? 0,
-      durationMs: ...,
+      durationMs: 0, // time the request in onRequest for a real duration
     );
     handler.next(response);
   }
 }
-
-// Register so the adapter shows up in the store's adapter list:
-CrumbsPlugin.registerHttpAdapter(DioHttpAdapter());
 ```
 
-V1.x will move the Dio-coupled glue into a `crumbs_dio` sub-package so the core stays
-HTTP-library-agnostic.
-
----
+Add it with `dio.interceptors.add(CrumbsDioInterceptor())`. The bundled `example/` app has a complete interceptor that times each request and records errors. `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter())` only lists the adapter in the registry; it is optional.
 
 ### MagicHttpFacadeAdapter
 
@@ -319,220 +237,57 @@ HTTP-library-agnostic.
 |---|---|
 | Contract | `CrumbsHttpAdapter` |
 | Name | `magic_http_facade` |
-| Auto-install | Yes (registered by `MagicCrumbsIntegration.install()`) |
-| Ring buffer | `CrumbsStore._http` |
+| Package | `magic_devtools` (`package:magic_devtools/crumbs.dart`) |
+| Installed by | `MagicCrumbsIntegration.install()` |
+| Buffer | `CrumbsKind.http` |
 | VM extension | `ext.crumbs.requests` |
-| Opt-out | Call `CrumbsPlugin.install()` without calling `MagicCrumbsIntegration.install()` |
 
-Captures every request flowing through Magic's `network` driver by registering a
-`MagicNetworkInterceptor` on the driver. The interceptor pairs `onRequest` (start stopwatch) with
-`onResponse`/`onError` (stop stopwatch, emit `HttpRequestRecord`) via a FIFO in-flight list.
+Captures every request through Magic's `network` driver by registering a `MagicNetworkInterceptor` that pairs `onRequest` with `onResponse` or `onError` through a FIFO in-flight list. The pairing is by call order, since the interceptor contract carries no correlation handle, so records carry `attributedHeuristically: true`. `pendingCount` is the length of that in-flight list.
 
-Attribution is heuristic (`attributedHeuristically: true`) because the `MagicNetworkInterceptor`
-contract does not carry a correlation handle across `onRequest`/`onResponse` callbacks; best-effort
-matching by call order.
+The adapter masks request and response bodies before it truncates them, and `MagicCrumbsIntegration.install()` hides the header named by Magic's `auth.token.header` config (default `Authorization`) on top of the defaults. Its `install()` registers nothing while the `network` driver is not bound, so call `MagicCrumbsIntegration.install()` after `Magic.init()`.
 
-`pendingCount` returns the current length of the in-flight FIFO, surfaced into
-`CrumbsStore.pendingHttpCount` for Tapir's network-idle detection.
-
-The adapter masks request and response bodies before it truncates them
-(`CrumbsRedaction.redactParameters` for a Dart structure, `redactBody` for a JSON or form-encoded string), and
-`MagicCrumbsIntegration.install()` hides the header named by magic's `auth.token.header` config
-(default `Authorization`) in addition to the defaults. See
-[Credential redaction](#credential-redaction).
-
-Registration (via `MagicCrumbsIntegration`, the only documented entry point; ships in
-`magic_devtools` via `import 'package:magic_devtools/crumbs.dart'`):
-
-```dart
-import 'package:magic_devtools/crumbs.dart';
-
-if (kDebugMode) {
-  CrumbsPlugin.install();
-  MagicCrumbsIntegration.install(); // registers MagicHttpFacadeAdapter + 5 watchers
-}
-```
-
-`install()` is a no-op if `Magic.bound('network')` returns false (called too early, before
-`Magic.init()` completes). Call `MagicCrumbsIntegration.install()` after `Magic.init()`.
-
----
-
+<a name="magic-stack-watchers"></a>
 ## Magic-stack watchers
 
-These five watchers are shipped inside the `magic_devtools` package via `MagicCrumbsIntegration`.
-They are not part of the `crumbs` core and are not part of the `magic` core package.
-All five are registered by a single `MagicCrumbsIntegration.install()` call. Add `magic_devtools`
-to `dev_dependencies` and import `package:magic_devtools/crumbs.dart` to use them.
-
-### MagicModelWatcher
-
-| Field | Value |
-|---|---|
-| Contract | `CrumbsWatcher` |
-| Name | `magic_model` |
-| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
-| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
-| Ring buffer | `CrumbsStore._models` |
-| VM extension | `ext.crumbs.requests` (via models key; MCP tool: `crumbs_models`) |
-| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
-
-Subscribes to `ModelCreated`, `ModelSaved`, and `ModelDeleted` events dispatched by Magic's
-`EventDispatcher`. Each event is converted to a `MagicModelRecord` carrying: `modelClass` (runtime
-type name), `event` tag (`created`/`saved`/`deleted`), `modelKey` (stringified primary key), `time`,
-and `attributes` (snapshot of `model.attributes` at capture time).
-
-Registration:
+These watchers ship in `magic_devtools`, not in `crumbs` and not in `magic` core, and one `MagicCrumbsIntegration.install()` call after `Magic.init()` registers all of them with `MagicHttpFacadeAdapter`:
 
 ```dart
 import 'package:magic_devtools/crumbs.dart';
 
 if (kDebugMode) {
-  CrumbsPlugin.install();
-  MagicCrumbsIntegration.install(); // MagicModelWatcher is included
+  MagicCrumbsIntegration.install(); // after Magic.init()
 }
 ```
 
-`uninstall()` is a no-op: `EventDispatcher` has no per-listener removal API. Tests that need a
-clean dispatcher call `EventDispatcher.instance.clear()` in their `setUp`.
+`package:magic_devtools/crumbs.dart` exists only in a `magic_devtools` release built on crumbs. `crumbs:install` writes these lines when the resolved `magic_devtools` ships it, and warns and skips them otherwise. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
 
----
+| Watcher | Name | Subscribes to | Record |
+|:--------|:-----|:--------------|:-------|
+| `MagicModelWatcher` | `magic_model` | `ModelCreated`, `ModelSaved`, `ModelDeleted` | `MagicModelRecord`: `modelClass`, `event` (`created`, `saved`, `deleted`), `modelKey`, `time`, a snapshot of `attributes` |
+| `MagicCacheWatcher` | `magic_cache` | `CacheHit`, `CacheMiss`, `CachePut`, `CacheForget`, `CacheFlush` | `MagicCacheRecord`: `operation`, `key` (`*` for a flush), `time`, `ttl` on a put |
+| `MagicEventWatcher` | `magic_event` | `AuthLogin`, `AuthLogout`, `AuthFailed`, `AuthRestored`, `DatabaseConnected`, `GateAbilityDefined`, `GateBeforeRegistered` | `EventRecord` with an empty `payload`; model and gate-result events stay with their own watchers |
+| `MagicGateWatcher` | `magic_gate` | `GateAccessChecked` (covers allows and denies; `GateAccessDenied` is skipped to avoid a double record) | `GateRecord`: `ability`, `result`, `arguments` (the single argument wrapped in a list), `userId` (stringified, null without a user) |
+| `MagicQueryWatcher` | `magic_query` | `QueryExecuted`, dispatched by the query builder after every SQL run | `QueryRecord`: `sql`, `bindings`, `timeMs`, `connectionName`, `time` |
 
-### MagicCacheWatcher
+The model buffer has no extension and no MCP tool: read it in the app through `CrumbsStore.recentModels()` or `CrumbsStore.onModelRecord`.
 
-| Field | Value |
-|---|---|
-| Contract | `CrumbsWatcher` |
-| Name | `magic_cache` |
-| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
-| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
-| Ring buffer | `CrumbsStore._caches` |
-| VM extension | `ext.crumbs.caches` |
-| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
+<a name="gotchas"></a>
+## Gotchas
 
-Subscribes to five cache lifecycle events emitted by Magic's `CacheManager`: `CacheHit`, `CacheMiss`,
-`CachePut`, `CacheForget`, and `CacheFlush`. Each event is converted to a `MagicCacheRecord` carrying
-`operation` (`hit`/`miss`/`put`/`forget`/`flush`), `key` (or `*` for flush), `time`, and `ttl`
-(present only for `CachePut`).
+| Mistake | Fix |
+|:--------|:----|
+| `crumbs_exceptions` stays empty after a crash. | Register `ExceptionWatcher`; `CrumbsPlugin.install()` installs only `LogWatcher`. |
+| Sentry stops receiving errors. | Initialise Sentry before registering `ExceptionWatcher`, so crumbs chains to it. |
+| `crumbs_dumps` is empty in a profile build. | `DumpWatcher` installs only in debug builds; set `allowInRelease` before `registerWatcher` to capture in profile. |
+| `print()` output is missing from the dump buffer. | Use `debugPrint`; `print` bypasses the hook `DumpWatcher` replaces. |
+| Dio traffic does not show up. | Add an interceptor that calls `DioHttpAdapter.recordRequest()`; registering `DioHttpAdapter` alone hooks nothing. |
+| `crumbs_frames` answers an empty list. | Register `FramePerfWatcher`; a `livenessCounter` that does not advance means it is missing or the engine draws nothing. |
+| The Magic buffers stay empty. | Call `MagicCrumbsIntegration.install()` after `Magic.init()`, from a `magic_devtools` release built on crumbs. |
 
-Registration:
+<a name="related-documentation"></a>
+## Related Documentation
 
-```dart
-import 'package:magic_devtools/crumbs.dart';
-
-if (kDebugMode) {
-  CrumbsPlugin.install();
-  MagicCrumbsIntegration.install(); // MagicCacheWatcher is included
-}
-```
-
-`uninstall()` is a no-op (same `EventDispatcher` constraint as `MagicModelWatcher`).
-
----
-
-### MagicEventWatcher
-
-| Field | Value |
-|---|---|
-| Contract | `CrumbsWatcher` |
-| Name | `magic_event` |
-| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
-| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
-| Ring buffer | `CrumbsStore._events` |
-| VM extension | `ext.crumbs.events` |
-| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
-
-Subscribes to a curated set of Magic app-lifecycle events: `AuthLogin`, `AuthLogout`, `AuthFailed`,
-`AuthRestored` (auth lifecycle), `DatabaseConnected` (database connection), and `GateAbilityDefined`,
-`GateBeforeRegistered` (gate definition). Model lifecycle events are excluded (owned by
-`MagicModelWatcher`) and gate-result events are excluded (owned by `MagicGateWatcher`) to keep each
-record on a single channel.
-
-Current payload is the empty map for every event type. Per-event field extraction is deferred to a
-follow-up release while the `EventRecord` wire shape stabilises.
-
-Registration:
-
-```dart
-import 'package:magic_devtools/crumbs.dart';
-
-if (kDebugMode) {
-  CrumbsPlugin.install();
-  MagicCrumbsIntegration.install(); // MagicEventWatcher is included
-}
-```
-
-`uninstall()` is a no-op (same `EventDispatcher` constraint).
-
----
-
-### MagicGateWatcher
-
-| Field | Value |
-|---|---|
-| Contract | `CrumbsWatcher` |
-| Name | `magic_gate` |
-| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
-| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
-| Ring buffer | `CrumbsStore._gates` |
-| VM extension | `ext.crumbs.gates` |
-| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
-
-Subscribes to `GateAccessChecked`, which covers both `Gate.allows` and `Gate.denies` outcomes via
-its `allowed: bool` field. `GateAccessDenied` is intentionally not subscribed to avoid
-double-recording every denial.
-
-Each event is converted to a `GateRecord` with two shape coercions:
-- `arguments` (single dynamic on the event) is wrapped into `List<Object?>` of length 1.
-- `user.id` (dynamic primary key) is stringified; null user or null id both collapse to
-  `userId: null`.
-
-Magic model arguments are converted via `toMap()`; primitives and collections pass through as-is;
-anything else falls back to `toString()`.
-
-Registration:
-
-```dart
-import 'package:magic_devtools/crumbs.dart';
-
-if (kDebugMode) {
-  CrumbsPlugin.install();
-  MagicCrumbsIntegration.install(); // MagicGateWatcher is included
-}
-```
-
-`uninstall()` is a no-op (same `EventDispatcher` constraint).
-
----
-
-### MagicQueryWatcher
-
-| Field | Value |
-|---|---|
-| Contract | `CrumbsWatcher` |
-| Name | `magic_query` |
-| Package | `magic_devtools` (import `package:magic_devtools/crumbs.dart`) |
-| Auto-install | Yes (via `MagicCrumbsIntegration.install()`) |
-| Ring buffer | `CrumbsStore._queries` |
-| VM extension | `ext.crumbs.queries` |
-| Opt-out | Do not call `MagicCrumbsIntegration.install()` |
-
-Subscribes to `QueryExecuted`, dispatched by Magic's `QueryBuilder` after every SQL run. Each event
-is converted to a `QueryRecord` carrying: `sql` (the full SQL string), `bindings` (parameter list),
-`timeMs` (execution duration in milliseconds), `connectionName` (driver connection identifier), and
-`time` (capture timestamp).
-
-Surfaced via the `crumbs:queries` CLI command and the `crumbs_queries` MCP tool.
-
-Registration:
-
-```dart
-import 'package:magic_devtools/crumbs.dart';
-
-if (kDebugMode) {
-  CrumbsPlugin.install();
-  MagicCrumbsIntegration.install(); // MagicQueryWatcher is included
-}
-```
-
-`uninstall()` is a no-op (same `EventDispatcher` constraint as the other Magic-stack watchers).
+- [FramePerfWatcher](frames.md): liveness, attribution and the frame clock.
+- [Redaction](../getting-started/redaction.md): the text redactor and the `redacted` flag.
+- [Installation](../getting-started/installation.md): where each watcher is registered in `main.dart`.
+- [Tool reference](../mcp/tool-reference.md): the output shape of each buffer over MCP.

@@ -1,24 +1,31 @@
 # File sink
 
-The ring buffers live in memory and reset on every launch. `CrumbsFileSink` keeps a timeline on disk: a
-rotating set of JSONL files holding the log, event and exception records, readable through the VM
-service, the `crumbs:files` command, or any tool that reads the directory.
+`CrumbsFileSink` keeps a timeline on disk that outlives the in-memory buffers: a rotating set of JSONL files of the redacted log, event and exception records, read back through the VM Service, `crumbs:files`, or any tool that reads the directory.
 
-The package looks up no directory. The host passes one, so it chooses where the files live (an app
-support directory, a temp directory, a path inside a test sandbox).
+The package looks up no directory. The host passes one, so it chooses where the files live (an app support directory, a temp directory, a path inside a test sandbox). The sink writes through `dart:io`, so it is not available on the web.
 
+- [Start and stop](#start-and-stop)
+- [What is written](#what-is-written)
+- [Fail closed](#fail-closed)
+- [Write failures](#write-failures)
+- [Reading it back](#reading-it-back)
+- [Related Documentation](#related-documentation)
+
+<a name="start-and-stop"></a>
 ## Start and stop
 
 ```dart
 import 'package:crumbs/crumbs.dart';
 
-CrumbsRedaction.redactor = maskSecrets; // required, see "Fail closed"
-CrumbsPlugin.install();
-await CrumbsFileSink.start(
-  directory: '${supportDir.path}/crumbs',
-  maxFileBytes: 1048576, // default: 1 MiB per file
-  maxFiles: 8,           // default: keep 8 timeline files
-);
+Future<void> startTimeline(String supportPath, String Function(String) maskSecrets) async {
+  CrumbsRedaction.redactor = maskSecrets; // required, see "Fail closed"
+  CrumbsPlugin.install();
+  await CrumbsFileSink.start(
+    directory: '$supportPath/crumbs',
+    maxFileBytes: 1048576, // default: 1 MiB per file
+    maxFiles: 8, // default: keep 8 timeline files
+  );
+}
 ```
 
 | Member | Meaning |
@@ -36,6 +43,7 @@ await CrumbsFileSink.start(
 `maxFileBytes` must be at least 1 and `maxFiles` at least 1. A single line larger than `maxFileBytes` still
 gets a file of its own.
 
+<a name="what-is-written"></a>
 ## What is written
 
 Every record from `onLogRecord`, `onEventRecord` and `onExceptionRecord` becomes one line:
@@ -55,6 +63,7 @@ The stamp has second precision, so a sink started again within the same second (
 one runs) names the file of the sink it replaced. The new sink appends to that file and counts its existing
 bytes toward `maxFileBytes`; it never truncates it.
 
+<a name="fail-closed"></a>
 ## Fail closed
 
 The sink writes only redacted records. A record whose `redacted` flag is false, which means it was buffered
@@ -62,6 +71,7 @@ while no `CrumbsRedaction.redactor` was registered, is never written and is coun
 `droppedUnredacted`. Register the redactor before the sink starts (see [Redaction](redaction.md)); with
 none registered the sink stays empty and the counter climbs.
 
+<a name="write-failures"></a>
 ## Write failures
 
 A batch write that no caller awaits (the 64-line or 500 ms flush) and that fails does not raise into the
@@ -69,6 +79,7 @@ zone, where an exception watcher would record it and the sink would accept that 
 counts the failure in `writeFailures`, stops writing, and is no longer `current`. Start it again once the
 cause is fixed. A failure inside an awaited `flush()` is thrown to the caller instead.
 
+<a name="reading-it-back"></a>
 ## Reading it back
 
 `files()` and `read()` expose the timeline files in the directory and nothing else. `read` compares `name`
@@ -109,3 +120,10 @@ through the CLI or the VM service directly.
 Printing a file ends with `next offset: <n>`, shown at `-v` only, so pass `-v` to page through a long file.
 An empty directory prints `No timeline files.` and exits 0. When no sink runs the command prints the
 extension's error message, not a stack, and exits 1.
+
+<a name="related-documentation"></a>
+## Related Documentation
+
+- [Redaction](redaction.md): the redactor the sink depends on, and the `redacted` flag.
+- [Buffers](buffers.md): the in-memory buffers the sink subscribes to.
+- [Cursor and filters](../mcp/cursor-and-filters.md): follow a buffer live instead of reading a file.

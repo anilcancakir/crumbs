@@ -1,196 +1,219 @@
 # Installation
 
-- [Requirements](#requirements)
-- [Option A: one-shot install via dowel](#option-a-one-shot-install)
-- [Option B: manual wiring](#option-b-manual-wiring)
-- [Wire the Dowel provider](#wire-the-dowel-provider)
-- [Verify installation](#verify-installation)
+Add `crumbs` to a Flutter app, install it behind a call-site guard, register it with dowel, and optionally write the MCP entry for your AI client.
 
-`crumbs` works from a fresh Flutter project. The recommended install path
-uses crumbs's own bootstrap entry point (`dart run crumbs crumbs:install`)
-which carries the dowel substrate, so no prior `dowel` setup is required.
+The recommended path is one command, `dart run crumbs crumbs:install`, which patches `lib/main.dart` and registers the plugin with dowel; the manual route is described step by step below.
+
+- [Quick Reference](#quick-reference)
+- [Requirements](#requirements)
+- [Run the installer](#run-the-installer)
+- [Manual wiring](#manual-wiring)
+- [Register with dowel](#register-with-dowel)
+- [Wire MCP tools](#wire-mcp-tools)
+- [Verify installation](#verify-installation)
+- [Gotchas](#gotchas)
+- [Related Documentation](#related-documentation)
+
+<a name="quick-reference"></a>
+## Quick Reference
+
+| Step | Command | Result |
+|:-----|:--------|:-------|
+| 1. Add the package | `flutter pub add crumbs` | `crumbs` is a dependency; `dowel` comes with it. |
+| 2. Wire the app | `dart run crumbs crumbs:install` | The dowel harness exists, crumbs is a registered plugin, and `lib/main.dart` installs crumbs in a `kDebugMode` block. |
+| 3. Register the MCP server (optional) | `dart run crumbs mcp:install` | A `dowel` entry in `.mcp.json` at the project root. |
+| 4. Start the app | `dart run crumbs start --device=chrome` | dowel records the session every `crumbs:*` command dials. |
+| 5. Read a buffer | `dart run crumbs crumbs:tail` | The newest log records of the running app. |
 
 <a name="requirements"></a>
 ## Requirements
 
-| Dependency | Minimum Version | Notes |
-|:-----------|:----------------|:------|
-| Dart SDK | `>= 3.4.0` | |
-| Flutter SDK | `>= 3.22.0` | VM Service extensions require the Flutter runtime. |
-| dowel | `^0.0.20` | Pulled in transitively by crumbs; no manual setup needed for the install path. |
-| Magic stack | optional | Enables 6 additional Magic-specific watchers. |
+`crumbs` is a Flutter package: the VM Service extensions register inside a running Flutter app, so a pure Dart program is not supported.
 
-<a name="option-a-one-shot-install"></a>
-## Option A: one-shot self-bootstrap install (recommended)
+| Dependency | Minimum | Notes |
+|:-----------|:--------|:------|
+| Dart | `3.13` | |
+| Flutter | `3.47` | |
+| dowel | `^0.0.21` | A dependency of crumbs; add it as a direct dependency (`dart pub add dowel`) when the app runs its own dowel commands. |
 
-Add `crumbs` to your project, then bootstrap via crumbs's own CLI entry
-point. The standalone binary carries the dowel substrate, so this works from a completely
-fresh consumer with no prior `dowel` wiring:
+<a name="run-the-installer"></a>
+## Run the installer
 
 ```bash
 flutter pub add crumbs
 dart run crumbs crumbs:install
 ```
 
-`flutter pub add` writes the dependency to `pubspec.yaml` and runs `dart pub get` in one
-step. The `dart run` line then invokes crumbs's standalone CLI to scaffold and patch
-the consumer.
+`dart run crumbs` is crumbs's own entry point: it carries the whole dowel CLI plus the crumbs commands, so the installer works on a project that has no dowel setup yet. It runs three steps in order:
 
-The command performs three operations in order:
+1. When `bin/dispatcher.dart` is missing, it runs `dart run crumbs install`, which scaffolds the dowel harness: `bin/dispatcher.dart`, the fast `./bin/dowel` launcher and the codegen barrels under `lib/app/`. A project that already has the dispatcher skips this step.
+2. It runs `dart run crumbs plugin:install crumbs`, which records crumbs in `.dowel/plugins.json` and regenerates `lib/app/_plugins.g.dart`.
+3. It patches `lib/main.dart`: the `kDebugMode` and `package:crumbs/crumbs.dart` imports, `WidgetsFlutterBinding.ensureInitialized()` when missing, and a `kDebugMode` block with `CrumbsPlugin.install()` and the exception and dump watchers. The block lands before `await Magic.init(` on a Magic app, so `ExceptionWatcher` sees boot errors, and before `runApp(` otherwise. Without a `lib/main.dart` the step is skipped with a message.
 
-1. Scaffolds the consumer dowel harness (`bin/dispatcher.dart`, `lib/app/_plugins.g.dart`)
-   if it is missing. This is a no-op when the harness is already present.
-2. Runs `plugin:install crumbs`, which registers `CrumbsDowelProvider`
-   in `.dowel/plugins.json` and refreshes the codegen barrel.
-3. Patches `lib/main.dart` to call `CrumbsPlugin.install()` before `runApp`. When the
-   consumer's `pubspec.yaml` lists `magic_devtools:` (as a dependency or dev_dependency) and
-   `lib/main.dart` contains `await Magic.init(`, the patch also injects
-   `import 'package:magic_devtools/crumbs.dart';` plus a `MagicCrumbsIntegration.install()`
-   block after `Magic.init()`. All patches are wrapped in a `kDebugMode` guard automatically.
+On a Magic app whose `pubspec.yaml` lists `magic_devtools`, step 3 also adds `import 'package:magic_devtools/crumbs.dart';` and a `kDebugMode` block with `MagicCrumbsIntegration.install()` after `Magic.init()`. That library exists only in a `magic_devtools` release built on crumbs, so the installer writes these lines only when the resolved `magic_devtools` ships it; with an older release it warns and leaves the Magic lines out.
 
-The command is idempotent. Re-running it when the files are already patched is safe.
+Every step is idempotent: re-running `crumbs:install` changes nothing.
 
-### After install: prefer the dowel fast-cli
+<a name="manual-wiring"></a>
+## Manual wiring
 
-The dowel scaffold ships a precompiled launcher at `./bin/dowel` (native AOT, ~110ms warm
-startup). For everyday crumbs work, use it instead of `dart run`:
-
-```bash
-./bin/dowel crumbs:tail
-./bin/dowel crumbs:requests
-./bin/dowel crumbs:clear
-```
-
-`dart run crumbs <cmd>` and `dart run dowel <cmd>` keep working
-as ~3-second cold-start fallbacks; they are useful in CI or before the AOT bundle is built.
-
-<a name="option-b-manual-wiring"></a>
-## Option B: manual wiring
-
-Use this path when you need fine-grained control over the install, or when the automated
-patch cannot locate the correct anchor in `lib/main.dart`.
-
-### 1. Add the dependency
-
-Add `crumbs` to `pubspec.yaml`. For Magic-stack apps, also add `magic_devtools`
-to `dev_dependencies`: that package ships `MagicCrumbsIntegration` and the 5 Magic-specific
-watchers (previously part of the `magic` core package).
-
-```yaml
-dependencies:
-  crumbs: ^0.0.4
-
-# Magic-stack apps only:
-dev_dependencies:
-  magic_devtools: any
-```
-
-Then fetch dependencies:
-
-```bash
-dart pub get
-```
-
-### 2. Wire CrumbsPlugin in lib/main.dart
-
-Install Crumbs before `runApp`, wrapped in a mode guard at the call site. `crumbs:install`
-writes `kDebugMode`; the snippets below use `!kReleaseMode`, which also keeps crumbs in profile
-builds (what a performance measurement needs, and what `magic_devtools` documents). Both tree-shake
-release builds; see [Call-site guard](../watchers/index.md#call-site-guard). When using the Magic
-framework, place the call before `Magic.init()` so the Http facade is wired before
-MagicCrumbsIntegration runs:
+Skip the installer and edit `lib/main.dart` directly. Call `CrumbsPlugin.install()` inside a guard, after `WidgetsFlutterBinding.ensureInitialized()` and before `runApp()`:
 
 ```dart
-import 'package:flutter/foundation.dart';
 import 'package:crumbs/crumbs.dart';
-import 'package:magic_devtools/crumbs.dart'; // magic_devtools dev_dependency (Magic-stack apps only)
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (!kReleaseMode) {
-    // 1. Install Crumbs core (LogWatcher auto-installs, VM extensions register).
-    CrumbsPlugin.install();
-
-    // 2. Opt-in to exception and debugPrint capture.
+  if (kDebugMode) {
+    CrumbsPlugin.install(); // LogWatcher and the ext.crumbs.* extensions.
     CrumbsPlugin.registerWatcher(ExceptionWatcher());
     CrumbsPlugin.registerWatcher(DumpWatcher());
   }
 
-  // 3. Framework init (e.g. Magic.init()) runs after Crumbs so the Http facade
-  //    is wired before MagicCrumbsIntegration tries to wrap it.
-  await Magic.init(configFactories: [...]);
+  runApp(const MyApp()); // MyApp is the host app's root widget.
+}
+```
 
-  if (!kReleaseMode) {
-    // 4. Magic-specific adapters resolve framework internals from the IoC container;
-    //    they must run after Magic.init(). MagicCrumbsIntegration ships in
-    //    magic_devtools; add it to dev_dependencies alongside crumbs.
+`kDebugMode` keeps crumbs in debug builds only; `!kReleaseMode` keeps it in profile builds too, which a frame measurement needs. Both tree-shake a release build; see [Call-site guard](../watchers/index.md#call-site-guard). `CrumbsPlugin.install()` is idempotent, so a hot restart registers each extension once.
+
+On a Magic app, install crumbs before `Magic.init()` and the Magic integration after it, because the integration resolves the Http facade and the event dispatcher from the container:
+
+```dart
+import 'package:crumbs/crumbs.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:magic/magic.dart';
+import 'package:magic_devtools/crumbs.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (kDebugMode) {
+    CrumbsPlugin.install();
+    CrumbsPlugin.registerWatcher(ExceptionWatcher());
+    CrumbsPlugin.registerWatcher(DumpWatcher());
+  }
+
+  await Magic.init(configFactories: appConfigFactories); // The host's config list.
+
+  if (kDebugMode) {
     MagicCrumbsIntegration.install();
   }
 
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 ```
 
-For vanilla Flutter (no Magic stack), omit `Magic.init()` and the
-`MagicCrumbsIntegration.install()` call. Wire `DioHttpAdapter` instead if you use Dio:
+On a vanilla app that uses Dio, route Dio traffic into the HTTP buffer from an interceptor; crumbs has no `dio` dependency, so the interceptor lives in the app (the bundled `example/` app has a complete one):
 
 ```dart
-if (!kReleaseMode) {
-  CrumbsPlugin.install();
-  CrumbsPlugin.registerHttpAdapter(DioHttpAdapter(dio));
-  CrumbsPlugin.registerWatcher(ExceptionWatcher());
-  CrumbsPlugin.registerWatcher(DumpWatcher());
+import 'package:crumbs/crumbs.dart';
+import 'package:dio/dio.dart';
+
+class CrumbsDioInterceptor extends Interceptor {
+  final Map<RequestOptions, Stopwatch> _watches = {};
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    _watches[options] = Stopwatch()..start();
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
+    final options = response.requestOptions;
+    DioHttpAdapter.recordRequest(
+      url: options.uri.toString(),
+      method: options.method,
+      statusCode: response.statusCode ?? 0,
+      durationMs: _watches.remove(options)?.elapsedMilliseconds ?? 0,
+    );
+    handler.next(response);
+  }
 }
 ```
 
-<a name="wire-the-dowel-provider"></a>
-## Wire the Dowel provider
+Add it with `dio.interceptors.add(CrumbsDioInterceptor())`. `CrumbsPlugin.registerHttpAdapter(DioHttpAdapter())` is optional here: `DioHttpAdapter` hooks nothing itself, and `recordRequest` writes to the store either way.
 
-If you used Option A (`crumbs:install`), the provider registration is written
-automatically: `plugin:install crumbs` adds `FluttersdkCrumbsDowelProvider`
-to `lib/app/_plugins.g.dart`, which the scaffolded `bin/dispatcher.dart` reads via
-`plugins.autoDiscoveredProviders()`. No manual edit is required.
+<a name="register-with-dowel"></a>
+## Register with dowel
 
-If you used Option B (manual wiring), import the provider in your `bin/dispatcher.dart`
-yourself:
+`crumbs:install` already does this. `plugin:install crumbs` writes `CrumbsDowelProvider` into `lib/app/_plugins.g.dart`, which the scaffolded `bin/dispatcher.dart` reads through `plugins.autoDiscoveredProviders()`, so `./bin/dowel list` shows the `crumbs:*` commands and `./bin/dowel mcp:serve` serves the `crumbs_*` tools.
+
+To finish a skipped step by hand:
+
+```bash
+dart run crumbs install               # only when bin/dispatcher.dart is missing
+dart run crumbs plugin:install crumbs # idempotent; refreshes the barrel on re-run
+```
+
+A dispatcher wired by hand imports the provider from the Flutter-free `cli.dart` barrel, the same import `plugins:refresh` generates:
 
 ```dart
+import 'dart:io';
+
+import 'package:crumbs/cli.dart' show CrumbsDowelProvider;
 import 'package:dowel/dowel.dart';
-import 'package:crumbs/cli.dart' show FluttersdkCrumbsDowelProvider;
 
 Future<void> main(List<String> args) async {
-  exit(await runDowel(
-    args,
-    baseProviders: [
-      FluttersdkCrumbsDowelProvider(),
-      // ...other providers (TapirDowelProvider, etc.)
-    ],
-  ));
+  exit(
+    await runDowel(
+      args,
+      baseProviders: [CrumbsDowelProvider()],
+      delegateToConsumer: false,
+      collectMcpTools: args.isNotEmpty && args.first == 'mcp:serve',
+    ),
+  );
 }
 ```
+
+<a name="wire-mcp-tools"></a>
+## Wire MCP tools
+
+```bash
+dart run crumbs mcp:install
+```
+
+This writes (or updates) the `dowel` entry in `.mcp.json` at the project root and keeps other entries. With `./bin/dowel` present on a POSIX host the entry runs `./bin/dowel mcp:serve`; otherwise, and always on Windows, it runs `dart run crumbs mcp:serve`. Reconnect the client afterwards (`/mcp reconnect dowel` in Claude Code). See [MCP setup](../mcp/setup.md) for other clients and tool filtering.
 
 <a name="verify-installation"></a>
 ## Verify installation
 
-Start your Flutter app and confirm Crumbs is active by tailing the log buffer:
+Start the app through dowel, so the session (the VM Service URI every `crumbs:*` command dials) is recorded:
+
+```bash
+dart run crumbs start --device=chrome
+```
+
+Then read the log buffer and list the commands:
 
 ```bash
 ./bin/dowel crumbs:tail
-```
-
-Expected output on a running app shows the most recent log records from the ring buffer.
-If you see `Error: no running app found`, the dowel state file is missing: run
-`./bin/dowel start` first, then retry `crumbs:tail`.
-
-To confirm all 11 CLI commands are registered, list the dowel command catalog:
-
-```bash
 ./bin/dowel list
 ```
 
-The output includes the `crumbs:` namespace with `crumbs:install`, `crumbs:tail`,
-`crumbs:requests`, `crumbs:queries`, `crumbs:caches`, `crumbs:events`,
-`crumbs:gates`, `crumbs:dumps`, `crumbs:frames`, and `crumbs:clear`. If
-the fast-cli is missing for any reason, the same commands run via `dart run crumbs list`
-or `dart run dowel list`.
+`crumbs:tail` prints the newest log records; `list` shows the `crumbs:` namespace. `dart run crumbs <command>` runs the same commands when `./bin/dowel` is not built. If a command finds no app, start it with `dart run crumbs start` first; if it finds the app but no `ext.crumbs.*` extension, confirm `CrumbsPlugin.install()` is reachable in `main.dart` and that the app is a debug build (or a profile build under `!kReleaseMode`). Stop the app with `dart run crumbs stop`.
+
+<a name="gotchas"></a>
+## Gotchas
+
+| Mistake | Fix |
+|:--------|:----|
+| `CrumbsPlugin.install()` sits outside a guard. | Wrap it in `if (kDebugMode)` or `if (!kReleaseMode)`; crumbs installs no guard of its own. |
+| The guard sits inside a helper function. | Keep it at the call site in `main()`; the tree-shake depends on it. |
+| `crumbs_exceptions` stays empty after a crash. | Register `ExceptionWatcher`: `CrumbsPlugin.install()` installs only `LogWatcher`. |
+| `MagicCrumbsIntegration.install()` runs before `Magic.init()`. | Call it after `Magic.init()`; the HTTP adapter registers nothing while the network driver is unbound. |
+| The installer warned and wrote no Magic lines. | The resolved `magic_devtools` predates crumbs; upgrade it and rerun `crumbs:install`. |
+| The app was started with a plain `flutter run`. | Start it with `dart run crumbs start`, which records the session the commands dial. |
+| `.mcp.json` points at the wrong launcher. | Rerun `dart run crumbs mcp:install`; it picks the launcher from the scaffold state. |
+
+<a name="related-documentation"></a>
+## Related Documentation
+
+- [Quickstart](quickstart.md): install, start the app and make the first MCP tool call.
+- [Watchers](../watchers/index.md): every watcher and adapter, and the call-site guard.
+- [MCP setup](../mcp/setup.md): client configuration, reconnecting and tool filtering.
+- [Redaction](redaction.md): mask secrets before a record is buffered.
