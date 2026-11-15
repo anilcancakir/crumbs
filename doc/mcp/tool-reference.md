@@ -182,7 +182,7 @@ Use this to debug API issues without a proxy or the network panel of DevTools.
 | `endUs` | integer | no | Monotonic microsecond timestamp (`FlutterTimeline.now` clock) when the response arrived, when tracked |
 | `atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at record construction |
 | `interactionId` | string | no | Correlates this record to others captured during the same logical interaction |
-| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window` |
+| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window`. `window` carries no `interactionId`; match those records by `atUs` falling close together, since each record stamps its own `atUs` when it is built and a nearby value does not prove a shared cause |
 | `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
 
 ### Example Invocations
@@ -321,6 +321,8 @@ back. See [Cursor and filters](cursor-and-filters.md).
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `listenerCount` | integer | no | Number of listeners notified at dispatch time, when available |
 | `atUs` | integer | yes | Monotonic microseconds from `FlutterTimeline.now` |
+| `interactionId` | string | no | Correlates this record to others captured during the same interaction |
+| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window`. `window` carries no `interactionId`; match those records by `atUs` falling close together, since each record stamps its own `atUs` when it is built and a nearby value does not prove a shared cause |
 | `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
 | `cursor` | integer or null | yes (envelope) | Largest `atUs` returned, else the `since` given, else null |
 
@@ -507,7 +509,7 @@ a separate SQL profiler.
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now` |
 | `interactionId` | string | no | Correlates this record to others captured during the same interaction |
-| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window` |
+| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window`. `window` carries no `interactionId`; match those records by `atUs` falling close together, since each record stamps its own `atUs` when it is built and a nearby value does not prove a shared cause |
 
 ### Example Invocations
 
@@ -570,7 +572,7 @@ instrumenting the app.
 | `ttlMs` | integer | no | TTL in milliseconds, when the operation carried one |
 | `atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now` |
 | `interactionId` | string | no | Correlates this record to others captured during the same interaction |
-| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window` |
+| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window`. `window` carries no `interactionId`; match those records by `atUs` falling close together, since each record stamps its own `atUs` when it is built and a nearby value does not prove a shared cause |
 
 ### Example Invocations
 
@@ -645,7 +647,7 @@ to attribute jank to a specific widget or layout phase after driving an interact
 | `frames[].vsyncStartUs` | integer | no | Vsync signal timestamp from `FrameTiming.timestampInMicroseconds(FramePhase.vsyncStart)`. Clock parity with `atUs` is NOT proven; treat a comparison as needing a live-engine run, not a unit-test guarantee |
 | `frames[].atUs` | integer | yes | Monotonic microsecond timestamp from `FlutterTimeline.now`, captured at record construction |
 | `frames[].interactionId` | string | no | Correlates this record to others captured during the same logical interaction |
-| `frames[].linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window` |
+| `frames[].linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window`. `window` carries no `interactionId`; match those records by `atUs` falling close together, since each record stamps its own `atUs` when it is built and a nearby value does not prove a shared cause |
 | `livenessCounter` | integer | yes | Monotonic count of frames actually drawn since `FramePerfWatcher` was installed; present even when `frames` is empty, so a caller can tell a quiet app from a stalled engine |
 
 ### Example Invocations

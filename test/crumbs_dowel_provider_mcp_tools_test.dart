@@ -21,6 +21,21 @@ void main() {
       expect(tools, hasLength(10));
     });
 
+    test(
+      'the crumbs_requests description names only fields a record emits',
+      () {
+        // An HTTP record serialises `isError` and no `error` key, so a
+        // description promising an error field sends an agent looking for
+        // something that is never there.
+        final String description = tools
+            .firstWhere((t) => t.name == 'crumbs_requests')
+            .description;
+
+        expect(description, contains('`isError`'));
+        expect(description, isNot(contains('error if the call failed')));
+      },
+    );
+
     // -------------------------------------------------------------------------
     // Names
     // -------------------------------------------------------------------------
