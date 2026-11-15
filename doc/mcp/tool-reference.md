@@ -321,6 +321,8 @@ back. See [Cursor and filters](cursor-and-filters.md).
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `listenerCount` | integer | no | Number of listeners notified at dispatch time, when available |
 | `atUs` | integer | yes | Monotonic microseconds from `FlutterTimeline.now` |
+| `interactionId` | string | no | Correlates this record to others captured during the same interaction |
+| `linkedBy` | string | no | How `interactionId` was derived: `zone` \| `frame` \| `window` |
 | `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
 | `cursor` | integer or null | yes (envelope) | Largest `atUs` returned, else the `since` given, else null |
 

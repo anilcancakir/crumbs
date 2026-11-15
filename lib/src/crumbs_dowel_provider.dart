@@ -113,7 +113,7 @@ class CrumbsDowelProvider extends DowelServiceProvider {
           'adapter, or by the app\'s own interceptor calling '
           '`CrumbsStore.recordHttp`). Each record carries method, url, status code, '
           'duration, request headers, response body snippet, and '
-          'error if the call failed. Use this to debug API issues '
+          'an `isError` flag. Use this to debug API issues '
           'without instrumenting the app or watching network panels '
           'in DevTools.\n'
           '\n'
