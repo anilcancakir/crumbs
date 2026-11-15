@@ -13,7 +13,7 @@ Every `crumbs:*` command `CrumbsDowelProvider.commands()` registers, run from a 
 ## Entry points
 
 | Form | When |
-|---|---|
+|:---|:---|
 | `./bin/dowel <cmd>` | The default once `crumbs:install` scaffolded it: the consumer's compiled dowel CLI |
 | `dart run crumbs <cmd>` | Before `./bin/dowel` exists; loads the crumbs commands itself, slower to start |
 | `dart run dowel <cmd>` | The consumer's dispatcher, once the plugin is registered |
@@ -29,7 +29,7 @@ Every command but `crumbs:install` needs a running app started by dowel (`./bin/
 ## Read commands
 
 | Command | Extension | Flags (default) | Line format |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `crumbs:tail` | `ext.crumbs.console` | `--limit` (50), `--level`, `--logger`, `--since`, `--json`, `--follow` | `<time> [<LEVEL>] <logger>: <message>` |
 | `crumbs:requests` | `ext.crumbs.requests` | `--limit` (50) | `<timestamp> <METHOD> <url> → <status> (<ms>ms) atUs=<atUs>` plus `requestId=`, `interactionId=`, `linkedBy=` when set |
 | `crumbs:events` | `ext.crumbs.events` | `--limit` (50), `--type`, `--since`, `--json`, `--follow` | `<time> <eventType> <payload>` plus `listeners=<n>` when known |

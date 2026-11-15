@@ -28,7 +28,7 @@ The JSON keys of each record as `toJson()` writes it, which is what an MCP answe
 Answer key `requests`. The credential masking of `CrumbsRedaction` has already run: a hidden value reads `********`.
 
 | Key | Type | Notes |
-|---|---|---|
+|:---|:---|:---|
 | `url` | String | The value of a credential-named query parameter reads `********`; the rest of the URL is as captured |
 | `method` | String | |
 | `statusCode` | int | |
@@ -49,7 +49,7 @@ An interceptor that calls `CrumbsStore.recordHttp` builds the record itself: `ur
 Answer key `messages`. Written by `LogWatcher` from `package:logging`.
 
 | Key | Type | Notes |
-|---|---|---|
+|:---|:---|:---|
 | `level` | String | `FINEST` to `SHOUT` |
 | `levelValue` | int | 300 (`FINEST`) to 1200 (`SHOUT`) |
 | `message`, `loggerName` | String | |
@@ -62,7 +62,7 @@ Answer key `messages`. Written by `LogWatcher` from `package:logging`.
 Answer key `exceptions`. Written by `ExceptionWatcher`.
 
 | Key | Type | Notes |
-|---|---|---|
+|:---|:---|:---|
 | `exceptionType` | String | The runtime type |
 | `message` | String | |
 | `time` | String | Wall clock; no `atUs` |
@@ -78,7 +78,7 @@ Answer key `dumps`. Written by `DumpWatcher` from `debugPrint`: `message`, `time
 Answer key `events`. Written by an event watcher (Magic's, through `MagicCrumbsIntegration` in a `magic_devtools` release built on crumbs).
 
 | Key | Type | Notes |
-|---|---|---|
+|:---|:---|:---|
 | `eventType` | String | The `type` filter is a prefix of this |
 | `payload` | Map | Made JSON-safe at insert: a value `jsonEncode` cannot write (`NaN` and the infinities included), and a non-String key, is stored as its `toString()`; one whose `toString()` throws reads `<unprintable Type>` |
 | `time` | String | |
@@ -106,7 +106,7 @@ No extension serves it; it is read in process with `CrumbsStore.recentModels()`.
 Answer key `frames`, beside `livenessCounter`. Written by `FramePerfWatcher`.
 
 | Key | Type | Notes |
-|---|---|---|
+|:---|:---|:---|
 | `frameNumber` | int | The engine's frame number |
 | `buildMicros`, `rasterMicros`, `vsyncOverheadMicros`, `totalSpanMicros` | int | Microseconds |
 | `time` | String | |

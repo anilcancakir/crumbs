@@ -20,7 +20,7 @@ Every `crumbs_*` tool `CrumbsDowelProvider.mcpTools()` declares. Each routes to 
 ## Tools
 
 | Tool | Extension | Parameters | Answer |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | `crumbs_tail` | `ext.crumbs.console` | `limit`, `level`, `logger`, `since` | `{messages: [LogRecordEntry], cursor}` |
 | `crumbs_requests` | `ext.crumbs.requests` | `limit` | `{requests: [HttpRequestRecord]}` |
 | `crumbs_exceptions` | `ext.crumbs.exceptions` | `limit` | `{exceptions: [ExceptionRecord]}` |
@@ -48,7 +48,7 @@ The extensions `ext.crumbs.pause`, `ext.crumbs.resume`, `ext.crumbs.files` and `
 `crumbs_tail` and `crumbs_events` declare these beside `limit`:
 
 | Parameter | On | Meaning |
-|---|---|---|
+|:---|:---|:---|
 | `since` | tail, events | Only records whose `atUs` is greater (microseconds). Not an integer: refused with `invalidParams` |
 | `logger` | tail | Exact logger name |
 | `type` | events | Prefix of `eventType` |
@@ -63,7 +63,7 @@ crumbs_tail { logger: "Sync", since: 1734567890123 }  only what Sync logged afte
 ## Errors
 
 | Answer | Meaning | Next move |
-|---|---|---|
+|:---|:---|:---|
 | `VM Service connect failed` or `No Flutter app detected` | No running session dowel can reach | `./bin/dowel start --device=<device>`, then retry; the server reconnects on the next call |
 | `ext.crumbs.<x> is not registered in the running app yet (still booting, a release build, or the plugin is not installed). Retry in a few seconds.` | The app has no crumbs extensions yet: still booting, not installed, guarded out by the build mode, or `CRUMBS_DISABLE` set | Retry a few times; if it persists, check the guard in `lib/main.dart` and `CRUMBS_DISABLE`, then restart the app |
 | `since must be an integer number of microseconds.` | A `since` that is not an integer | Pass the `cursor` value as it came |
@@ -73,7 +73,7 @@ crumbs_tail { logger: "Sync", since: 1734567890123 }  only what Sync logged afte
 An empty list is a verdict only once its producer is known to be registered:
 
 | Empty | Check |
-|---|---|
+|:---|:---|
 | `messages` | The app logs through `package:logging`; `level` is a real level name; `logger` is the exact name |
 | `requests` | An HTTP adapter is registered, or an interceptor calls `CrumbsStore.recordHttp`: crumbs hooks no HTTP client itself |
 | `exceptions` | `ExceptionWatcher` is registered |

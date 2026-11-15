@@ -45,7 +45,7 @@ On a Magic app it also adds `MagicCrumbsIntegration.install()` (from `package:ma
 2. **Each buffer has one producer, and most are opt-in.** An empty answer means "no producer" until you know one is registered:
 
    | Buffer | Read with | Filled by |
-   |---|---|---|
+   |:---|:---|:---|
    | logs | `crumbs_tail` | `LogWatcher`, installed by `CrumbsPlugin.install()`; only `package:logging` calls |
    | HTTP | `crumbs_requests` | a `CrumbsHttpAdapter`, or the app's own interceptor calling `CrumbsStore.recordHttp`; crumbs hooks no HTTP client itself |
    | exceptions | `crumbs_exceptions` | `ExceptionWatcher`: uncaught errors from `FlutterError.onError` and `PlatformDispatcher.instance.onError` |
@@ -138,7 +138,7 @@ In CI, run the CLI against a started app and read with `--json`; a read command 
 ## References
 
 | Read when | File |
-|---|---|
+|:---|:---|
 | Calling a `crumbs_*` tool and you need its parameters, envelope or errors | `${CLAUDE_SKILL_DIR}/references/mcp-tools.md` |
 | Running a `crumbs:*` command from Bash: flags, output, exit codes | `${CLAUDE_SKILL_DIR}/references/cli-commands.md` |
 | Reading the fields of a record | `${CLAUDE_SKILL_DIR}/references/records.md` |
