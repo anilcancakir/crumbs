@@ -8,8 +8,13 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- **The pub.dev topic `mcp-server` is `mcp`.** Only crumbs and tapir used the first; the second is shared by many MCP packages, so the listing is easier to find. (`pubspec.yaml`)
+
 ### Fixed
 
+- **The tables in the docs are left-aligned.** `file-sink`, `redaction`, `cursor-and-filters`, the MCP `tool-reference` and the watcher pages used the unaligned `|---|` separator; they use `|:---|` like the rest. (`doc/`)
 - **The tables in the README, `ARCHITECTURE.md` and the skill are left-aligned.** They used the unaligned `|---|` separator; they use `|:---|` like the rest of the docs. (`README.md`, `ARCHITECTURE.md`, `skills/crumbs/`)
 
 ## [1.0.0] - 2026-11-14

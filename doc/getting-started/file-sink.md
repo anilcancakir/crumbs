@@ -29,7 +29,7 @@ Future<void> startTimeline(String supportPath, String Function(String) maskSecre
 ```
 
 | Member | Meaning |
-|---|---|
+|:---|:---|
 | `CrumbsFileSink.start({required directory, maxFileBytes = 1048576, maxFiles = 8})` | Creates the directory, opens the first file, subscribes to the store, and returns the running sink. A sink already running is stopped first. Throws a `FileSystemException` when the directory or first file cannot be created; the sink then neither listens nor becomes current. |
 | `CrumbsFileSink.current` | The running sink, or null. |
 | `files()` | `[{name, bytes}]` for every timeline file in the directory, earlier launches included, newest first. |
@@ -98,7 +98,7 @@ read sees every accepted line.
 ### VM extensions
 
 | Extension | Params | Answer |
-|---|---|---|
+|:---|:---|:---|
 | `ext.crumbs.files` | none | `{files: [{name, bytes}]}`, newest first |
 | `ext.crumbs.file` | `name`, `offset` (default 0), `maxBytes` (default 65536) | `{lines, next}` |
 
@@ -116,7 +116,7 @@ through the CLI or the VM service directly.
 ```
 
 | Option | Default | Meaning |
-|---|---|---|
+|:---|:---|:---|
 | `--name=<file>` | none | Print the lines of this file, as listed, instead of the list. |
 | `--offset=<n>` | `0` | Byte offset to start from: 0 or a previous `next`. |
 
