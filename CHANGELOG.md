@@ -14,6 +14,7 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+- **The skill says what `linkedBy: window` means.** A `window` record has no open interaction and a null `interactionId`, so it is joined by `atUs`; the skill's join rule said the id appears whenever a capturing site links records. (`skills/crumbs/SKILL.md`)
 - **The `crumbs_requests` tool description names the field a record really emits.** It promised an `error` field; an HTTP record serialises an `isError` flag and no `error` key, so the description now says `isError`, and a test pins it. The `crumbs_events` output table lists the `interactionId` and `linkedBy` fields the records carry. (`lib/src/crumbs_dowel_provider.dart`, `doc/mcp/tool-reference.md`)
 - **The tables in the docs are left-aligned.** `file-sink`, `redaction`, `cursor-and-filters`, the MCP `tool-reference` and the watcher pages used the unaligned `|---|` separator; they use `|:---|` like the rest. (`doc/`)
 - **The tables in the README, `ARCHITECTURE.md` and the skill are left-aligned.** They used the unaligned `|---|` separator; they use `|:---|` like the rest of the docs. (`README.md`, `ARCHITECTURE.md`, `skills/crumbs/`)
