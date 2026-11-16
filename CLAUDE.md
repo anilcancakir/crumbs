@@ -58,7 +58,7 @@ These change only with a coordinated bump in `magic_devtools`, which is meant to
 ## Release
 
 1. A `release: X.Y.Z` PR bumps the stamps and promotes `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`. Stamps: `pubspec.yaml`, `server.json` (guarded by `test/server_json_version_test.dart`), `example/pubspec.yaml` and `example/pubspec.lock`, and the skill's `version:` and stamp comment in `skills/crumbs/SKILL.md`, moved by hand. Grep the old version before opening it.
-2. After it merges, tag the merge commit with the bare version: `git tag X.Y.Z && git push origin X.Y.Z`. `publish.yml` validates, publishes to pub.dev, creates the GitHub Release from the CHANGELOG section and syncs the skill to the registry.
+2. After it merges, tag the merge commit with the bare version: `git tag X.Y.Z && git push origin X.Y.Z`. `publish.yml` validates, publishes to pub.dev, creates the GitHub Release from the CHANGELOG section, syncs the skill to the skill registry and publishes `server.json` to the MCP registry (the `mcp-registry` job, stable tags only; the registry holds a version once, so a re-run after success fails with "already exists").
 
 ## CI
 
