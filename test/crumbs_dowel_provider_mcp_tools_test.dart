@@ -267,6 +267,7 @@ void main() {
           'crumbs:install',
           'crumbs:tail',
           'crumbs:requests',
+          'crumbs:exceptions',
           'crumbs:queries',
           'crumbs:caches',
           'crumbs:events',

@@ -29,13 +29,13 @@ One `crumbs_<verb>_command.dart` per command, extending `DowelCommand`: `name` (
 
 ## Output
 
-- One line per record, oldest first, in the order the extension returned them. An empty answer prints one `ctx.output.warning` and exits 0; name the producer to register when the buffer has one (`crumbs:tail` and `crumbs:files` have none to name).
+- One line per record, oldest first, in the order the extension returned them; `crumbs:exceptions` prints one unindented header line per record followed by indented message and stack-trace lines, so a caller keys records on unindented lines. An empty answer prints one `ctx.output.warning` and exits 0; name the producer to register when the buffer has one (`crumbs:tail` and `crumbs:files` have none to name).
 - A command that takes `--follow` also takes `--json` (one `jsonEncode`d record per line) and `--since`, and polls through `followCursor` with injectable `delay` and `shouldStop`, so a test runs the loop without a clock.
 - Exit 0 on success, 1 on a refusal the extension reported (`crumbs:files` on an `{error}` answer); dowel's dispatcher owns 3 (a throw) and 75 (extension not registered yet).
 
 ## MCP descriptors
 
-Each `mcpTools()` entry is a const `McpToolDescriptor` named `crumbs_<verb>`: an imperative opening sentence, one context paragraph, a `Usage:` list. `inputSchema` is a JSON Schema object with `type: object` and `properties`; no tool has a required parameter. Pause, resume and the timeline files have no tool on purpose; `crumbs_exceptions` has no command.
+Each `mcpTools()` entry is a const `McpToolDescriptor` named `crumbs_<verb>`: an imperative opening sentence, one context paragraph, a `Usage:` list. `inputSchema` is a JSON Schema object with `type: object` and `properties`; no tool has a required parameter. Pause, resume and the timeline files have no tool on purpose.
 
 ## The CLI wrapper
 

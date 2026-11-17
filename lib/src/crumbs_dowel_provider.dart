@@ -4,6 +4,7 @@ import 'commands/crumbs_caches_command.dart';
 import 'commands/crumbs_clear_command.dart';
 import 'commands/crumbs_dumps_command.dart';
 import 'commands/crumbs_events_command.dart';
+import 'commands/crumbs_exceptions_command.dart';
 import 'commands/crumbs_files_command.dart';
 import 'commands/crumbs_frames_command.dart';
 import 'commands/crumbs_gates_command.dart';
@@ -16,12 +17,12 @@ import 'commands/crumbs_tail_command.dart';
 /// dispatcher.
 ///
 /// The commands (crumbs:install, crumbs:tail, crumbs:requests,
-/// crumbs:queries, crumbs:caches, crumbs:events, crumbs:gates,
-/// crumbs:dumps, crumbs:frames, crumbs:clear, crumbs:files) and the MCP tools
-/// are backed by ext.crumbs.* VM Service extensions registered by
-/// [registerAllCrumbsExtensions]. The pause, resume and timeline file
-/// extensions have no MCP tool on purpose; the timeline files are read
-/// through crumbs:files.
+/// crumbs:exceptions, crumbs:queries, crumbs:caches, crumbs:events,
+/// crumbs:gates, crumbs:dumps, crumbs:frames, crumbs:clear, crumbs:files)
+/// and the MCP tools are backed by ext.crumbs.* VM Service extensions
+/// registered by [registerAllCrumbsExtensions]. The pause, resume and
+/// timeline file extensions have no MCP tool on purpose; the timeline files
+/// are read through crumbs:files.
 class CrumbsDowelProvider extends DowelServiceProvider {
   @override
   String get providerName => 'crumbs';
@@ -31,6 +32,7 @@ class CrumbsDowelProvider extends DowelServiceProvider {
     CrumbsInstallCommand(),
     CrumbsTailCommand(),
     CrumbsRequestsCommand(),
+    CrumbsExceptionsCommand(),
     CrumbsQueriesCommand(),
     CrumbsCachesCommand(),
     CrumbsEventsCommand(),

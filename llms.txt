@@ -43,7 +43,7 @@ void main() {
 - `CrumbsDowelProvider` and `followCursor` (`package:crumbs/cli.dart`): the provider dowel loads from `lib/app/_plugins.g.dart`, and the polling loop behind `--follow`.
 - `MagicCrumbsIntegration.install()` (`package:magic_devtools/crumbs.dart`): the Magic HTTP adapter and the model, cache, event, gate and query watchers, after `Magic.init()`. A `magic_devtools` release built on crumbs ships this integration; `crumbs:install` wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade.
 - MCP tools: `crumbs_tail` (logs, reads `ext.crumbs.console`; takes `limit`, `level`, `logger`, `since`), `crumbs_requests` (answers under `requests`), `crumbs_exceptions`, `crumbs_dumps`, `crumbs_events` (takes `limit`, `type`, `since`), `crumbs_gates`, `crumbs_queries`, `crumbs_caches`, `crumbs_frames`, `crumbs_clear`.
-- CLI commands mirror the tools by name, except: `crumbs_exceptions` has no command, and `crumbs:install` and `crumbs:files` (the timeline files) have no tool. Pause and resume are extensions with neither.
+- CLI commands mirror the tools by name, except: `crumbs:install` and `crumbs:files` (the timeline files) have no tool. Pause and resume are extensions with neither.
 
 ## Platforms
 
