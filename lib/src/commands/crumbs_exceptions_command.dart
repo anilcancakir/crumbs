@@ -42,8 +42,12 @@ class CrumbsExceptionsCommand extends DowelCommand {
       final messageLines = const LineSplitter().convert(
         '${r['message']}'.trim(),
       );
+      // An empty or blank message has no first line: the header ends at the
+      // colon and the stack trace and later records still print.
+      final firstLine = messageLines.firstOrNull;
       ctx.output.writeln(
-        '${r['time']} ${r['exceptionType']}: ${messageLines.first}',
+        '${r['time']} ${r['exceptionType']}:'
+        '${firstLine == null ? '' : ' $firstLine'}',
       );
       final stackTrace = r['stackTrace'] as String?;
       final continuation = [

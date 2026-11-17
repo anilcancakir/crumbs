@@ -240,5 +240,52 @@ void main() {
         );
       },
     );
+
+    test(
+      'handle prints a header for an empty or blank message and keeps going',
+      () async {
+        final output = BufferedOutput();
+        final ctx = _StubContext(
+          input: MapInput(const {}),
+          output: output,
+          response: {
+            'exceptions': [
+              {
+                'exceptionType': 'String',
+                'message': '',
+                'time': '2026-05-18T12:00:04.000Z',
+                'stackTrace': '#0      main (file:///app/main.dart:10:3)',
+                'redacted': false,
+              },
+              {
+                'exceptionType': 'Exception',
+                'message': '  \n ',
+                'time': '2026-05-18T12:00:05.000Z',
+                'redacted': false,
+              },
+              {
+                'exceptionType': 'StateError',
+                'message': 'Bad state: no element',
+                'time': '2026-05-18T12:00:06.000Z',
+                'redacted': false,
+              },
+            ],
+          },
+        );
+
+        final code = await CrumbsExceptionsCommand().handle(ctx);
+
+        expect(code, equals(0));
+        expect(
+          output.content.trimRight().split('\n'),
+          equals(<String>[
+            '2026-05-18T12:00:04.000Z String:',
+            '  #0      main (file:///app/main.dart:10:3)',
+            '2026-05-18T12:00:05.000Z Exception:',
+            '2026-05-18T12:00:06.000Z StateError: Bad state: no element',
+          ]),
+        );
+      },
+    );
   });
 }
