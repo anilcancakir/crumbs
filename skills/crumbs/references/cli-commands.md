@@ -1,6 +1,6 @@
 # CLI commands reference
 
-Every `crumbs:*` command `CrumbsDowelProvider.commands()` registers, run from a shell. The read commands mirror an MCP tool by name and call the same extension. `crumbs:install` and `crumbs:files` are CLI only; `crumbs_exceptions` has no command.
+Every `crumbs:*` command `CrumbsDowelProvider.commands()` registers, run from a shell. The read commands mirror an MCP tool by name and call the same extension. `crumbs:install` and `crumbs:files` are CLI only.
 
 ## Contents
 
@@ -22,7 +22,7 @@ Every command but `crumbs:install` needs a running app started by dowel (`./bin/
 
 ## Output and exit codes
 
-- One line per record, oldest first, on stdout. An empty buffer prints a warning and exits 0; every command but `crumbs:tail` and `crumbs:files` names the missing producer in it (`No DB query records (register MagicQueryWatcher).`), and `crumbs:tail` and `crumbs:events` print no warning under `--json` or `--follow`.
+- One line per record, oldest first, on stdout; `crumbs:exceptions` prints one unindented header line per record followed by indented message and stack-trace lines, so a caller keys records on unindented lines. An empty buffer prints a warning and exits 0; every command but `crumbs:tail` and `crumbs:files` names the missing producer in it (`No DB query records (register MagicQueryWatcher).`), and `crumbs:tail` and `crumbs:events` print no warning under `--json` or `--follow`.
 - `--json` exists on `crumbs:tail` and `crumbs:events` only: one JSON object per line, the record as the extension returned it.
 - Exit codes come from dowel's dispatcher: 0 success, 1 when the project has no running session (or it belongs to another project), 3 when the call throws (a non-integer `--since` on `crumbs:tail` or `crumbs:events` ends here, as `Connected command ... failed`), 75 when the app has not registered `ext.crumbs.*` yet (still booting, a release build, or crumbs is not installed: retry in a few seconds). `crumbs:files` exits 1 when the sink refuses.
 
@@ -32,6 +32,7 @@ Every command but `crumbs:install` needs a running app started by dowel (`./bin/
 |:---|:---|:---|:---|
 | `crumbs:tail` | `ext.crumbs.console` | `--limit` (50), `--level`, `--logger`, `--since`, `--json`, `--follow` | `<time> [<LEVEL>] <logger>: <message>` |
 | `crumbs:requests` | `ext.crumbs.requests` | `--limit` (50) | `<timestamp> <METHOD> <url> → <status> (<ms>ms) atUs=<atUs>` plus `requestId=`, `interactionId=`, `linkedBy=` when set |
+| `crumbs:exceptions` | `ext.crumbs.exceptions` | `--limit` (50) | `<time> <exceptionType>: <first message line>`, then the further message lines and the stack trace lines, each indented two spaces |
 | `crumbs:events` | `ext.crumbs.events` | `--limit` (50), `--type`, `--since`, `--json`, `--follow` | `<time> <eventType> <payload>` plus `listeners=<n>` when known |
 | `crumbs:gates` | `ext.crumbs.gates` | `--limit` (50) | `<time> <ability> allowed\|denied user=<id> arguments=[...]` |
 | `crumbs:dumps` | `ext.crumbs.dumps` | `--limit` (50) | `<time> <message>` |

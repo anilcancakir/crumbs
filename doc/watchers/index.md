@@ -20,7 +20,7 @@ Each unit implements one of two contracts: `CrumbsWatcher` (hook and event captu
 | Unit | Contract | Installed by | Buffer (`CrumbsKind`) | Read with |
 |:-----|:---------|:-------------|:----------------------|:----------|
 | `LogWatcher` | `CrumbsWatcher` | `CrumbsPlugin.install()` | `logs` | `crumbs:tail`, `crumbs_tail` |
-| `ExceptionWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `exceptions` | `crumbs_exceptions` |
+| `ExceptionWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `exceptions` | `crumbs:exceptions`, `crumbs_exceptions` |
 | `DumpWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `dumps` | `crumbs:dumps`, `crumbs_dumps` |
 | `FramePerfWatcher` | `CrumbsWatcher` | `CrumbsPlugin.registerWatcher()` | `framePerf` | `crumbs:frames`, `crumbs_frames` |
 | `MagicHttpFacadeAdapter` | `CrumbsHttpAdapter` | `MagicCrumbsIntegration.install()` | `http` | `crumbs:requests`, `crumbs_requests` |

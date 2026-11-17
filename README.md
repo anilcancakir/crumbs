@@ -74,7 +74,7 @@ On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.instal
 | Record | Captured by | CLI | MCP tool |
 |:---|:---|:---|:---|
 | `package:logging` records | `LogWatcher`, installed by `CrumbsPlugin.install()` | `crumbs:tail` | `crumbs_tail` |
-| Uncaught exceptions | `ExceptionWatcher` (`FlutterError.onError` and `PlatformDispatcher.onError`, chained to any handler already set, such as Sentry's) | none | `crumbs_exceptions` |
+| Uncaught exceptions | `ExceptionWatcher` (`FlutterError.onError` and `PlatformDispatcher.onError`, chained to any handler already set, such as Sentry's) | `crumbs:exceptions` | `crumbs_exceptions` |
 | `debugPrint` output | `DumpWatcher` (debug builds only unless `allowInRelease` is set) | `crumbs:dumps` | `crumbs_dumps` |
 | Frame timings and build attribution | `FramePerfWatcher` | `crumbs:frames` | `crumbs_frames` |
 | HTTP requests | The app's own interceptor (Dio, `package:http`) calling `CrumbsStore.recordHttp`, or a `CrumbsHttpAdapter`; on Magic, `MagicHttpFacadeAdapter` | `crumbs:requests` | `crumbs_requests` |

@@ -18,7 +18,7 @@ dart run crumbs start --device=chrome    # or macos, linux, a device id
 |---------|----------|-------------|
 | HTTP via a Dio interceptor | GET /get, POST /post, GET /status/418, GET /delay/5 (timeout) | `dart run crumbs crumbs:requests` |
 | Logs via package:logging | Logger.info, Logger.warning, Logger.severe | `dart run crumbs crumbs:tail` |
-| Exceptions via ExceptionWatcher | Async throw, Sync throw (caught), Custom error | `crumbs_exceptions` MCP tool |
+| Exceptions via ExceptionWatcher | Async throw, Sync throw (caught), Custom error | `dart run crumbs crumbs:exceptions` |
 | Dumps via DumpWatcher | debugPrint single line, debugPrint multiline | `crumbs_dumps` MCP tool |
 
 ## Manual QA checklist
