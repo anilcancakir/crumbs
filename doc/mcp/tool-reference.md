@@ -97,7 +97,7 @@ back. See [Cursor and filters](cursor-and-filters.md).
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `atUs` | integer | yes | Monotonic microseconds from `FlutterTimeline.now`, the same clock as event records |
 | `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
-| `error` | string | no | Error object stringified, when one was attached; on a Magic `Log.*` record, the call's context stringified and masked by key, also on a call that is not an error |
+| `error` | string | no | Error object stringified, when one was attached; on a Magic `Log.*` record, a Map or List context stringified and masked by key, also on a call that is not an error; a String or other scalar context is stringified as it is, so only a configured `CrumbsRedaction.redactor` masks it |
 | `stackTrace` | string | no | Stack trace stringified, when one was attached |
 | `cursor` | integer or null | yes (envelope) | Largest `atUs` returned, else the `since` given, else null |
 
