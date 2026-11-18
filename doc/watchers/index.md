@@ -29,6 +29,7 @@ Each unit implements one of two contracts: `CrumbsWatcher` (hook and event captu
 | `MagicEventWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `events` | `crumbs:events`, `crumbs_events` |
 | `MagicGateWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `gates` | `crumbs:gates`, `crumbs_gates` |
 | `MagicQueryWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `queries` | `crumbs:queries`, `crumbs_queries` |
+| `MagicLogWatcher` | `CrumbsWatcher` | `MagicCrumbsIntegration.install()` | `logs` | `crumbs:tail`, `crumbs_tail` |
 
 `crumbs:install` registers `ExceptionWatcher` and `DumpWatcher` for you; a hand wiring registers them itself.
 
@@ -268,6 +269,9 @@ A `magic_devtools` release built on crumbs ships the Magic integration (`package
 | `MagicEventWatcher` | `magic_event` | `AuthLogin`, `AuthLogout`, `AuthFailed`, `AuthRestored`, `DatabaseConnected`, `GateAbilityDefined`, `GateBeforeRegistered` | `EventRecord` with an empty `payload`; model and gate-result events stay with their own watchers |
 | `MagicGateWatcher` | `magic_gate` | `GateAccessChecked` (covers allows and denies; `GateAccessDenied` is skipped to avoid a double record) | `GateRecord`: `ability`, `result`, `arguments` (the single argument wrapped in a list), `userId` (stringified, null without a user) |
 | `MagicQueryWatcher` | `magic_query` | `QueryExecuted`, dispatched by the query builder after every SQL run | `QueryRecord`: `sql`, `bindings`, `timeMs`, `connectionName`, `time` |
+| `MagicLogWatcher` | `magic_log` | Every `Log.*` call, through a wrapper that replaces the container's `log` manager and forwards each call to the wrapped driver first | `LogRecordEntry`: `level` and `levelValue` (`emergency`, `alert` and `critical` map to `SHOUT`, `error` to `SEVERE`, `warning` to `WARNING`, `notice` and `info` to `INFO`, any other name to `FINE`), `message`, `loggerName` (the channel the call named, else `logging.default`, else `console`), `error` (the call's context as a string) |
+
+`MagicLogWatcher` records a call the console channel's level hides, and only calls made after `MagicCrumbsIntegration.install()`: a `Log.*` call during `Magic.init()` is not recorded. A `Map` or `List` context is masked by key before it is stored; the message text is masked only by a registered `CrumbsRedaction.redactor`. `Log.unfake()` drops the wrapper together with the fake, so call `MagicLogWatcher().install()` again after it.
 
 The model buffer has no extension and no MCP tool: read it in the app through `CrumbsStore.recentModels()` or `CrumbsStore.onModelRecord`.
 
@@ -283,6 +287,7 @@ The model buffer has no extension and no MCP tool: read it in the app through `C
 | Dio traffic does not show up. | crumbs hooks no HTTP client: add an interceptor that calls `CrumbsStore.recordHttp`, or register a `CrumbsHttpAdapter` that does. |
 | `crumbs_frames` answers an empty list. | Register `FramePerfWatcher`; a `livenessCounter` that does not advance means it is missing or the engine draws nothing. |
 | The Magic buffers stay empty. | Call `MagicCrumbsIntegration.install()` after `Magic.init()`, from a `magic_devtools` release built on crumbs. |
+| A Magic app's boot logs are missing from `crumbs:tail`. | `MagicLogWatcher` installs after `Magic.init()`, so only later `Log.*` calls are recorded. |
 
 <a name="related-documentation"></a>
 ## Related Documentation

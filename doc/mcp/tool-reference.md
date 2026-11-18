@@ -50,7 +50,7 @@ Every reading tool (all but `crumbs_clear`) follows these rules:
 
 Return recent log records from the running Flutter app.
 
-Reads the Crumbs log ring buffer populated by every `package:logging` `Logger` call in the app.
+Reads the Crumbs log ring buffer populated by every `package:logging` `Logger` call in the app and, on a Magic app, by every `Log.*` call (`MagicLogWatcher`).
 Use this to inspect what the app logged without scraping `flutter run` stdout via `dowel_logs`.
 
 **VM Service extension:** `ext.crumbs.console`

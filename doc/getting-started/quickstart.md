@@ -37,7 +37,7 @@ The output lists the `crumbs:` namespace.
 
 dowel starts `flutter run`, records the VM Service URI of the session, and every `crumbs:*` command and `crumbs_*` tool dials that session.
 
-Use the app. On a vanilla app, `package:logging` records fill the log buffer and `debugPrint` calls the dump buffer; on a Magic app, HTTP calls through the `Http` facade, model saves, cache reads and gate checks land in their buffers too. To produce records on purpose, from anywhere in the app:
+Use the app. On a vanilla app, `package:logging` records fill the log buffer and `debugPrint` calls the dump buffer; on a Magic app, HTTP calls through the `Http` facade, model saves, cache reads, gate checks and `Log.*` calls land in their buffers too. To produce records on purpose, from anywhere in the app:
 
 ```dart
 import 'package:flutter/foundation.dart';

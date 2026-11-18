@@ -74,7 +74,7 @@ An empty list is a verdict only once its producer is known to be registered:
 
 | Empty | Check |
 |:---|:---|
-| `messages` | The app logs through `package:logging`; `level` is a real level name; `logger` is the exact name |
+| `messages` | The app logs through `package:logging` (a Magic app: `Log.*` calls made after `MagicCrumbsIntegration.install()`); `level` is a real level name; `logger` is the exact name |
 | `requests` | An HTTP adapter is registered, or an interceptor calls `CrumbsStore.recordHttp`: crumbs hooks no HTTP client itself |
 | `exceptions` | `ExceptionWatcher` is registered |
 | `dumps` | `DumpWatcher` is registered and the build is debug; the code calls `debugPrint`, not `print` |
