@@ -35,7 +35,7 @@ if (!kReleaseMode) {
 }
 ```
 
-On a Magic app it also adds `MagicCrumbsIntegration.install()` (from `package:magic_devtools/crumbs.dart`) after `Magic.init()`, which registers the Magic HTTP adapter, the model, cache, event, gate and query watchers and `MagicLogWatcher`, and a `magic_devtools` release built on crumbs ships that integration; when the resolved `magic_devtools` lacks the library it warns and skips that line, so Magic's buffers stay empty until you upgrade `magic_devtools` and rerun. Re-running is safe: a `main.dart` that already calls `CrumbsPlugin.install(` gets no second crumbs block, and a rerun still adds `MagicCrumbsIntegration.install()` once the resolved `magic_devtools` ships it, behind the guard of the existing crumbs block. Reconnect the MCP client after `mcp:install` (in Claude Code, `/mcp reconnect dowel`); a stdio server is not reloaded on its own. A Claude Code allow-list entry for the tools is `mcp__dowel__crumbs_*`.
+On a Magic app it also adds `MagicCrumbsIntegration.install()` (from `package:magic_devtools/crumbs.dart`) after `Magic.init()`, which registers the Magic HTTP adapter, the model, cache, event, gate and query watchers and, from `magic_devtools` 1.1.0, `MagicLogWatcher`, and a `magic_devtools` release built on crumbs ships that integration; when the resolved `magic_devtools` lacks the library it warns and skips that line, so Magic's buffers stay empty until you upgrade `magic_devtools` and rerun. Re-running is safe: a `main.dart` that already calls `CrumbsPlugin.install(` gets no second crumbs block, and a rerun still adds `MagicCrumbsIntegration.install()` once the resolved `magic_devtools` ships it, behind the guard of the existing crumbs block. Reconnect the MCP client after `mcp:install` (in Claude Code, `/mcp reconnect dowel`); a stdio server is not reloaded on its own. A Claude Code allow-list entry for the tools is `mcp__dowel__crumbs_*`.
 
 ## Rules
 
@@ -46,7 +46,7 @@ On a Magic app it also adds `MagicCrumbsIntegration.install()` (from `package:ma
 
    | Buffer | Read with | Filled by |
    |:---|:---|:---|
-   | logs | `crumbs_tail` | `LogWatcher`, installed by `CrumbsPlugin.install()`; only `package:logging` calls, so a Magic app's `Log.*` calls need `MagicLogWatcher` (from `magic_devtools`) |
+   | logs | `crumbs_tail` | `LogWatcher`, installed by `CrumbsPlugin.install()`; only `package:logging` calls, so a Magic app's `Log.*` calls need `MagicLogWatcher` (from `magic_devtools` 1.1.0 or later) |
    | HTTP | `crumbs_requests` | a `CrumbsHttpAdapter`, or the app's own interceptor calling `CrumbsStore.recordHttp`; crumbs hooks no HTTP client itself |
    | exceptions | `crumbs_exceptions` | `ExceptionWatcher`: uncaught errors from `FlutterError.onError` and `PlatformDispatcher.instance.onError` |
    | dumps | `crumbs_dumps` | `DumpWatcher`: `debugPrint` only (not `print`), debug builds only |

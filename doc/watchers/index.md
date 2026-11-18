@@ -260,7 +260,7 @@ if (!kReleaseMode) {
 }
 ```
 
-A `magic_devtools` release built on crumbs ships the Magic integration (`package:magic_devtools/crumbs.dart`); the installer wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade. Each watcher subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`.
+A `magic_devtools` release built on crumbs ships the Magic integration (`package:magic_devtools/crumbs.dart`); the installer wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade. Each watcher except `MagicLogWatcher` subscribes through Magic's `EventDispatcher`, which has no per-listener removal, so its `uninstall()` is a no-op; a test that needs a clean dispatcher calls `EventDispatcher.instance.clear()` in `setUp`. `MagicLogWatcher` subscribes to nothing: its `uninstall()` puts the wrapped `log` manager back.
 
 | Watcher | Name | Subscribes to | Record |
 |:--------|:-----|:--------------|:-------|
@@ -271,7 +271,7 @@ A `magic_devtools` release built on crumbs ships the Magic integration (`package
 | `MagicQueryWatcher` | `magic_query` | `QueryExecuted`, dispatched by the query builder after every SQL run | `QueryRecord`: `sql`, `bindings`, `timeMs`, `connectionName`, `time` |
 | `MagicLogWatcher` | `magic_log` | Every `Log.*` call, through a wrapper that replaces the container's `log` manager and forwards each call to the wrapped driver first | `LogRecordEntry`: `level` and `levelValue` (`emergency`, `alert` and `critical` map to `SHOUT`, `error` to `SEVERE`, `warning` to `WARNING`, `notice` and `info` to `INFO`, any other name to `FINE`), `message`, `loggerName` (the channel the call named, else `logging.default`, else `console`), `error` (the call's context as a string) |
 
-`MagicLogWatcher` records a call the console channel's level hides, and only calls made after `MagicCrumbsIntegration.install()`: a `Log.*` call during `Magic.init()` is not recorded. A `Map` or `List` context is masked by key before it is stored; the message text is masked only by a registered `CrumbsRedaction.redactor`. `Log.unfake()` drops the wrapper together with the fake, so call `MagicLogWatcher().install()` again after it.
+`MagicLogWatcher` ships from `magic_devtools` 1.1.0: on an older release the integration installs without it and nothing warns, because the installer checks only that the library exists. It records a call the console channel's level hides, and only calls made after `MagicCrumbsIntegration.install()`: a `Log.*` call during `Magic.init()` is not recorded. A `Map` or `List` context is masked by key before it is stored; the message text is masked only by a registered `CrumbsRedaction.redactor`. `Log.unfake()` drops the wrapper together with the fake, so call `MagicLogWatcher().install()` again after it.
 
 The model buffer has no extension and no MCP tool: read it in the app through `CrumbsStore.recentModels()` or `CrumbsStore.onModelRecord`.
 

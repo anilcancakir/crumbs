@@ -50,7 +50,7 @@ Every reading tool (all but `crumbs_clear`) follows these rules:
 
 Return recent log records from the running Flutter app.
 
-Reads the Crumbs log ring buffer populated by every `package:logging` `Logger` call in the app and, on a Magic app, by every `Log.*` call (`MagicLogWatcher`).
+Reads the Crumbs log ring buffer populated by every `package:logging` `Logger` call in the app and, on a Magic app with `magic_devtools` 1.1.0 or later, by every `Log.*` call made after `MagicCrumbsIntegration.install()` (`MagicLogWatcher`: a call during `Magic.init()` is not recorded, and `Log.unfake()` needs `MagicLogWatcher().install()` again).
 Use this to inspect what the app logged without scraping `flutter run` stdout via `dowel_logs`.
 
 **VM Service extension:** `ext.crumbs.console`
@@ -93,11 +93,11 @@ back. See [Cursor and filters](cursor-and-filters.md).
 | `level` | string | yes | Log level name (e.g. `INFO`, `WARNING`, `SEVERE`) |
 | `levelValue` | integer | yes | Numeric level value from `package:logging` |
 | `message` | string | yes | Log message string |
-| `loggerName` | string | yes | Name of the `Logger` instance that emitted the record |
+| `loggerName` | string | yes | Name of the `Logger` instance that emitted the record; for a Magic `Log.*` call, the channel it named (else `logging.default`, else `console`). The `logger` filter matches this value |
 | `time` | string | yes | ISO 8601 device-local wall clock, no offset; join on `atUs` |
 | `atUs` | integer | yes | Monotonic microseconds from `FlutterTimeline.now`, the same clock as event records |
 | `redacted` | boolean | yes | True when `CrumbsRedaction.redactor` ran over the record before it was buffered |
-| `error` | string | no | Error object stringified, when one was attached |
+| `error` | string | no | Error object stringified, when one was attached; on a Magic `Log.*` record, the call's context stringified and masked by key, also on a call that is not an error |
 | `stackTrace` | string | no | Stack trace stringified, when one was attached |
 | `cursor` | integer or null | yes (envelope) | Largest `atUs` returned, else the `since` given, else null |
 

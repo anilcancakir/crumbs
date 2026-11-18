@@ -67,14 +67,14 @@ void main() {
 
 The guard belongs to the call site: crumbs installs none of its own. `!kReleaseMode` is what the installer writes: it keeps crumbs in debug and profile builds, and a frame measurement needs a profile build. A release build tree-shakes crumbs. Without a guard crumbs ships in release, and anyone who reaches that app's VM Service can read every buffer. `--dart-define=CRUMBS_DISABLE=1` makes `CrumbsPlugin.install()`, `registerWatcher()` and `registerHttpAdapter()` return without installing anything, in a build that must not expose the extensions. The [`example/`](example/) app wires the core watchers and routes Dio traffic into the HTTP buffer.
 
-On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter, the model, cache, event, gate and query watchers, and `MagicLogWatcher` for Magic's `Log` calls. A [`magic_devtools`](https://pub.dev/packages/magic_devtools) release built on crumbs ships the Magic integration (`package:magic_devtools/crumbs.dart`); the installer wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade.
+On a [Magic](https://pub.dev/packages/magic) app, `MagicCrumbsIntegration.install()` from `package:magic_devtools/crumbs.dart`, called after `Magic.init()`, registers the Magic HTTP adapter, the model, cache, event, gate and query watchers, and, from `magic_devtools` 1.1.0, `MagicLogWatcher` for Magic's `Log` calls. A [`magic_devtools`](https://pub.dev/packages/magic_devtools) release built on crumbs ships the Magic integration (`package:magic_devtools/crumbs.dart`); the installer wires it when the resolved `magic_devtools` has that library, and otherwise warns and skips the Magic wiring, so Magic's buffers stay empty until you upgrade. An older release installs without `MagicLogWatcher` and the installer does not warn, so Magic's `Log` calls stay out of `crumbs:tail`.
 
 ## What it captures
 
 | Record | Captured by | CLI | MCP tool |
 |:---|:---|:---|:---|
 | `package:logging` records | `LogWatcher`, installed by `CrumbsPlugin.install()` | `crumbs:tail` | `crumbs_tail` |
-| Magic `Log` calls | `MagicLogWatcher` | `crumbs:tail` | `crumbs_tail` |
+| Magic `Log` calls | `MagicLogWatcher` (`magic_devtools` 1.1.0 or later) | `crumbs:tail` | `crumbs_tail` |
 | Uncaught exceptions | `ExceptionWatcher` (`FlutterError.onError` and `PlatformDispatcher.onError`, chained to any handler already set, such as Sentry's) | `crumbs:exceptions` | `crumbs_exceptions` |
 | `debugPrint` output | `DumpWatcher` (debug builds only unless `allowInRelease` is set) | `crumbs:dumps` | `crumbs_dumps` |
 | Frame timings and build attribution | `FramePerfWatcher` | `crumbs:frames` | `crumbs_frames` |
