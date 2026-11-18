@@ -174,6 +174,17 @@ void main() {
       );
     });
 
+    test('crumbs_tail description names the Magic log producer and its '
+        'magic_devtools floor', () {
+      final tail = tools.firstWhere((t) => t.name == 'crumbs_tail');
+      expect(tail.description, contains('MagicLogWatcher'));
+      expect(tail.description, contains('magic_devtools 1.1.0'));
+      expect(
+        tail.description,
+        contains('made after `MagicCrumbsIntegration.install()`'),
+      );
+    });
+
     test('crumbs_events does not declare required params', () {
       final events = tools.firstWhere((t) => t.name == 'crumbs_events');
       expect(events.inputSchema.containsKey('required'), isFalse);

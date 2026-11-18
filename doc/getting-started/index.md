@@ -40,7 +40,7 @@ dart run crumbs crumbs:install
 | Dart SDK | `3.13` | |
 | Flutter SDK | `3.47` | The VM Service extensions need the Flutter runtime. |
 | dowel | `^1.0.0` | Pulled in by crumbs; `crumbs:install` sets up the rest. |
-| Magic stack | optional | `MagicCrumbsIntegration` from a `magic_devtools` release built on crumbs adds HTTP, model, cache, event, gate and query capture. |
+| Magic stack | optional | `MagicCrumbsIntegration` from a `magic_devtools` release built on crumbs adds HTTP, model, cache, event, gate and query capture, and log capture from `magic_devtools` 1.1.0. |
 
 <a name="what-gets-captured"></a>
 ## What gets captured
@@ -59,6 +59,7 @@ With the Magic stack (`MagicCrumbsIntegration.install()` after `Magic.init()`):
 - **In-app events**: a curated set of Magic auth, database and gate-definition events.
 - **Gate checks**: every `Gate.allows` and `Gate.denies` result with the user id.
 - **DB queries**: SQL, bindings and execution time through the Magic query builder.
+- **Logs**: every `Log.*` call, through `MagicLogWatcher` (`magic_devtools` 1.1.0 or later); a call made during `Magic.init()` is not recorded.
 
 `FramePerfWatcher` (frame timings) and a Dio interceptor (HTTP on a vanilla app) are opt-in on any app; see [Watchers](../watchers/index.md).
 

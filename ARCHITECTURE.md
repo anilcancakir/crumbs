@@ -46,7 +46,7 @@ watchers, adapters, host ──recordX──▶ CrumbsStore ──redact──�
 
 ### The Magic producers (in `magic_devtools`, not here)
 
-In a `magic_devtools` release built on crumbs, `MagicCrumbsIntegration`, `MagicHttpFacadeAdapter` and the model, cache, event, gate and query watchers implement this package's contracts from another repository. Crumbs depends on no Magic package. `CrumbsWatcher` and `CrumbsHttpAdapter` are `abstract interface class`es for that reason: a producer in another package implements them and inherits nothing a later release could change under it (`lib/src/watchers/watcher.dart`, `lib/src/adapters/http_adapter.dart`). For the same reason the shipped watchers are `final class`.
+In a `magic_devtools` release built on crumbs, `MagicCrumbsIntegration`, `MagicHttpFacadeAdapter` and the model, cache, event, gate, query and log watchers implement this package's contracts from another repository. Crumbs depends on no Magic package. `CrumbsWatcher` and `CrumbsHttpAdapter` are `abstract interface class`es for that reason: a producer in another package implements them and inherits nothing a later release could change under it (`lib/src/watchers/watcher.dart`, `lib/src/adapters/http_adapter.dart`). For the same reason the shipped watchers are `final class`.
 
 ## Invariants
 
@@ -115,4 +115,4 @@ Timeline on disk:
 - `livenessCounter` advances from a post-frame callback, which also runs while a deferred first frame keeps frames from the engine: `lib/src/watchers/frame_perf_watcher.dart`
 - `vsyncStartUs` is not proven to share the `atUs` clock: `lib/src/records/frame_perf_record.dart`
 
-Last reviewed: 2026-11-14, after the review fixes to redaction, the shipped watchers and the cursor paging claim.
+Last reviewed: 2026-11-18, after `MagicLogWatcher` joined the Magic producers in `magic_devtools` 1.1.0.

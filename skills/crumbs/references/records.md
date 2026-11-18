@@ -46,7 +46,7 @@ An interceptor that calls `CrumbsStore.recordHttp` builds the record itself: `ur
 
 ## LogRecordEntry
 
-Answer key `messages`. Written by `LogWatcher` from `package:logging`.
+Answer key `messages`. Written by `LogWatcher` from `package:logging`, or by `MagicLogWatcher` from a Magic app's `Log.*` calls (its `error` holds the call's context as a string, masked by key).
 
 | Key | Type | Notes |
 |:---|:---|:---|
