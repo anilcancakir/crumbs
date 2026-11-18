@@ -3,7 +3,7 @@
     "name": "io.github.anilcancakir/crumbs",
     "title": "Crumbs",
     "description": "Read a running Flutter app's HTTP, logs, exceptions, dumps and frames over MCP. Debug builds only.",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "repository": {
         "url": "https://github.com/anilcancakir/crumbs",
         "source": "github"

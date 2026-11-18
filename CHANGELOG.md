@@ -8,6 +8,8 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-11-18
+
 ### Changed
 
 - **The `crumbs_tail` description names the Magic log producer.** It described the log buffer as filled by `package:logging` alone, so an agent on a Magic app could overlook the tool for `Log.*` calls; it now names `MagicLogWatcher`, the `magic_devtools` 1.1.0 floor and the `MagicCrumbsIntegration.install()` step (a call made before it is not recorded). The README, `llms.txt`, the skill and the `doc/` pages list the watcher as well. (`lib/src/crumbs_dowel_provider.dart`)
