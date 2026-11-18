@@ -8,6 +8,8 @@ This project follows [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-18
+
 ### Added
 
 - **`crumbs:exceptions` reads the exception buffer from the CLI.** `crumbs_exceptions` was the one read tool with no command, so an agent running `dowel list` could not see it. The command takes `--limit` (default 50) and prints a `<time> <exceptionType>: <message>` line per record, oldest first, with the message continuation and stack trace lines indented two spaces beneath it, so a caller keys records on unindented lines. Closes #68. (`lib/src/commands/crumbs_exceptions_command.dart`, `lib/src/crumbs_dowel_provider.dart`)

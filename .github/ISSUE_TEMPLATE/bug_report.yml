@@ -86,7 +86,7 @@ body:
     id: crumbs-version
     attributes:
       label: crumbs Version
-      placeholder: "1.0.1"
+      placeholder: "1.1.0"
     validations:
       required: true
 
